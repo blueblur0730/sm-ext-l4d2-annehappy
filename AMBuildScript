@@ -1,5 +1,5 @@
 # vim: set sts=2 ts=8 sw=2 tw=99 et ft=python:
-import os
+import os, sys
 
 def ResolveEnvPath(env, folder):
   if env in os.environ:
@@ -240,6 +240,13 @@ class ExtensionConfig(object):
 
     if builder.options.opt == '1':
         cxx.cflags += ['-O3']
+        cxx.cxxflags += [
+        '-g0',
+        '-flto=auto',
+        '-funroll-loops',
+        '-floop-interchange',
+        '-finline-functions',
+      ]
 
     # Don't omit the frame pointer.
     cxx.cflags += ['-fno-omit-frame-pointer']
@@ -297,9 +304,9 @@ class ExtensionConfig(object):
     cxx.linkflags += ['-lm']
     if cxx.family == 'gcc':
       cxx.linkflags += ['-static-libgcc']
+      cxx.linkflags += ['-static-libstdc++'] # in case you are running different on this though it apperently incrased the size of the file.
     elif cxx.family == 'clang':
       cxx.linkflags += ['-lgcc_eh']
-    cxx.linkflags += ['-static-libstdc++']
 
   def configure_mac(self, cxx):
     cxx.defines += ['OSX', '_OSX', 'POSIX', 'KE_ABSOLUTELY_NO_STL']
@@ -332,6 +339,7 @@ class ExtensionConfig(object):
       os.path.join(context.currentSourcePath),
       os.path.join(context.currentSourcePath, 'src'),
       os.path.join(context.currentSourcePath, 'sdk'),
+      os.path.join(context.currentSourcePath, 'public'),  # we use our own.
       os.path.join(self.sm_root, 'public'),
       os.path.join(self.sm_root, 'public', 'extensions'),
       os.path.join(self.sm_root, 'sourcepawn', 'include'),
@@ -369,13 +377,9 @@ class ExtensionConfig(object):
     return binary
 
   def AddCDetour(self, binary):
-    public_path = os.path.join(builder.sourcePath, 'public')
-    binary.sources += [ os.path.join(public_path, 'CDetour', 'detours.cpp') ]
-    binary.compiler.cxxincludes += [ 
-        os.path.join(public_path, 'safetyhook', 'include'), 
-        os.path.join(public_path, 'safetyhook', 'zydis') 
-    ]
-    binary.compiler.includes += [ os.path.join(public_path, 'safetyhook') ]
+    binary.sources += [ os.path.join(self.sm_root, 'public', 'CDetour', 'detours.cpp') ]
+    binary.compiler.cxxincludes += [ os.path.join(builder.sourcePath, 'safetyhook', 'include') ]
+    binary.compiler.includes += [ os.path.join(builder.sourcePath, 'safetyhook') ]
     for task in self.libsafetyhook:
       if task.target.arch == binary.compiler.target.arch:
         binary.compiler.linkflags += [task.binary]
