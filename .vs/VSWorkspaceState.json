@@ -1,0 +1,16 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\addons",
+    "\\addons\\sourcemod",
+    "\\addons\\sourcemod\\scripting",
+    "\\addons\\sourcemod\\scripting\\include",
+    "\\msvc",
+    "\\public",
+    "\\public\\safetyhook",
+    "\\public\\safetyhook\\src",
+    "\\src"
+  ],
+  "SelectedNode": "\\public\\safetyhook\\src\\inline_hook.cpp",
+  "PreviewInSolutionExplorer": false
+}

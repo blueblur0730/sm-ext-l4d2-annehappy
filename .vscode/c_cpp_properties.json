@@ -1,0 +1,47 @@
+{
+    "env": {
+        "sourcemodExtEnvPath": [
+            "E:/alliedmodders//sourcemod/public/**",
+            "E:/alliedmodders//sourcemod/bridge/include/**",
+            "E:/alliedmodders//hl2sdk/public/**",
+            "E:/alliedmodders//hl2sdk/mathlib/**",
+            "E:/alliedmodders//hl2sdk/game/shared/**",
+            "E:/alliedmodders//metamod-source/core/**",
+            "E:/alliedmodders//sourcepawn/include/**"
+        ],
+        "includePaths": [
+            ""
+        ],
+        "sm-ext-l4d2-annehappy": [
+            "${workspaceFolder}/src/**"
+        ],
+        "myDefines": [
+            "DEBUG",
+            "MY_FEATURE=1"
+        ]
+    },
+    "configurations": [
+        {
+            "name": "sm-ext-l4d2-annehappy",
+            "intelliSenseMode": "windows-msvc-x64",
+            "includePath": [
+                "${sourcemodExtEnvPath}",
+                "${sm-ext-l4d2-annehappy}"
+            ],
+            "defines": [
+                "${myDefines}",
+                "_WINDOWS"
+            ],
+            "cStandard": "c17",
+            "cppStandard": "c++23",
+            "windowsSdkVersion": "10.0.22621.0",
+            "browse": {
+                "path": [
+                    "${sourcemodExtEnvPath}"
+                ]
+            }
+        }
+    ],
+    "version": 4,
+    "enableConfigurationSquiggles": true
+}
