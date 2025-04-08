@@ -39,7 +39,6 @@
 
 #include "smsdk_ext.h"
 #include "igameevents.h"
-#include "CoreProvider.h"
 #include "ISDKHooks.h"
 #include "wrappers.h"
 #include "eiface.h"
@@ -94,9 +93,6 @@ extern IGameEventManager2 *gameevents = NULL;
 // global variables interface
 extern CGlobalVars *gpGlobals = NULL;
 
-// core bridge interface.
-extern CoreProvider *bridge = NULL;
-
 // sdk hooks interface.
 extern ISDKHooks *sdkhooks = NULL;
 
@@ -122,3 +118,12 @@ extern ConVar z_boomer_bile_find_range;
 extern ConVar z_boomer_spin_interval;
 extern ConVar z_boomer_degree_force_bile;
 extern ConVar z_boomer_predict_pos;
+
+// ai_smoker_new
+extern ConVar z_smoker_bhop;
+extern ConVar z_smoker_bhop_speed;
+extern ConVar z_smoker_target_rules;
+extern ConVar z_smoker_melee_avoid;
+extern ConVar z_smoker_left_behind_distance;
+extern ConVar z_smoker_left_behind_time;
+extern ConVar z_smoker_intant_shoot_cofficient;

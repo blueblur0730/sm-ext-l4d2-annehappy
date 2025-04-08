@@ -60,7 +60,7 @@ void CBoomerEventListner::OnPlayerNowIt(IGameEvent *event)
         return;
 
     ((CTerrorBoomerVictim *)pVictim)->m_bBiled = true;
-    g_hResetBiledStateTimer = timersys->CreateTimer(&g_BoomerTimerEvent, bridge->FindConVar("sb_vomit_blind_time")->GetFloat(), (void *)(intptr_t)index, 0);
+    g_hResetBiledStateTimer = timersys->CreateTimer(&g_BoomerTimerEvent, g_pCVar->FindVar("sb_vomit_blind_time")->GetFloat(), (void *)(intptr_t)index, 0);
 }
 
 void CBoomerEventListner::OnRoundStart(IGameEvent *event)
@@ -89,7 +89,7 @@ SourceMod::ResultType CBoomerTimerEvent::OnTimer(ITimer *pTimer, void *pData)
 
         pBoomer->m_bCanBile = false;
         pBoomer->m_bIsInCoolDown = true;
-        g_hResetAbilityTimer = timersys->CreateTimer(&g_BoomerTimerEvent, bridge->FindConVar("z_vomit_interval")->GetFloat(), (void *)(intptr_t)client, 0);
+        g_hResetAbilityTimer = timersys->CreateTimer(&g_BoomerTimerEvent, g_pCVar->FindVar("z_vomit_interval")->GetFloat(), (void *)(intptr_t)client, 0);
         return Pl_Continue;
     }
 
@@ -158,7 +158,7 @@ void CBoomerEntityListner::OnPostThink(CBaseEntity *pEntity)
     vec_t flTargetDist = vecSelfPos.DistTo(vecTargetPos);
     if (pPlayer->HasVisibleThreats() && !pPlayer->m_bIsInCoolDown && pPlayer->m_aTargetInfo.size() < 1)
     {
-        if (flTargetDist <= bridge->FindConVar("z_vomit_range")->GetFloat())
+        if (flTargetDist <= g_pCVar->FindVar("z_vomit_range")->GetFloat())
         {
             QAngle vecAngles;
             UTIL_ComputeAimAngles(pPlayer, pTarget, &vecAngles, AimEye);
@@ -282,7 +282,7 @@ void CBoomerEntityListner::OnPostThink(CBaseEntity *pEntity)
 
     int flags = pPlayer->GetFlags();
     if ((flags & FL_ONGROUND) && pPlayer->HasVisibleThreats()
-        && (flTargetDist <= (int)(0.8 * bridge->FindConVar("z_vomit_range")->GetFloat()))
+        && (flTargetDist <= (int)(0.8 * g_pCVar->FindVar("z_vomit_range")->GetFloat()))
         && !pPlayer->m_bIsInCoolDown && pPlayer->m_bCanBile)
     {
         CUserCmd *cmd = pPlayer->GetCurrentCommand();
@@ -295,7 +295,7 @@ void CBoomerEntityListner::OnPostThink(CBaseEntity *pEntity)
         if (pPlayer->m_bCanBile)
         {
             int index = pPlayer->entindex();
-            g_hResetBileTimer = timersys->CreateTimer(&g_BoomerTimerEvent, (bridge->FindConVar("z_vomit_duration"))->GetFloat(), (void *)(intptr_t)index, 0);
+            g_hResetBileTimer = timersys->CreateTimer(&g_BoomerTimerEvent, (g_pCVar->FindVar("z_vomit_duration"))->GetFloat(), (void *)(intptr_t)index, 0);
         }
 
         pPlayer->m_bCanBile = false;
@@ -334,7 +334,7 @@ void CBoomerEntityListner::OnPostThink(CBaseEntity *pEntity)
                 continue;
 
             Vector vecEyePos = pTerrorPlayer->GetEyeOrigin();
-            if (vecSelfEyePos.DistTo(vecEyePos) > bridge->FindConVar("z_vomit_range")->GetFloat())
+            if (vecSelfEyePos.DistTo(vecEyePos) > g_pCVar->FindVar("z_vomit_range")->GetFloat())
                 continue;
 
             Ray_t ray;
@@ -348,7 +348,7 @@ void CBoomerEntityListner::OnPostThink(CBaseEntity *pEntity)
             }
         }
 
-        g_hResetAbilityTimer = timersys->CreateTimer(&g_BoomerTimerEvent, bridge->FindConVar("z_vomit_interval")->GetFloat(), (void *)(intptr_t)pPlayer->entindex(), 0);
+        g_hResetAbilityTimer = timersys->CreateTimer(&g_BoomerTimerEvent, g_pCVar->FindVar("z_vomit_interval")->GetFloat(), (void *)(intptr_t)pPlayer->entindex(), 0);
     }
 
     Vector vecVelocity;
@@ -356,7 +356,7 @@ void CBoomerEntityListner::OnPostThink(CBaseEntity *pEntity)
     vec_t flCurSpeed = sqrt(pow(vecVelocity.x, 2.0f) + pow(vecVelocity.y, 2.0f));
 
     if (z_boomer_bhop.GetBool() && pPlayer->HasVisibleThreats() 
-        && (flags & FL_ONGROUND) && (0.5f * bridge->FindConVar("z_vomit_range")->GetFloat() < flTargetDist
+        && (flags & FL_ONGROUND) && (0.5f * g_pCVar->FindVar("z_vomit_range")->GetFloat() < flTargetDist
         && flTargetDist < 1000.0f) && flCurSpeed > 160.0f)
     {
         Vector vecBuffer = UTIL_CaculateVel(vecSelfPos, vecTargetPos, z_boomer_bhop_speed.GetFloat());
@@ -441,7 +441,7 @@ void CTerrorPlayer::DTRCallBack_OnVomitedUpon(CBasePlayer *pAttacker, bool bIsEx
             continue;
 
         Vector vecTargetEyePos = pTerrorPlayer->GetEyeOrigin();
-        if (vecEyePos.DistTo(vecTargetEyePos) > bridge->FindConVar("z_vomit_range")->GetFloat())
+        if (vecEyePos.DistTo(vecTargetEyePos) > g_pCVar->FindVar("z_vomit_range")->GetFloat())
             continue;
 
         Ray_t ray;
@@ -481,7 +481,7 @@ static bool secondCheck(CBaseEntity *pPlayer, CBaseEntity *pTarget)
     serverClients->ClientEarPosition(pGameTarget->GetEdict(), &vecTargetEyePos);
 
     vec_t flDistance = vecSelfEyePos.DistTo(vecTargetEyePos);
-    if (flDistance <= bridge->FindConVar("z_vomit_range")->GetFloat() || 
+    if (flDistance <= g_pCVar->FindVar("z_vomit_range")->GetFloat() || 
         UTIL_IsInAimOffset((CBasePlayer *)pPlayer, (CBasePlayer *)pTarget, z_boomer_degree_force_bile.GetFloat()) ||
         ((CTerrorBoomerVictim *)pTarget)->m_bBiled)
     {
