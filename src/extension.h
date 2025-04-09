@@ -77,6 +77,9 @@ protected:
 	bool LoadGameData(IGameConfig *pGameData, char* error, size_t maxlen);
 	bool FindSendProps(char* error, size_t maxlen);
 	bool AddEventListner();
+	void RemoveEventListner();
+	void DestroyCalls(ICallWrapper *pCall);
+	void DestroyDetours(CDetour *pDetour);
 };
 
 #endif // _INCLUDE_SOURCEMOD_EXTENSION_PROPER_H_
@@ -108,6 +111,9 @@ extern IEngineTrace *enginetrace = NULL;
 // static prop entity manager interface.
 extern IStaticPropMgr *staticpropmgr = NULL;
 
+TerrorNavMesh *g_pNavMesh = NULL;
+ZombieManager *g_pZombieManager = NULL;
+
 // ai_boomer
 extern ConVar z_boomer_bhop;
 extern ConVar z_boomer_bhop_speed;
@@ -125,5 +131,4 @@ extern ConVar z_smoker_bhop_speed;
 extern ConVar z_smoker_target_rules;
 extern ConVar z_smoker_melee_avoid;
 extern ConVar z_smoker_left_behind_distance;
-extern ConVar z_smoker_left_behind_time;
-extern ConVar z_smoker_intant_shoot_cofficient;
+extern ConVar z_smoker_instant_shoot_range_cofficient;
