@@ -1,0 +1,201 @@
+"Games"
+{
+    "left4dead2"
+    {
+		"Addresses"
+		{
+			// from left4dhooks by Silvers.
+			"TerrorNavMesh"
+			{
+				"windows"
+				{
+					"signature" "CommandNavSave"
+					"read" "11"
+				}
+				"linux"
+				{
+					"signature" "TheNavMesh"
+				}
+				"read" "0"
+			}
+
+			// from left4dhooks by Silvers.
+			"ZombieManager"
+			{
+				"windows"
+				{
+					"signature"	"StartChangeLevel"
+					"read"	"293"
+				}
+				"linux"
+				{
+					"signature" "TheZombieManager"
+				}
+				"read" "0"
+			}
+		}
+
+		"Offsets"
+		{
+			// from left4dhooks by Silvers.
+			"m_fMapMaxFlowDistance"
+			{
+				"windows"	"1528"
+				"linux"		"1524"
+				// Compared against inside of the current_flow_distance ccommand.
+			}
+
+			// from left4dhooks by Silvers.
+			"m_flow"
+			{
+				"windows"	"332"
+				"linux"		"340"
+				// From "CTerrorPlayer::GetFlowDistance"
+			}
+
+			/*
+			* CTerrorPlayer::GetLastKnownArea() const
+			*/
+			// from left4dhooks by Silvers.
+			"CTerrorPlayer::GetLastKnownArea"
+			{
+				"windows"	"330"
+				"linux"		"331"
+			}
+		}
+
+        "Signatures"
+        {
+			"TheNavMesh"
+			{
+				"library"	"server"
+				"linux"		"@TheNavMesh"
+			}
+
+			"TheZombieManager"
+			{
+				"library"	"server"
+				"linux"		"@TheZombieManager"
+			}
+
+			/* Used solely to get the offset for TheNavMesh
+			 * Look for string "Navigation map '%s' saved.\n" in a short function
+			*/
+			// from left4dhooks by Silvers.
+			"CommandNavSave"
+			{
+				"library"	"server"
+				"windows"	"\xE8\x2A\x2A\x2A\x2A\x84\xC0\x74\x2A\x8B\x0D\x2A\x2A\x2A\x2A\x8B\x01\x8B\x50\x2A\xFF\xD2\x8B\x0D\x2A\x2A\x2A\x2A\x84\xC0"
+				/* E8 ? ? ? ? 84 C0 74 ? 8B 0D ? ? ? ? 8B 01 8B 50 ? FF D2 8B 0D ? ? ? ? 84 C0 */
+			}
+
+			/*
+			 * CTerrorPlayer::OnVomitedUpon(CTerrorPlayer*, bool)
+			 */
+             // from left4dhooks by Silvers.
+			"CTerrorPlayer::OnVomitedUpon"
+			{
+				"library"	"server"
+				"linux"		"@_ZN13CTerrorPlayer13OnVomitedUponEPS_b"
+				"windows"	"\x2A\x2A\x2A\x2A\x2A\x2A\x53\x56\x57\x8B\xF1\xE8\x2A\x2A\x2A\x2A\x84\xC0\x74\x2A\x8B\x06\x8B\x90"
+				/* ? ? ? ? ? ? 53 56 57 8B F1 E8 ? ? ? ? 84 C0 74 ? 8B 06 8B 90 */
+			}
+
+            // from impactfix from shqke.
+			"CTraceFilterSimple::CTraceFilterSimple"
+			{
+				"library"	"server"
+				"linux"		"@_ZN18CTraceFilterSimpleC2EPK13IHandleEntityiPFbPS0_iE"
+				// xref from vtable
+				// 55 8B EC 8B 55 0C 8B C1 8B 4D 08 89 48 04 8B 4D 10 C7 00 ? ? ? ? 89 50 08 89 48 0C 5D
+				"windows"	"\x55\x8B\xEC\x8B\x55\x0C\x8B\xC1\x8B\x4D\x08\x89\x48\x04\x8B\x4D\x10\xC7\x00\x2A\x2A\x2A\x2A\x89\x50\x08\x89\x48\x0C\x5D"
+			}
+
+			/**
+			* CTerrorPlayer::GetSpecialInfectedDominatingMe(CTerrorPlayer *this)
+			*
+			* Provided by "blueblur0730" on GitHub
+			* Windows sig:
+			* 1. Search for string "gas_can_forced_drop" to find CGasCan::DropCarriedProp
+			* 2. This event will pass the victim client id, which is our desired CTerrorPlayer* pointer
+			* 3. Find the second call that passes this pointer, this function is CTerrorPlayer::GetSpecialInfectedDominatingMe
+			**/
+			// from left4dhooks by Silvers.
+			"CTerrorPlayer::GetSpecialInfectedDominatingMe"
+			{
+				"library"	"server"
+				"linux"		"@_ZN13CTerrorPlayer30GetSpecialInfectedDominatingMeEv"
+				"windows"	"\x8B\x15\x2A\x2A\x2A\x2A\x56\x8B\xF1\x8B\x8E\x5C\x3E\x00\x00"
+				/* 8B 15 ? ? ? ? 56 8B F1 8B 8E 5C 3E 00 00 */
+			}
+
+			/**
+			* IsVisibleToPlayer(Vector const&, CBasePlayer *, int, int, float, CBaseEntity const*, TerrorNavArea **, bool *)
+			*
+			* Thanks Psyk0tik help
+			* How to find on Windows:
+			* 1. Search for the "Tank/Witch threat spawn: No non-visible valid areas between threat area and goal area! Choosing random area.\n" string.
+			* 2. The string can only be found in "CDirector::OnThreatEncountered".
+			* 3. The function "CDirector::OnThreatEncountered" calls "CDirectorTacticalServices::IsSpawnLocationVisibleToTeam" with the values "2" and "3" passed to it.
+			* 4. The last function call in "CDirectorTacticalServices::IsSpawnLocationVisibleToTeam" should be this function.
+			**/
+			// from left4dhooks by Silvers.
+			"IsVisibleToPlayer"
+			{
+				"library"	"server"
+				"linux"		"@_Z17IsVisibleToPlayerRK6VectorP11CBasePlayeriifPK11CBaseEntityPP13TerrorNavAreaPb"
+				"windows"	"\x55\x8B\x2A\x81\xEC\x2A\x2A\x2A\x2A\xA1\x2A\x2A\x2A\x2A\x33\x2A\x89\x2A\x2A\x8B\x2A\x2A\x8B\x2A\x2A\x53\x8B\x2A\x2A\x56\x8B\x2A\x2A\xC6"
+				/* 55 8B ? 81 EC ? ? ? ? A1 ? ? ? ? 33 ? 89 ? ? 8B ? ? 8B ? ? 53 8B ? ? 56 8B ? ? C6 */
+			}
+
+			/* cdecl BossZombiePlayerBot::ChooseVictim(BossZombiePlayerBot *this, CTerrorPlayer *, char, CBaseCombatCharacter *) */
+			// from left4dhooks by Silvers.
+			"BossZombiePlayerBot::ChooseVictim"
+			{
+				"library"		"server"
+				"linux"			"@_ZN19BossZombiePlayerBot12ChooseVictimEP13CTerrorPlayeriP20CBaseCombatCharacter"
+				"windows"		"\x2A\x2A\x2A\x2A\x2A\x2A\x2A\x2A\x2A\x2A\x2A\x83\x2A\x2A\x2A\x53\x8B\x2A\x8B\x2A\x2A\x2A\x2A\x2A\x8B\x2A\x2A\x2A\x2A\x2A\x56"
+				/* ? ? ? ? ? ? ? ? ? ? ? 83 ? ? ? 53 8B ? 8B ? ? ? ? ? 8B ? ? ? ? ? 56 */ // Wildcarded for 3rd party plugins
+				/* 55 8B ? 83 ? ? ? ? ? ? ? 83 ? ? ? 53 8B ? 8B ? ? ? ? ? 8B */
+				/* Search: "switching to mobile victim" */
+			}
+
+			// from l4d2_block_stumble_scratches by fdxx.
+			"CTerrorPlayer::IsStaggering"
+			{
+				"library"	"server"
+				"linux"		"@_ZNK13CTerrorPlayer12IsStaggeringEv"
+				"windows"	"\x2A\x2A\x2A\x2A\x2A\x2A\x2A\x74\x2A\xB0\x2A\xC3\xE8"
+				/* ? ? ? ? ? ? ? 74 ? B0 ? C3 E8 */
+			}
+
+			/*
+			* ZombieManager::GetRandomPZSpawnPosition(ZombieManager *_ZombieManager, int zombieClass, int attempts, int a4, int a5)
+			*/
+			// from left4dhooks by Silvers.
+			"ZombieManager::GetRandomPZSpawnPosition"
+			{
+				"library"	"server"
+				"linux"		"@_ZNK13ZombieManager24GetRandomPZSpawnPositionE15ZombieClassTypeiP13CTerrorPlayerP6Vector"
+				"windows"	"\x55\x8B\x2A\x83\x2A\x2A\x53\x57\x8B\x2A\x2A\x8B\x2A\x89\x2A\x2A\x85\x2A\x75\x2A\x5F\x32"
+				/* 55 8B ? 83 ? ? 53 57 8B ? ? 8B ? 89 ? ? 85 ? 75 ? 5F 32 */
+				/* Search "ZombieManager::GetRandomPZSpawnPosition" */
+			}
+
+			/*
+			 * InfoChangelevel::StartChangeLevel(Checkpoint const*)
+			 *
+			 * Used for finding ZombieManager on Windows
+			 * - String "Would change level, but not going to!\n" is unique to this function
+			 */
+			 // from left4dhooks by Silvers.
+			"StartChangeLevel"
+			{
+				"library"	"server"
+				"linux"		"@_ZN15InfoChangelevel16StartChangeLevelEPK10Checkpoint"
+				"windows"	"\x55\x8B\xEC\xA1\x2A\x2A\x2A\x2A\x83\x78\x30\x00\x56\x8B\xF1\x74"
+				/* 55 8B EC A1 ? ? ? ? 83 78 30 00 56 8B F1 74 */
+			}
+        }
+    }
+}
