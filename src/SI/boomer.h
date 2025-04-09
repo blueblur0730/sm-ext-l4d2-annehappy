@@ -1,3 +1,7 @@
+#ifndef _BOMMER_H_INCLUDED_
+	#define _BOMMER_H_INCLUDED_
+#endif
+
 #include <vector>
 
 #include "convar.h"

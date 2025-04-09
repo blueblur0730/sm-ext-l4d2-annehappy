@@ -1,3 +1,7 @@
+#ifndef _SMOKER_H_INCLUDED_
+	#define _SMOKER_H_INCLUDED_
+#endif
+
 #include "convar.h"
 #include "wrappers.h"
 

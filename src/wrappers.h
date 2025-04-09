@@ -1,3 +1,7 @@
+#ifndef _WRAPPERS_H_INCLUDED_
+	#define _WRAPPERS_H_INCLUDED_
+#endif
+
 #include <vector>
 
 #include "extension.h"

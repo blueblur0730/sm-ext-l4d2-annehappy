@@ -1,3 +1,7 @@
+#ifndef _UTILS_H_INCLUDED_
+	#define _UTILS_H_INCLUDED_
+#endif
+
 #include "extension.h"
 #include "iplayerinfo.h"
 #include "edict.h"
