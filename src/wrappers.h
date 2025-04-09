@@ -54,6 +54,7 @@ class CTraceFilterSimple : public CTraceFilter
 public:
 	static void* pFnCTraceFilterSimple;
 	static ICallWrapper* pCallCTraceFilterSimple;
+	static ICallWrapper* pCallCTraceFilterSimple2;
 
 public:
 	CTraceFilterSimple(const IHandleEntity* passedict = NULL, Collision_Group_t collisionGroup = COLLISION_GROUP_NONE, ShouldHitFunc_t pExtraShouldHitFunc = NULL)
@@ -88,7 +89,7 @@ public:
 			ShouldHitFunc2_t pExtraShouldHitFunc;
 		} stack{ this, passedict, collisionGroup, pExtraShouldHitFunc };
 
-		pCallCTraceFilterSimple->Execute(&stack, NULL);
+		pCallCTraceFilterSimple2->Execute(&stack, NULL);
 	}
 
 	virtual bool ShouldHitEntity(IHandleEntity* pHandleEntity, int contentsMask) override {
@@ -539,7 +540,8 @@ class CTerrorEntityListner : public ISMEntityListener {
 public:
 	virtual void OnEntityCreated(CBaseEntity *pEntity, const char *classname) {};
 	virtual void OnEntityDestroyed(CBaseEntity *pEntity) {};
-
+	
+protected:
 	void OnPostThink();
 };
 

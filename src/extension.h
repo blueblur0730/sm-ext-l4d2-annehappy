@@ -77,6 +77,9 @@ protected:
 	bool LoadGameData(IGameConfig *pGameData, char* error, size_t maxlen);
 	bool FindSendProps(char* error, size_t maxlen);
 	bool AddEventListner();
+	void RemoveEventListner();
+	void DestroyCalls(ICallWrapper *pCall);
+	void DestroyDetours(CDetour *pDetour);
 };
 
 #endif // _INCLUDE_SOURCEMOD_EXTENSION_PROPER_H_

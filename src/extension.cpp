@@ -59,11 +59,14 @@ int CBaseEntity::vtblindex_CBaseEntity_Teleport = 0;
 int CBaseEntity::vtblindex_CBaseEntity_PostThink = 0;
 int CBaseEntity::vtblindex_CBaseEntity_GetEyeAngle = 0;
 
-ICallWrapper* CTraceFilterSimple::pCallCTraceFilterSimple = NULL;
-ICallWrapper* CBaseEntity::pCallTeleport = NULL;
-ICallWrapper* CBaseEntity::pCallGetEyeAngle = NULL;
+ICallWrapper *CTraceFilterSimple::pCallCTraceFilterSimple = NULL;
+ICallWrapper *CTraceFilterSimple::pCallCTraceFilterSimple2 = NULL;
+ICallWrapper *CBaseEntity::pCallTeleport = NULL;
+ICallWrapper *CBaseEntity::pCallGetEyeAngle = NULL;
 ICallWrapper *CTerrorPlayer::pCallOnVomitedUpon = NULL;
 ICallWrapper *CTerrorPlayer::pCallGetSpecialInfectedDominatingMe = NULL;
+ICallWrapper *CTerrorPlayer::pCallIsStaggering = NULL;
+ICallWrapper *ZombieManager::pCallGetRandomPZSpawnPosition = NULL;
 
 int CBaseEntity::m_iOff_m_vecVelocity = 0;
 int CBaseAbility::m_iOff_m_isSpraying = 0;
@@ -73,14 +76,16 @@ int CTerrorPlayer::m_iOff_m_customAbility = 0;
 int CTerrorPlayer::m_iOff_m_hasVisibleThreats = 0;
 int CTerrorPlayer::m_iOff_m_isIncapacitated = 0;
 
-void* CTraceFilterSimple::pFnCTraceFilterSimple = NULL;
+void *CTraceFilterSimple::pFnCTraceFilterSimple = NULL;
 void *CTerrorPlayer::pFnOnVomitedUpon = NULL;
 void *CTerrorPlayer::pFnGetSpecialInfectedDominatingMe = NULL;
+void *CTerrorPlayer::pFnIsStaggering = NULL;
 void *BossZombiePlayerBot::pFnChooseVictim = NULL;
+void *ZombieManager::pFnGetRandomPZSpawnPosition = NULL;
 void *pFnIsVisibleToPlayer = NULL;
 
 CDetour *CTerrorPlayer::DTR_OnVomitedUpon = NULL;
-CDetour *DTR_ChooseVictim = NULL;
+CDetour *BossZombiePlayerBot::DTR_ChooseVictim = NULL;
 
 std::vector<CVTableHook *> g_hookList;
 
@@ -170,6 +175,19 @@ void CAnneHappy::SDK_OnAllLoaded()
 		return;
 	}
 
+	PassInfo _info[] = {
+		{PassType_Basic, PASSFLAG_BYVAL, sizeof(IHandleEntity *), NULL, 0},
+		{PassType_Basic, PASSFLAG_BYVAL, sizeof(int), NULL, 0},
+		{PassType_Basic, PASSFLAG_BYVAL, sizeof(ShouldHitFunc2_t), NULL, 0},
+	};
+
+	CTraceFilterSimple::pCallCTraceFilterSimple2 = bintools->CreateCall(CTraceFilterSimple::pFnCTraceFilterSimple, CallConv_ThisCall, NULL, &_info[0], 3);
+	if (!CTraceFilterSimple::pCallCTraceFilterSimple2)
+	{
+		smutils->LogError(myself, "Extension failed to create call: 'CTraceFilterSimple::CTraceFilterSimple'");
+		return;
+	}
+
 	PassInfo info1[] = {
 		{PassType_Basic, PASSFLAG_BYVAL, sizeof(CBasePlayer *), NULL, 0},
 		{PassType_Basic, PASSFLAG_BYVAL, sizeof(bool), NULL, 0},
@@ -253,8 +271,24 @@ void CAnneHappy::SDK_OnUnload()
 		g_hookList.erase(it);
 	}
 
-	delete g_BoomerEntityListner;
-	delete g_SmokerEntityListner;
+	sdkhooks->RemoveEntityListener(&g_EntityListener);
+
+	if (g_BoomerEntityListner)
+		delete g_BoomerEntityListner;
+
+	if (g_SmokerEntityListner)
+		delete g_SmokerEntityListner;
+
+	DestroyCalls(CTraceFilterSimple::pCallCTraceFilterSimple);
+	DestroyCalls(CTraceFilterSimple::pCallCTraceFilterSimple2);
+	DestroyCalls(CBaseEntity::pCallTeleport);
+	DestroyCalls(CBaseEntity::pCallGetEyeAngle);
+	DestroyCalls(CTerrorPlayer::pCallGetSpecialInfectedDominatingMe);
+	DestroyCalls(CTerrorPlayer::pCallIsStaggering);
+	DestroyCalls(ZombieManager::pCallGetRandomPZSpawnPosition);
+	DestroyDetours(CTerrorPlayer::DTR_OnVomitedUpon);
+	DestroyDetours(BossZombiePlayerBot::DTR_ChooseVictim);
+
 	smutils->LogMessage(myself, "Extension has been unloaded.");
 }
 
@@ -369,6 +403,12 @@ bool CAnneHappy::AddEventListner()
 		smutils->LogError(myself, "Extension failed to add event listner: '%s' for ai_smoker.", "round_start");
 		return false;
 	}
+}
+
+void CAnneHappy::RemoveEventListner()
+{
+	gameevents->RemoveListener(&g_BoomerEventListner);
+	gameevents->RemoveListener(&g_SmokerEventListner);
 }
 
 bool CAnneHappy::FindSendProps(char* propName, size_t maxlen)
@@ -519,5 +559,28 @@ DETOUR_DECL_MEMBER3(DTRHandler_BossZombiePlayerBot_ChooseVictim, CTerrorPlayer *
 			DETOUR_MEMBER_CALL(DTRHandler_BossZombiePlayerBot_ChooseVictim)(pPlayer, targetScanFlags, pIgnorePlayer);
 			break;
 		}
+	}
+}
+
+void CAnneHappy::DestroyCalls(ICallWrapper *pCall)
+{
+	if (pCall)
+	{
+		pCall->Destroy();
+		pCall = NULL;
+	}
+}
+
+void CAnneHappy::DestroyDetours(CDetour *pDetour)
+{
+	if (pDetour)
+	{
+		if (pDetour->IsEnabled())
+		{
+			pDetour->DisableDetour();
+		}
+
+		pDetour->Destroy();
+		pDetour = NULL;
 	}
 }
