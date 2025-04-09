@@ -236,13 +236,27 @@ void CAnneHappy::SDK_OnAllLoaded()
 	}
 
 	PassInfo ret1[] = {
-		{PassType_Basic, PASSFLAG_BYVAL, sizeof(bool), NULL, 0},
+		{PassType_Basic, PASSFLAG_BYVAL, sizeof(bool), NULL, 0}
 	};
 
 	CTerrorPlayer::pCallIsStaggering = bintools->CreateCall(CTerrorPlayer::pFnIsStaggering, CallConv_ThisCall, &ret1[0], NULL, 0);
 	if (!CTerrorPlayer::pCallIsStaggering)
 	{
 		smutils->LogError(myself, "Extension failed to create call: 'CTerrorPlayer::IsStaggering'");
+		return;
+	}
+
+	PassInfo info2[] = {
+		{PassType_Basic, PASSFLAG_BYVAL, sizeof(ZombieClassType), NULL, 0},
+		{PassType_Basic, PASSFLAG_BYVAL, sizeof(int), NULL, 0},
+		{PassType_Basic, PASSFLAG_BYVAL, sizeof(CTerrorPlayer *), NULL, 0},
+		{PassType_Basic, PASSFLAG_BYREF, sizeof(Vector *), NULL, 0}
+	};
+
+	ZombieManager::pCallGetRandomPZSpawnPosition = bintools->CreateCall(ZombieManager::pFnGetRandomPZSpawnPosition, CallConv_ThisCall, NULL, &info2[0], 0);
+	if (!ZombieManager::pCallGetRandomPZSpawnPosition)
+	{
+		smutils->LogError(myself, "Extension failed to create call: 'ZombieManager::GetRandomPZSpawnPosition'");
 		return;
 	}
 
