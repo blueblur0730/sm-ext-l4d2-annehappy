@@ -1,10 +1,12 @@
-#include "boomer.h"
+#include "SI/boomer.h"
 #include "utils.h"
 #include "in_buttons.h"
 
-ITimer *g_hResetBileTimer = NULL;
-ITimer *g_hResetAbilityTimer = NULL;
-ITimer *g_hResetBiledStateTimer = NULL;
+CBoomerTimerEvent g_BoomerTimerEvent;
+
+static ITimer *g_hResetBileTimer = NULL;
+static ITimer *g_hResetAbilityTimer = NULL;
+static ITimer *g_hResetBiledStateTimer = NULL;
 
 void CBoomerEventListner::FireGameEvent(IGameEvent *event)
 {
@@ -53,13 +55,17 @@ void CBoomerEventListner::OnPlayerNowIt(IGameEvent *event)
     if (!pAttacker || !pAttacker->IsBoomer())
         return;
 
-    CTerrorPlayer *pVictim = (CTerrorPlayer *)UTIL_PlayerByUserId(event->GetInt("userid"));
+    CTerrorBoomerVictim *pVictim = (CTerrorBoomerVictim *)UTIL_PlayerByUserId(event->GetInt("userid"));
 
     int index = pVictim->entindex();
     if (index <= 0 || index > gpGlobals->maxClients)
         return;
 
-    ((CTerrorBoomerVictim *)pVictim)->m_bBiled = true;
+    pVictim->m_bBiled = true;
+
+    // FindVar actually can be replaced by ConVarRef, like: 
+    // static ConVarRef sb_vomit_blind_time("sb_vomit_blind_time");
+    // it is all the same, right?
     g_hResetBiledStateTimer = timersys->CreateTimer(&g_BoomerTimerEvent, g_pCVar->FindVar("sb_vomit_blind_time")->GetFloat(), (void *)(intptr_t)index, 0);
 }
 
@@ -67,11 +73,11 @@ void CBoomerEventListner::OnRoundStart(IGameEvent *event)
 {
     for (int i = 1; i <= gpGlobals->maxClients; i++)
     {
-        CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndex(i);
+        CTerrorBoomerVictim *pPlayer = (CTerrorBoomerVictim *)UTIL_PlayerByIndex(i);
         if (!pPlayer)
             continue;
 
-        ((CTerrorBoomerVictim *)pPlayer)->m_iSecondCheckFrame = 0;
+        pPlayer->m_iSecondCheckFrame = 0;
     }
 }
 
@@ -132,7 +138,7 @@ void CBoomerEntityListner::OnPostThink(CBaseEntity *pEntity)
     if (!pPlayer || !pPlayer->IsBoomer() || pPlayer->IsDead())
         return;
 
-    CTerrorPlayer *pTarget = (CTerrorPlayer *)UTIL_GetClosetSurvivor(pPlayer, NULL);
+    CTerrorPlayer *pTarget = (CTerrorPlayer *)UTIL_GetClosetSurvivor(pPlayer);
     if (!pTarget)
         return;
 
@@ -353,7 +359,7 @@ void CBoomerEntityListner::OnPostThink(CBaseEntity *pEntity)
 
     Vector vecVelocity;
     pPlayer->GetVelocity(&vecVelocity);
-    vec_t flCurSpeed = sqrt(pow(vecVelocity.x, 2.0f) + pow(vecVelocity.y, 2.0f));
+    vec_t flCurSpeed = (vec_t)FastSqrt(vecVelocity.x * vecVelocity.x + vecVelocity.y * vecVelocity.y);
 
     if (z_boomer_bhop.GetBool() && pPlayer->HasVisibleThreats() 
         && (flags & FL_ONGROUND) && (0.5f * g_pCVar->FindVar("z_vomit_range")->GetFloat() < flTargetDist
@@ -376,9 +382,9 @@ void CBoomerEntityListner::OnPostThink(CBaseEntity *pEntity)
     }
 }
 
-CTerrorPlayer *BossZombiePlayerBot::OnBoomerChooseVictim(CTerrorPlayer *pLasVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer)
+CTerrorPlayer* BossZombiePlayerBot::OnBoomerChooseVictim(CTerrorPlayer *pLastVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer)
 {
-    if (this->IsDead())
+    if (!this->IsBoomer() || this->IsDead())
         return NULL;
 
     Vector vecEyePos = this->GetEyeOrigin();
@@ -524,89 +530,6 @@ static bool DoBhop(CBasePlayer* pPlayer, int buttons, Vector vec)
 {
     if (buttons & IN_FORWARD || buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT)
         return ClientPush(pPlayer, vec);
-}
-
-static inline bool ClientPush(CBasePlayer* pPlayer, Vector vec)
-{
-    Vector vecVelocity;
-    pPlayer->GetVelocity(&vecVelocity);
-    vecVelocity += vec;
-    if (WillHitWallOrFall(pPlayer, vecVelocity))
-    {
-        if (vecVelocity.Length() <= 250.0f)
-        {
-            VectorNormalize(vecVelocity);
-            VectorScale(vecVelocity, 251.0f, vecVelocity);
-        }
-
-        pPlayer->Teleport(NULL, NULL, &vecVelocity);
-        return true;
-    }
-
-    return false;
-}
-
-// false means will, true otherwise.
-static bool WillHitWallOrFall(CBasePlayer* pPlayer, Vector vec)
-{
-    CTerrorPlayer *pTerrorPlayer = (CTerrorPlayer *)pPlayer;
-    Vector vecSelfPos = pTerrorPlayer->GetAbsOrigin();
-    Vector vecResult = vecSelfPos + vec;
-
-    Vector vecMins = pTerrorPlayer->GetPlayerMins();
-    Vector vecMaxs = pTerrorPlayer->GetPlayerMaxs();
-
-    vecSelfPos.z += NAV_MESH_HEIGHT;
-    vecResult.z += NAV_MESH_HEIGHT;
-
-    trace_t tr;
-    UTIL_TraceHull(vecSelfPos, vecResult, vecMins, vecMaxs, MASK_NPCSOLID_BRUSHONLY, NULL, COLLISION_GROUP_NONE, &tr, TR_EntityFilter);
-
-    bool bHullRayHit;
-    if (tr.DidHit())
-    {
-        bHullRayHit = true;
-        if (vecSelfPos.DistTo(tr.endpos) <= NAV_MESH_HEIGHT)
-            return false;
-    }
-
-    vecResult.z -= NAV_MESH_HEIGHT;
-    Vector vecDownHullRayStartPos;
-
-    if (!bHullRayHit)
-    {
-        vecDownHullRayStartPos = vecResult;
-    }
-
-    Vector vecDownHullRayEndPos = vecDownHullRayStartPos;
-    vecDownHullRayEndPos.z -= 100000.0f;
-
-    trace_t tr2;
-    UTIL_TraceHull(vecDownHullRayStartPos, vecDownHullRayEndPos, vecMins, vecMaxs, MASK_NPCSOLID_BRUSHONLY, NULL, COLLISION_GROUP_NONE, &tr2, TR_EntityFilter);
-
-    if (tr2.DidHit())
-    {
-        Vector vecDownHullRayHitPos = tr2.endpos;
-        if (FloatAbs(vecDownHullRayStartPos.z - vecDownHullRayHitPos.z) > FALL_DETECT_HEIGHT)
-        {
-            return false;
-        }
-
-        int index = tr2.GetEntityIndex();
-        if (index <= 0 || index > gpGlobals->maxClients)
-            return false;
-
-        CBaseEntity *pEntity = (CBaseEntity *)UTIL_PlayerByIndex(index);
-        if (!pEntity)
-            return false;
-
-        if (V_strcmp(pEntity->GetClassName(), "trigger_hurt") == 0)
-            return false;
-
-        return true;
-    }
-
-    return false;
 }
 
 static bool TR_EntityFilter(IHandleEntity *ignore, int contentsMask)

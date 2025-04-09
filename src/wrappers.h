@@ -21,20 +21,25 @@
 #define PLAYER_HEIGHT 72.0
 #define TURN_ANGLE_DIVIDE 3.0
 
-enum MoveType
-{
-	MOVETYPE_NONE = 0,          /**< never moves */
-	MOVETYPE_ISOMETRIC,         /**< For players */
-	MOVETYPE_WALK,              /**< Player only - moving on the ground */
-	MOVETYPE_STEP,              /**< gravity, special edge handling -- monsters use this */
-	MOVETYPE_FLY,               /**< No gravity, but still collides with stuff */
-	MOVETYPE_FLYGRAVITY,        /**< flies through the air + is affected by gravity */
-	MOVETYPE_VPHYSICS,          /**< uses VPHYSICS for simulation */
-	MOVETYPE_PUSH,              /**< no clip to world, push and crush */
-	MOVETYPE_NOCLIP,            /**< No gravity, no collisions, still do velocity/avelocity */
-	MOVETYPE_LADDER,            /**< Used by players only when going onto a ladder */
-	MOVETYPE_OBSERVER,          /**< Observer movement, depends on player's observer mode */
-	MOVETYPE_CUSTOM             /**< Allows the entity to describe its own physics */
+// https://developer.valvesoftware.com/wiki/Env_physics_blocker
+enum BlockType_t {
+	BlockType_Everyone = 0,
+	BlockType_Survivors = 1,
+	BlockType_PlayerInfected = 2,
+	BlockType_AllSIInfected = 3,	// both ai and players.
+	BlockType_AllPlayerAndPhysicsObjects =  4
+};
+
+enum ZombieClassType {
+	ZC_NONE = 0,
+
+	ZC_SMOKER = 1,
+	ZC_BOOMER = 2,
+	ZC_HUNTER = 3,
+	ZC_SPITTER = 4,
+	ZC_JOCKEY = 5,
+	ZC_CHARGER = 6,
+	ZC_TANK = 8,
 };
 
 typedef bool (*ShouldHitFunc_t)(IHandleEntity* pHandleEntity, int contentsMask);
@@ -180,7 +185,7 @@ public:
 	}
 
 	void GetVelocity(Vector *velocity) {
-		velocity = (Vector*)((byte*)(this) + CBaseEntity::m_iOff_m_vecVelocity);
+		velocity = (Vector *)((byte *)(this) + CBaseEntity::m_iOff_m_vecVelocity);
 	}
 
 	CBaseEntity *GetOwnerEntity() {
@@ -189,17 +194,17 @@ public:
 		if (!gamehelpers->FindDataMapInfo(offsetMap, "m_hOwnerEntity", &offset_data_info))
 			return NULL;
 		
-		CBaseHandle *hndl = (CBaseHandle *)((byte*)(this) + offset_data_info.actual_offset);
+		CBaseHandle *hndl = (CBaseHandle *)((byte *)(this) + offset_data_info.actual_offset);
 		return gamehelpers->ReferenceToEntity(hndl->GetEntryIndex());
 	}
 
-	MoveType GetMoveType() {
+	MoveType_t GetMoveType() {
 		sm_datatable_info_t offset_data_info;
 		datamap_t *offsetMap = gamehelpers->GetDataMap(this);
 		if (!gamehelpers->FindDataMapInfo(offsetMap, "m_MoveType", &offset_data_info))
-			return MoveType::MOVETYPE_NONE;
+			return MOVETYPE_NONE;
 
-		return *(MoveType*)((byte*)(this) + offset_data_info.actual_offset);
+		return (MoveType_t)*(char*)((byte *)(this) + offset_data_info.actual_offset);
 	}
 
 	void Teleport(Vector *newPosition, QAngle *newAngles, Vector *newVelocity) {
@@ -225,6 +230,16 @@ public:
 	}
 };
 
+class CEnvPhysicsBlocker : public CBaseEntity {
+public:
+	static int m_iOff_m_nBlockType;
+
+public:
+	BlockType_t GetBlockType() {
+		return *(BlockType_t*)((byte*)(this) + CEnvPhysicsBlocker::m_iOff_m_nBlockType);
+	}
+};
+
 class CBaseAbility : public CBaseEntity {
 public:
 	static int m_iOff_m_isSpraying;
@@ -232,6 +247,16 @@ public:
 public:
 	bool IsSpraying() {
 		return *(bool*)((byte*)(this) + CBaseAbility::m_iOff_m_isSpraying);
+	}
+};
+
+class CBaseCombatWeaponExt : public CBaseEntity {
+public:
+	static int m_iOff_m_bInReload;
+
+public:
+	bool IsReloading() {
+		return *(bool*)((byte*)(this) + CBaseCombatWeaponExt::m_iOff_m_bInReload);
 	}
 };
 
@@ -263,7 +288,7 @@ public:
 			return NULL;
 
 		int offset = pDataTable.actual_offset 
-					+ 4*2 /* CHandle<CBaseViewModel> * MAX_VIEWMODELS */
+					+ 4 * 2 /* CHandle<CBaseViewModel> * MAX_VIEWMODELS */
 					+ 88 /* sizeof(m_LastCmd) */;
 
 		return (CUserCmd *)((byte*)(this) + offset);
@@ -276,6 +301,9 @@ public:
 	static int m_iOff_m_customAbility;
 	static int m_iOff_m_hasVisibleThreats;
 	static int m_iOff_m_isIncapacitated;
+	static int m_iOff_m_tongueVictim;
+	static int m_iOff_m_hGroundEntity;
+	static int m_iOff_m_hActiveWeapon;
 
 	static void *pFnOnVomitedUpon;
 	static ICallWrapper *pCallOnVomitedUpon;
@@ -284,19 +312,13 @@ public:
 	static void *pFnGetSpecialInfectedDominatingMe;
 	static ICallWrapper *pCallGetSpecialInfectedDominatingMe;
 
+	static void *pFnIsStaggering;
+	static ICallWrapper *pCallIsStaggering;
+
+	static int vtblindex_CTerrorPlayer_GetLastKnownArea;
+	static ICallWrapper *pCallGetLastKnownArea;
+
 public:
-	enum zClass {
-		ZC_NONE = 0,
-
-		ZC_SMOKER = 1,
-		ZC_BOOMER = 2,
-		ZC_HUNTER = 3,
-		ZC_SPITTER = 4,
-		ZC_JOCKEY = 5,
-		ZC_CHARGER = 6,
-		ZC_TANK = 8,
-	};
-
 	enum L4D2Teams {
 		L4D2Teams_Unasigned = 0,
 		L4D2Teams_Spectator = 1,
@@ -388,6 +410,18 @@ public:
 		return (CBaseAbility *)OffsetEHandleToEntity(m_iOff_m_customAbility);
 	}
 
+	CBaseEntity *GetGroundEntity() {
+		return OffsetEHandleToEntity(m_iOff_m_hGroundEntity);
+	}
+
+	CBaseCombatWeaponExt *GetActiveWeapon() {
+		return (CBaseCombatWeaponExt *)OffsetEHandleToEntity(m_iOff_m_hActiveWeapon);
+	}
+
+	CTerrorPlayer *GetTongueVictim() {
+		return (CTerrorPlayer *)OffsetEHandleToEntity(m_iOff_m_tongueVictim);
+	}
+
 	inline int GetClass() {
 		return *(uint8_t *)((uint8_t *)this + m_iOff_m_zombieClass);
 	}
@@ -395,6 +429,10 @@ public:
 	inline bool IsBoomer() {
         return (GetClass() == ZC_BOOMER);
     }
+
+	inline bool IsSmoker() {
+        return (GetClass() == ZC_SMOKER);
+	}
 
 	CBaseEntity* OffsetEHandleToEntity(int iOff) {
 		edict_t* pEdict = gamehelpers->GetHandleEntity(*(CBaseHandle*)((byte*)(this) + iOff));
@@ -428,27 +466,75 @@ public:
 		return (CTerrorPlayer *)ret;
 	}
 
+	bool IsStaggering() {
+		struct {
+			CTerrorPlayer *pVictim;
+		} stake {this};
+
+		void *ret;
+		pCallIsStaggering->Execute(&stake, &ret);
+		return *(bool *)((byte *)ret);
+	}
+
+	CNavAreaExt *GetLastKnownArea() {
+		struct {
+			CTerrorPlayer *pThis;
+		} stake {this};
+
+		void *ret;
+		pCallGetLastKnownArea->Execute(&stake, &ret);
+		return (CNavAreaExt *)ret;
+	}
+
 	void DTRCallBack_OnVomitedUpon(CBasePlayer *pAttacker, bool bIsExplodedByBoomer);
+};
+
+class CNavAreaExt {
+public:
+	static int m_iOff_m_flow;
+
+public:
+	float GetFlow() {
+		return *(float *)((byte *)(this) + m_iOff_m_flow);
+	}
+};
+
+class TerrorNavMesh {
+public:
+	static int m_iOff_m_fMapMaxFlowDistance;
+
+public:
+	float GetMapMaxFlowDistance() {
+		return *(float *)((byte *)(this) + m_iOff_m_fMapMaxFlowDistance);
+	}
+};
+
+class ZombieManager {
+public:
+	static void *pFnGetRandomPZSpawnPosition;
+	static ICallWrapper *pCallGetRandomPZSpawnPosition;
+
+public:
+	bool GetRandomPZSpawnPosition(ZombieClassType type, int attampts, CTerrorPlayer *pPlayer, Vector *pOutPos) {
+		struct {
+			ZombieManager *_this;
+			ZombieClassType zombieClass;
+			int attampts;
+			CTerrorPlayer *pPlayer;
+			Vector *pOutPos;
+		} stake {this, type, attampts, pPlayer, pOutPos};
+
+		void *ret;
+		pCallGetRandomPZSpawnPosition->Execute(&stake, &ret);
+
+		return *(bool *)((byte *)ret);
+	}
 };
 
 class CTerrorEntityListner : public ISMEntityListener {
 public:
 	virtual void OnEntityCreated(CBaseEntity *pEntity, const char *classname) {};
 	virtual void OnEntityDestroyed(CBaseEntity *pEntity) {};
-
-	bool IsPlayer(CBaseEntity *pEntity) {
-		if (!pEntity)
-			return false;
-		
-		return !((CBasePlayer*)pEntity)->IsBot();
-	}
-
-	bool IsInfected(CBaseEntity *pEntity) {
-		if (!IsPlayer(pEntity))
-			return false;
-
-		return ((CTerrorPlayer*)pEntity)->IsInfected();
-	}
 
 	void OnPostThink();
 };
@@ -459,13 +545,13 @@ public:
 	static CDetour *DTR_ChooseVictim;
 
 public:
-	CTerrorPlayer *OnBoomerChooseVictim(CTerrorPlayer *pLasVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer);
-	CTerrorPlayer *OnSmokerChooseVictim(CTerrorPlayer *pLasVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer);
-	CTerrorPlayer *OnJockeyChooseVictim(CTerrorPlayer *pLasVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer);
-	CTerrorPlayer *OnHunterChooseVictim(CTerrorPlayer *pLasVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer);
-	CTerrorPlayer *OnSpitterChooseVictim(CTerrorPlayer *pLasVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer);
-	CTerrorPlayer *OnChargerChooseVictim(CTerrorPlayer *pLasVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer);
-	CTerrorPlayer *OnTankChooseVictim(CTerrorPlayer *pLasVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer);
+	CTerrorPlayer *OnBoomerChooseVictim(CTerrorPlayer *pLastVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer);
+	CTerrorPlayer *OnSmokerChooseVictim(CTerrorPlayer *pLastVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer);
+	CTerrorPlayer *OnJockeyChooseVictim(CTerrorPlayer *pLastVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer);
+	CTerrorPlayer *OnHunterChooseVictim(CTerrorPlayer *pLastVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer);
+	CTerrorPlayer *OnSpitterChooseVictim(CTerrorPlayer *pLastVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer);
+	CTerrorPlayer *OnChargerChooseVictim(CTerrorPlayer *pLastVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer);
+	CTerrorPlayer *OnTankChooseVictim(CTerrorPlayer *pLastVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer);
 };
 
 static bool PassServerEntityFilter( const IHandleEntity *pTouch, const IHandleEntity *pPass ) 

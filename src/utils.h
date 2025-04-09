@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include "wrappers.h"
 
+#include "SI/smoker.h"
+
 enum AimType {
 	AimEye,
 	AimBody,
@@ -46,7 +48,7 @@ CBasePlayer* UTIL_PlayerByUserId(int userID)
 	return NULL;
 }
 
-CBasePlayer* UTIL_GetClosetSurvivor(CBasePlayer* pPlayer, CBasePlayer* pIgnorePlayer)
+CBasePlayer* UTIL_GetClosetSurvivor(CBasePlayer* pPlayer, CBasePlayer* pIgnorePlayer = NULL, bool bCheckIncapp = false, bool bCheckDominated = false)
 {
     int index = -1;
     index = pPlayer->entindex();
@@ -57,8 +59,7 @@ CBasePlayer* UTIL_GetClosetSurvivor(CBasePlayer* pPlayer, CBasePlayer* pIgnorePl
     if (!playerinfo)
         return NULL;
 
-    struct utils_t
-    {
+    struct utils_t {
         vec_t dist;
         int index;
     };
@@ -75,10 +76,16 @@ CBasePlayer* UTIL_GetClosetSurvivor(CBasePlayer* pPlayer, CBasePlayer* pIgnorePl
         if (!pIterPlayerInfo)
             continue;
 
-        if (!pIterPlayer->IsInGame() || 
-            pIterPlayer->IsDead() || 
-            !pIterPlayer->IsSurvivor() ||
-            i == pIgnorePlayer->entindex())
+        if (!pIterPlayer->IsInGame() || pIterPlayer->IsDead() || !pIterPlayer->IsSurvivor())
+            continue;
+
+        if (bCheckIncapp && pIterPlayer->IsIncapped())
+            continue;
+
+        if (bCheckDominated && pIterPlayer->GetSpecialInfectedDominatingMe())
+            continue;
+
+        if (pIgnorePlayer && i == pIgnorePlayer->entindex())
             continue;
 
         aTargetList[i].dist = vecOrigin.DistTo(pIterPlayerInfo->GetAbsOrigin());
@@ -170,6 +177,89 @@ vec_t GetSelfTargetAngle(CBasePlayer* pAttacker, CBasePlayer* pTarget)
     return (acos(vecSelfEyeVector.Dot(vecResult)) * 180.0 / M_PI);
 }
 
+bool ClientPush(CBasePlayer* pPlayer, Vector vec)
+{
+    Vector vecVelocity;
+    pPlayer->GetVelocity(&vecVelocity);
+    vecVelocity += vec;
+    if (WillHitWallOrFall(pPlayer, vecVelocity))
+    {
+        if (vecVelocity.Length() <= 250.0f)
+        {
+            VectorNormalize(vecVelocity);
+            VectorScale(vecVelocity, 251.0f, vecVelocity);
+        }
+
+        pPlayer->Teleport(NULL, NULL, &vecVelocity);
+        return true;
+    }
+
+    return false;
+}
+
+// false means will, true otherwise.
+bool WillHitWallOrFall(CBasePlayer* pPlayer, Vector vec)
+{
+    CTerrorPlayer *pTerrorPlayer = (CTerrorPlayer *)pPlayer;
+    Vector vecSelfPos = pTerrorPlayer->GetAbsOrigin();
+    Vector vecResult = vecSelfPos + vec;
+
+    Vector vecMins = pTerrorPlayer->GetPlayerMins();
+    Vector vecMaxs = pTerrorPlayer->GetPlayerMaxs();
+
+    vecSelfPos.z += NAV_MESH_HEIGHT;
+    vecResult.z += NAV_MESH_HEIGHT;
+
+    trace_t tr;
+    UTIL_TraceHull(vecSelfPos, vecResult, vecMins, vecMaxs, MASK_NPCSOLID_BRUSHONLY, NULL, COLLISION_GROUP_NONE, &tr, TR_EntityFilter);
+
+    bool bHullRayHit;
+    if (tr.DidHit())
+    {
+        bHullRayHit = true;
+        if (vecSelfPos.DistTo(tr.endpos) <= NAV_MESH_HEIGHT)
+            return false;
+    }
+
+    vecResult.z -= NAV_MESH_HEIGHT;
+    Vector vecDownHullRayStartPos;
+
+    if (!bHullRayHit)
+    {
+        vecDownHullRayStartPos = vecResult;
+    }
+
+    Vector vecDownHullRayEndPos = vecDownHullRayStartPos;
+    vecDownHullRayEndPos.z -= 100000.0f;
+
+    trace_t tr2;
+    UTIL_TraceHull(vecDownHullRayStartPos, vecDownHullRayEndPos, vecMins, vecMaxs, MASK_NPCSOLID_BRUSHONLY, NULL, COLLISION_GROUP_NONE, &tr2, TR_EntityFilter);
+
+    if (tr2.DidHit())
+    {
+        Vector vecDownHullRayHitPos = tr2.endpos;
+        if (FloatAbs(vecDownHullRayStartPos.z - vecDownHullRayHitPos.z) > FALL_DETECT_HEIGHT)
+        {
+            return false;
+        }
+
+        int index = tr2.GetEntityIndex();
+        if (index <= 0 || index > gpGlobals->maxClients)
+            return false;
+
+        CBaseEntity *pEntity = (CBaseEntity *)UTIL_PlayerByIndex(index);
+        if (!pEntity)
+            return false;
+
+        if (V_strcmp(pEntity->GetClassName(), "trigger_hurt") == 0)
+            return false;
+
+        return true;
+    }
+
+    return false;
+}
+
 Vector UTIL_CaculateVel(const Vector& vecSelfPos, const Vector& vecTargetPos, vec_t flForce)
 {
     Vector vecResult = vecTargetPos - vecSelfPos;
@@ -179,7 +269,7 @@ Vector UTIL_CaculateVel(const Vector& vecSelfPos, const Vector& vecTargetPos, ve
 }
 
 inline void UTIL_TraceRay( const Ray_t &ray, unsigned int mask, 
-						   IHandleEntity *ignore, Collision_Group_t collisionGroup, trace_t *ptr, ShouldHitFunc_t pExtraShouldHitCheckFn = NULL )
+						   IHandleEntity *ignore, Collision_Group_t collisionGroup, ShouldHitFunc_t pExtraShouldHitCheckFn = NULL, trace_t *ptr )
 {
 	CTraceFilterSimple traceFilter(ignore, collisionGroup, pExtraShouldHitCheckFn);
 	enginetrace->TraceRay( ray, mask, &traceFilter, ptr );
@@ -210,4 +300,109 @@ static bool (__cdecl *pFnIsVisibleToPlayer)(const Vector&, CBasePlayer *, int, i
 inline bool IsVisiableToPlayer(const Vector &vecTargetPos, CBasePlayer *pPlayer, int team, int team_target, float flUnknow, const IHandleEntity *pIgnore, void *pArea, bool *bUnknown)
 {
     return pFnIsVisibleToPlayer(vecTargetPos, pPlayer, team, team_target, flUnknow, pIgnore, pArea, bUnknown);
+}
+
+// from sourcemod.
+CBaseEntity *UTIL_GetClientAimTarget(CBaseEntity *pEntity, bool only_players)
+{
+	if (!pEntity)
+		return NULL;
+
+    edict_t *pEdict = pEntity->edict();
+    if (!pEdict)
+        return NULL;
+
+    Vector eye_position;
+	QAngle eye_angles;
+
+	/* Get the private information we need */
+	serverClients->ClientEarPosition(pEdict, &eye_position);
+    pEntity->GetEyeAngles(&eye_angles);
+
+	Vector aim_dir;
+	AngleVectors(eye_angles, &aim_dir);
+	VectorNormalize(aim_dir);
+
+	Vector vec_end = eye_position + aim_dir * 8000;
+
+	Ray_t ray;
+	ray.Init(eye_position, vec_end);
+
+	trace_t tr;
+    UTIL_TraceRay(ray, MASK_SOLID | CONTENTS_DEBRIS | CONTENTS_HITBOX, pEdict->GetIServerEntity(), COLLISION_GROUP_NONE, NULL, &tr);
+
+    if (tr.fraction == 1.0f || tr.m_pEnt == NULL)
+        return NULL;
+
+    int index = tr.m_pEnt->entindex();
+
+	IGamePlayer *pTargetPlayer = playerhelpers->GetGamePlayer(index);
+	if (pTargetPlayer != NULL && !pTargetPlayer->IsInGame())
+	{
+		return NULL;
+	}
+	else if (only_players && pTargetPlayer == NULL)
+	{
+		return NULL;
+	}
+
+	return gameents->EdictToBaseEntity(tr.m_pEnt->edict());
+}
+
+bool UTIL_IsLeftBehind(CTerrorPlayer *pPlayer)
+{
+    float flTeamDistacne = CalculateTeamDistance(pPlayer);
+
+    CNavAreaExt *pNav = pPlayer->GetLastKnownArea();
+    if (!pNav)
+        return false;
+
+    float flPlayerDistance = pNav->GetFlow() / g_pNavMesh->GetMapMaxFlowDistance();
+
+    if (flPlayerDistance > 0.0f && flPlayerDistance < 1.0f && flTeamDistacne != -1.0f)
+    {
+        return flPlayerDistance + z_smoker_left_behind_distance.GetFloat() < flTeamDistacne;
+    }
+    
+    return false;
+}
+
+static float CalculateTeamDistance(CTerrorPlayer *pIgnorePlayer = NULL)
+{
+    int counter = 0;
+    float flTeamDistance = 0.0f;
+    for (int i = 1; i <= gpGlobals->maxClients; i++)
+    {
+        CTerrorSmokerVictim *pPlayer = (CTerrorSmokerVictim *)UTIL_PlayerByIndex(i);
+        if (!pPlayer)
+            continue;
+
+        if (!pPlayer->IsInGame() || !pPlayer->IsSurvivor() || pPlayer->IsDead() || pPlayer->IsIncapped() || pPlayer->GetSpecialInfectedDominatingMe())
+            continue;
+
+        if (pPlayer == pIgnorePlayer)
+            continue;
+
+        CNavAreaExt *pNav = pPlayer->GetLastKnownArea();
+        if (!pNav)
+            continue;
+
+        float flPlayerFlow = pNav->GetFlow() / g_pNavMesh->GetMapMaxFlowDistance();
+        if (flPlayerFlow > 0.0f && flPlayerFlow < 1.0f)
+        {
+            flTeamDistance += flPlayerFlow;
+            counter += 1;
+        }
+    }
+
+    if (counter > 1)
+    {
+        flTeamDistance /= counter;
+    }
+    else
+    {
+        flTeamDistance = -1.0f;
+    }
+
+    return flTeamDistance;
 }
