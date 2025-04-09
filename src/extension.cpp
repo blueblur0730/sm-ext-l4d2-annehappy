@@ -109,7 +109,7 @@ bool CAnneHappy::SDK_OnLoad(char* error, size_t maxlen, bool late)
 
 	if (!gameconfs->LoadGameConfigFile(GAMEDATA_FILE, &pGameData, error, maxlen))
 	{
-		ke::SafeStrcpy(error, maxlen, "Extension failed to load gamedata file: 'l4d2_annehappy.games'");
+		ke::SafeStrcpy(error, maxlen, "Extension failed to load gamedata file: \"" GAMEDATA_FILE ".txt\"");
 		return false;
 	}
 
@@ -117,9 +117,6 @@ bool CAnneHappy::SDK_OnLoad(char* error, size_t maxlen, bool late)
 		return false;
 
 	gameconfs->CloseGameConfigFile(pGameData);
-
-	//smutils->LogMessage(myself, "Sample extension has been loaded.");
-	sharesys->RegisterLibrary(myself, "annehappy");
 
 	if (!AddEventListner())
 		return false;
@@ -148,6 +145,8 @@ bool CAnneHappy::SDK_OnLoad(char* error, size_t maxlen, bool late)
 		return false;
 	}
 
+	smutils->LogMessage(myself, "Annehappy extension has been loaded.");
+	sharesys->RegisterLibrary(myself, "annehappy");
 	return true;
 }
 
