@@ -33,6 +33,14 @@ enum BlockType_t {
 	BlockType_AllPlayerAndPhysicsObjects =  4
 };
 
+enum L4D2Teams {
+	L4D2Teams_Unasigned = 0,
+	L4D2Teams_Spectator = 1,
+	L4D2Teams_Survivor = 2,
+	L4D2Teams_Infected = 3,
+	L4D2Teams_L4D1Survivors = 4
+};
+
 enum ZombieClassType {
 	ZC_NONE = 0,
 
@@ -48,30 +56,6 @@ enum ZombieClassType {
 typedef bool (*ShouldHitFunc_t)(IHandleEntity* pHandleEntity, int contentsMask);
 typedef bool (*ShouldHitFunc2_t)(IHandleEntity* pHandleEntity, int contentsMask, void* data);
 
-bool PassServerEntityFilter( const IHandleEntity *pTouch, const IHandleEntity *pPass ) 
-{
-	if ( !pPass )
-		return true;
-
-	if ( pTouch == pPass )
-		return false;
-
-	CBaseEntity *pEntTouch = CTraceFilterSimple::EntityFromEntityHandle( pTouch );
-	CBaseEntity *pEntPass = CTraceFilterSimple::EntityFromEntityHandle( pPass );
-	if ( !pEntTouch || !pEntPass )
-		return true;
-
-	// don't clip against own missiles
-	if ( pEntTouch->GetOwnerEntity() == pEntPass )
-		return false;
-	
-	// don't clip against owner
-	if ( pEntPass->GetOwnerEntity() == pEntTouch )
-		return false;	
-
-	return true;
-}
-
 class CTraceFilterSimple : public CTraceFilter
 {
 public:
@@ -80,86 +64,12 @@ public:
 	static ICallWrapper* pCallCTraceFilterSimple2;
 
 public:
-	CTraceFilterSimple(const IHandleEntity* passedict = NULL, Collision_Group_t collisionGroup = COLLISION_GROUP_NONE, ShouldHitFunc_t pExtraShouldHitFunc = NULL)
-	{
-		m_pPassEnt = passedict;
-		m_collisionGroup = collisionGroup;
-		m_pExtraShouldHitCheckFunction = pExtraShouldHitFunc;
+	CTraceFilterSimple(const IHandleEntity *passedict = NULL, Collision_Group_t collisionGroup = COLLISION_GROUP_NONE, ShouldHitFunc_t pExtraShouldHitFunc = NULL);
+	CTraceFilterSimple(const IHandleEntity *passedict = NULL, Collision_Group_t collisionGroup = COLLISION_GROUP_NONE, ShouldHitFunc2_t pExtraShouldHitFunc = NULL, void *data = NULL);
 
-		// Call contrustor to replace vtable on this instance
-		struct {
-			const CTraceFilterSimple* pFilter;
-			const IHandleEntity* passedict;
-			Collision_Group_t collisionGroup;
-			ShouldHitFunc_t pExtraShouldHitFunc;
-		} stack{ this, passedict, collisionGroup, pExtraShouldHitFunc };
-
-		pCallCTraceFilterSimple->Execute(&stack, NULL);
-	}
-
-	CTraceFilterSimple(const IHandleEntity* passedict = NULL, Collision_Group_t collisionGroup = COLLISION_GROUP_NONE, ShouldHitFunc2_t pExtraShouldHitFunc = NULL, void* data = NULL)
-	{
-		m_pPassEnt = passedict;
-		m_collisionGroup = collisionGroup;
-		m_pExtraShouldHitCheckFunction2 = pExtraShouldHitFunc;
-		m_data = data;
-
-		// Call contrustor to replace vtable on this instance
-		struct {
-			const CTraceFilterSimple* pFilter;
-			const IHandleEntity* passedict;
-			Collision_Group_t collisionGroup;
-			ShouldHitFunc2_t pExtraShouldHitFunc;
-		} stack{ this, passedict, collisionGroup, pExtraShouldHitFunc };
-
-		pCallCTraceFilterSimple2->Execute(&stack, NULL);
-	}
-
-	virtual bool ShouldHitEntity(IHandleEntity* pHandleEntity, int contentsMask) override {
-		// Don't test if the game code tells us we should ignore this collision...
-		CBaseEntity *pEntity = EntityFromEntityHandle( pHandleEntity );
-		if ( !pEntity )
-			return false;
-
-		if ( m_pPassEnt )
-		{
-			if ( !PassServerEntityFilter( pHandleEntity, m_pPassEnt ) )
-			{
-				return false;
-			}
-		}
-
-		// not going to collide today :)
-		//if ( !pEntity->ShouldCollide( m_collisionGroup, contentsMask ) )
-			//return false;
-
-		//if ( pEntity && !g_pGameRules->ShouldCollide( m_collisionGroup, pEntity->GetCollisionGroup() ) )
-			//return false;
-
-		if ( m_pExtraShouldHitCheckFunction &&
-			(! ( m_pExtraShouldHitCheckFunction(pHandleEntity, contentsMask) )))
-			return false;
-
-		if ( m_pExtraShouldHitCheckFunction2 &&
-			(! ( m_pExtraShouldHitCheckFunction2(pHandleEntity, contentsMask, m_data) )))
-			return false;
-
-		return true;
-	}
-
-	virtual TraceType_t GetTraceType() const {
-		return m_TraceType;
-	}
+	virtual bool ShouldHitEntity(IHandleEntity *pHandleEntity, int contentsMask) override;
 	void SetTraceType(TraceType_t traceType) {
 		m_TraceType = traceType;
-	}
-
-	static inline CBaseEntity *EntityFromEntityHandle(const IHandleEntity *pHandleEntity) {
-		if ( staticpropmgr->IsStaticProp( pHandleEntity ) )
-			return NULL;
-	
-		IServerUnknown *pUnk = (IServerUnknown*)pHandleEntity;
-		return (CBaseEntity *)pUnk->GetBaseEntity();
 	}
 
 private:
@@ -172,23 +82,18 @@ private:
 };
 
 class CNavAreaExt {
-	public:
-		static int m_iOff_m_flow;
+public:
+	static int m_iOff_m_flow;
 	
-	public:
-		float GetFlow() {
-			return *(float *)((byte *)(this) + m_iOff_m_flow);
-		}
-	};
+public:
+	float GetFlow();
+};
 
+/*
 class CBaseTraceFilter : public ITraceFilter {
 public:
 
 	virtual bool ShouldHitEntity(IHandleEntity* pHandleEntity, int contentsMask);
-	virtual TraceType_t GetTraceType() const {
-		return m_TraceType;
-	}
-
 	void SetTraceType(TraceType_t traceType) {
 		m_TraceType = traceType;
 	}
@@ -196,6 +101,7 @@ public:
 private:
 	TraceType_t m_TraceType;
 };
+*/
 
 class CBaseEntity : public IServerEntity {
 public:
@@ -210,62 +116,14 @@ public:
 	static int vtblindex_CBaseEntity_PostThink;
 
 public:
-	edict_t* edict() {
-		return gameents->BaseEntityToEdict(this);
-	}
-
-	int entindex() {
-		return gamehelpers->EntityToBCompatRef(this);
-	}
-
-	const char* GetClassName() {
-		return edict()->GetClassName();
-	}
-
-	void GetVelocity(Vector *velocity) {
-		velocity = (Vector *)((byte *)(this) + CBaseEntity::m_iOff_m_vecVelocity);
-	}
-
-	CBaseEntity *GetOwnerEntity() {
-		sm_datatable_info_t offset_data_info;
-		datamap_t *offsetMap = gamehelpers->GetDataMap(this);
-		if (!gamehelpers->FindDataMapInfo(offsetMap, "m_hOwnerEntity", &offset_data_info))
-			return NULL;
-		
-		CBaseHandle *hndl = (CBaseHandle *)((byte *)(this) + offset_data_info.actual_offset);
-		return gamehelpers->ReferenceToEntity(hndl->GetEntryIndex());
-	}
-
-	MoveType_t GetMoveType() {
-		sm_datatable_info_t offset_data_info;
-		datamap_t *offsetMap = gamehelpers->GetDataMap(this);
-		if (!gamehelpers->FindDataMapInfo(offsetMap, "m_MoveType", &offset_data_info))
-			return MOVETYPE_NONE;
-
-		return (MoveType_t)*(char*)((byte *)(this) + offset_data_info.actual_offset);
-	}
-
-	void Teleport(Vector *newPosition, QAngle *newAngles, Vector *newVelocity) {
-		unsigned char params[sizeof(void *) * 4];
-		unsigned char *vptr = params;
-		*(CBaseEntity **)vptr = this;
-		vptr += sizeof(CBaseEntity *);
-		*(Vector **)vptr = newPosition;
-		vptr += sizeof(Vector *);
-		*(QAngle **)vptr = newAngles;
-		vptr += sizeof(QAngle *);
-		*(Vector **)vptr = newVelocity;
-		
-		pCallTeleport->Execute(params, NULL);
-	}
-
-	void GetEyeAngles(QAngle *pRetAngle) {
-		unsigned char params[sizeof(void *)];
-		unsigned char *vptr = params;
-	
-		*(CBaseEntity **)vptr = this;
-		pCallGetEyeAngle->Execute(params, &pRetAngle);
-	}
+	edict_t* edict();
+	int entindex();
+	const char *GetClassName();
+	void GetVelocity(Vector *velocity);
+	CBaseEntity *GetOwnerEntity();
+	MoveType_t GetMoveType();
+	void Teleport(Vector *newPosition, QAngle *newAngles, Vector *newVelocity);
+	void GetEyeAngles(QAngle *pRetAngle);
 };
 
 class CEnvPhysicsBlocker : public CBaseEntity {
@@ -273,9 +131,7 @@ public:
 	static int m_iOff_m_nBlockType;
 
 public:
-	BlockType_t GetBlockType() {
-		return *(BlockType_t*)((byte*)(this) + CEnvPhysicsBlocker::m_iOff_m_nBlockType);
-	}
+	BlockType_t GetBlockType();
 };
 
 class CBaseAbility : public CBaseEntity {
@@ -283,9 +139,7 @@ public:
 	static int m_iOff_m_isSpraying;
 
 public:
-	bool IsSpraying() {
-		return *(bool*)((byte*)(this) + CBaseAbility::m_iOff_m_isSpraying);
-	}
+	bool IsSpraying();
 };
 
 class CBaseCombatWeaponExt : public CBaseEntity {
@@ -293,9 +147,7 @@ public:
 	static int m_iOff_m_bInReload;
 
 public:
-	bool IsReloading() {
-		return *(bool*)((byte*)(this) + CBaseCombatWeaponExt::m_iOff_m_bInReload);
-	}
+	bool IsReloading();
 };
 
 class CBasePlayer : public CBaseEntity {
@@ -303,34 +155,16 @@ public:
 	static int m_iOff_m_fFlags;
 
 public:
-	inline int GetFlags() {
+	inline int GetFlags() const {
 		return *(int*)((byte*)(this) + CBasePlayer::m_iOff_m_fFlags);
 	}
 
-	bool IsBot() {
+	inline bool IsBot() {
 		return (GetFlags() & FL_FAKECLIENT) != 0;
 	}
 
-	int GetButton() {
-		sm_datatable_info_t pDataTable;
-		if (!gamehelpers->FindDataMapInfo(gamehelpers->GetDataMap(this), "m_nButtons", &pDataTable))
-			return -1;
-
-		return *(int*)((byte*)(this) + pDataTable.actual_offset);
-	}
-
-	// Thanks to Forgetest from his l4d_lagcomp_skeet.
-	CUserCmd *GetCurrentCommand() {
-		sm_datatable_info_t pDataTable;
-		if (!gamehelpers->FindDataMapInfo(gamehelpers->GetDataMap(this), "m_hViewModel", &pDataTable))
-			return NULL;
-
-		int offset = pDataTable.actual_offset 
-					+ 4 * 2 /* CHandle<CBaseViewModel> * MAX_VIEWMODELS */
-					+ 88 /* sizeof(m_LastCmd) */;
-
-		return (CUserCmd *)((byte*)(this) + offset);
-	}
+	int GetButton();
+	CUserCmd *GetCurrentCommand();
 };
 
 class CTerrorPlayer : public CBasePlayer {
@@ -357,39 +191,15 @@ public:
 	static ICallWrapper *pCallGetLastKnownArea;
 
 public:
-	enum L4D2Teams {
-		L4D2Teams_Unasigned = 0,
-		L4D2Teams_Spectator = 1,
-		L4D2Teams_Survivor = 2,
-		L4D2Teams_Infected = 3,
-		L4D2Teams_L4D1Survivors = 4
-	};
-
-	IPlayerInfo *GetPlayerInfo() {
-		IGamePlayer *pPlayer = GetGamePlayer();
-		if (!pPlayer)
-			return NULL;
-
-		return pPlayer->GetPlayerInfo();
-	}
+	IPlayerInfo *GetPlayerInfo();
 
 	inline IGamePlayer *GetGamePlayer() {
 		return playerhelpers->GetGamePlayer(entindex());
 	}
 
-	// IPlayerInfo: abs origin
-	// CServerGameClients: abs origin + view offset
-	Vector GetEyeOrigin() {
-		IGamePlayer *pGamePlayer = GetGamePlayer();
-		if (!pGamePlayer)
-			return Vector(0, 0, 0);
+	Vector GetEyeOrigin();
 
-		Vector vecRet;
-		serverClients->ClientEarPosition(pGamePlayer->GetEdict(), &vecRet);
-		return vecRet;
-	}
-
-	Vector GetAbsOrigin() {
+	inline Vector GetAbsOrigin() {
 		return GetPlayerInfo()->GetAbsOrigin();
 	}
 
@@ -420,13 +230,7 @@ public:
 		return *(bool*)((byte*)(this) + m_iOff_m_isIncapacitated);
 	}
 
-	L4D2Teams GetTeam() {
-		IPlayerInfo *pPlayerInfo = GetPlayerInfo();
-		if (!pPlayerInfo)
-			return L4D2Teams_Unasigned;
-
-		return (L4D2Teams)pPlayerInfo->GetTeamIndex();
-	}
+	L4D2Teams GetTeam();
 
 	inline bool IsSurvivor() {
 		return (GetTeam() == L4D2Teams_Survivor);
@@ -444,21 +248,10 @@ public:
 		return *(bool*)((byte*)(this) + m_iOff_m_hasVisibleThreats);
 	}
 
-	CBaseAbility *GetAbility() {
-		return (CBaseAbility *)OffsetEHandleToEntity(m_iOff_m_customAbility);
-	}
-
-	CBaseEntity *GetGroundEntity() {
-		return OffsetEHandleToEntity(m_iOff_m_hGroundEntity);
-	}
-
-	CBaseCombatWeaponExt *GetActiveWeapon() {
-		return (CBaseCombatWeaponExt *)OffsetEHandleToEntity(m_iOff_m_hActiveWeapon);
-	}
-
-	CTerrorPlayer *GetTongueVictim() {
-		return (CTerrorPlayer *)OffsetEHandleToEntity(m_iOff_m_tongueVictim);
-	}
+	CBaseAbility *GetAbility();
+	CBaseEntity *GetGroundEntity();
+	CBaseCombatWeaponExt *GetActiveWeapon();
+	CTerrorPlayer *GetTongueVictim();
 
 	inline int GetClass() {
 		return *(uint8_t *)((uint8_t *)this + m_iOff_m_zombieClass);
@@ -472,57 +265,12 @@ public:
         return (GetClass() == ZC_SMOKER);
 	}
 
-	CBaseEntity* OffsetEHandleToEntity(int iOff) {
-		edict_t* pEdict = gamehelpers->GetHandleEntity(*(CBaseHandle*)((byte*)(this) + iOff));
-		if (pEdict == NULL) 
-			return NULL;
+	CBaseEntity *OffsetEHandleToEntity(int iOff);
 
-		// Make sure it's a player
-		if (engine->GetPlayerUserId(pEdict) == -1) 
-			return NULL;
-
-		return gameents->EdictToBaseEntity(pEdict);
-	}
-
-	void OnVomitedUpon(CBasePlayer *pAttacker, bool bIsExplodedByBoomer) {
-		struct {
-			CTerrorPlayer *pVictim;
-			CBasePlayer *pAttacker;
-			bool bIsExplodedByBoomer;
-		} stake {this, pAttacker, bIsExplodedByBoomer};
-
-		pCallOnVomitedUpon->Execute(&stake, NULL);
-	}
-
-	CTerrorPlayer *GetSpecialInfectedDominatingMe() {
-		struct {
-			CTerrorPlayer *pVictim;
-		} stake {this};
-
-		void *ret;
-		pCallGetSpecialInfectedDominatingMe->Execute(&stake, &ret);
-		return (CTerrorPlayer *)ret;
-	}
-
-	bool IsStaggering() {
-		struct {
-			CTerrorPlayer *pVictim;
-		} stake {this};
-
-		void *ret;
-		pCallIsStaggering->Execute(&stake, &ret);
-		return *(bool *)((byte *)ret);
-	}
-
-	CNavAreaExt *GetLastKnownArea() {
-		struct {
-			CTerrorPlayer *pThis;
-		} stake {this};
-
-		void *ret;
-		pCallGetLastKnownArea->Execute(&stake, &ret);
-		return (CNavAreaExt *)ret;
-	}
+	void OnVomitedUpon(CBasePlayer *pAttacker, bool bIsExplodedByBoomer);
+	CTerrorPlayer *GetSpecialInfectedDominatingMe();
+	bool IsStaggering();
+	CNavAreaExt *GetLastKnownArea();
 
 	void DTRCallBack_OnVomitedUpon(CBasePlayer *pAttacker, bool bIsExplodedByBoomer);
 };
@@ -532,7 +280,7 @@ public:
 	static int m_iOff_m_fMapMaxFlowDistance;
 
 public:
-	float GetMapMaxFlowDistance() {
+	inline float GetMapMaxFlowDistance() {
 		return *(float *)((byte *)(this) + m_iOff_m_fMapMaxFlowDistance);
 	}
 };
@@ -543,20 +291,7 @@ public:
 	static ICallWrapper *pCallGetRandomPZSpawnPosition;
 
 public:
-	bool GetRandomPZSpawnPosition(ZombieClassType type, int attampts, CTerrorPlayer *pPlayer, Vector *pOutPos) {
-		struct {
-			ZombieManager *_this;
-			ZombieClassType zombieClass;
-			int attampts;
-			CTerrorPlayer *pPlayer;
-			Vector *pOutPos;
-		} stake {this, type, attampts, pPlayer, pOutPos};
-
-		void *ret;
-		pCallGetRandomPZSpawnPosition->Execute(&stake, &ret);
-
-		return *(bool *)((byte *)ret);
-	}
+	bool GetRandomPZSpawnPosition(ZombieClassType type, int attampts, CTerrorPlayer *pPlayer, Vector *pOutPos);
 };
 
 class CTerrorEntityListner : public ISMEntityListener {
