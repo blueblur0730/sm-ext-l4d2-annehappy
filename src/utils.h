@@ -1,6 +1,5 @@
 #ifndef _UTILS_H_INCLUDED_
-	#define _UTILS_H_INCLUDED_
-#endif
+#define _UTILS_H_INCLUDED_
 
 #include "extension.h"
 #include "iplayerinfo.h"
@@ -52,6 +51,11 @@ CBasePlayer* UTIL_PlayerByUserId(int userID)
 	return NULL;
 }
 
+struct utils_t {
+    vec_t dist;
+    int index;
+};
+
 CBasePlayer* UTIL_GetClosetSurvivor(CBasePlayer* pPlayer, CBasePlayer* pIgnorePlayer = NULL, bool bCheckIncapp = false, bool bCheckDominated = false)
 {
     int index = -1;
@@ -62,11 +66,6 @@ CBasePlayer* UTIL_GetClosetSurvivor(CBasePlayer* pPlayer, CBasePlayer* pIgnorePl
     IPlayerInfo *playerinfo = ((CTerrorPlayer *)pPlayer)->GetPlayerInfo();
     if (!playerinfo)
         return NULL;
-
-    struct utils_t {
-        vec_t dist;
-        int index;
-    };
     
     Vector vecOrigin = playerinfo->GetAbsOrigin();
     std::vector<utils_t> aTargetList;
@@ -92,8 +91,10 @@ CBasePlayer* UTIL_GetClosetSurvivor(CBasePlayer* pPlayer, CBasePlayer* pIgnorePl
         if (pIgnorePlayer && i == pIgnorePlayer->entindex())
             continue;
 
-        aTargetList[i].dist = vecOrigin.DistTo(pIterPlayerInfo->GetAbsOrigin());
-        aTargetList[i].index = i;
+        utils_t info;
+        info.dist = vecOrigin.DistTo(pIterPlayerInfo->GetAbsOrigin());
+        info.index = i;
+        aTargetList.push_back(info);
     }
 
     if (!aTargetList.size())
@@ -105,6 +106,15 @@ CBasePlayer* UTIL_GetClosetSurvivor(CBasePlayer* pPlayer, CBasePlayer* pIgnorePl
     int closetIndex = aTargetList[0].index;
     aTargetList.clear();
     return (CBasePlayer *)UTIL_PlayerByIndex(closetIndex);
+}
+
+Vector UTIL_MakeVectorFromPoints(Vector src1, Vector src2)
+{
+    Vector output;
+    output.x = src2.x - src1.x;
+    output.y = src2.y - src1.y;
+    output.z = src2.z - src1.z;
+    return output;
 }
 
 void UTIL_ComputeAimAngles(CBasePlayer* pPlayer, CBasePlayer* pTarget, QAngle* angles, AimType type = AimEye)
@@ -146,21 +156,6 @@ void UTIL_ComputeAimAngles(CBasePlayer* pPlayer, CBasePlayer* pTarget, QAngle* a
     VectorAngles(vecLookAt, *angles);
 }
 
-Vector UTIL_MakeVectorFromPoints(Vector src1, Vector src2)
-{
-    Vector output;
-    output.x = src2.x - src1.x;
-    output.y = src2.y - src1.y;
-    output.z = src2.z - src1.z;
-    return output;
-}
-
-bool UTIL_IsInAimOffset(CBasePlayer* pAttacker, CBasePlayer* pTarget, float offset)
-{
-    vec_t angle = GetSelfTargetAngle(pAttacker, pTarget);
-    return (angle != 1.0f && angle <= offset);
-}
-
 vec_t GetSelfTargetAngle(CBasePlayer* pAttacker, CBasePlayer* pTarget)
 {
     Vector vecSelfEyePos = ((CTerrorPlayer *)pAttacker)->GetEyeOrigin();
@@ -181,24 +176,36 @@ vec_t GetSelfTargetAngle(CBasePlayer* pAttacker, CBasePlayer* pTarget)
     return (acos(vecSelfEyeVector.Dot(vecResult)) * 180.0 / M_PI);
 }
 
-bool ClientPush(CBasePlayer* pPlayer, Vector vec)
+bool UTIL_IsInAimOffset(CBasePlayer* pAttacker, CBasePlayer* pTarget, float offset)
 {
-    Vector vecVelocity;
-    pPlayer->GetVelocity(&vecVelocity);
-    vecVelocity += vec;
-    if (WillHitWallOrFall(pPlayer, vecVelocity))
-    {
-        if (vecVelocity.Length() <= 250.0f)
-        {
-            VectorNormalize(vecVelocity);
-            VectorScale(vecVelocity, 251.0f, vecVelocity);
-        }
+    vec_t angle = GetSelfTargetAngle(pAttacker, pTarget);
+    return (angle != 1.0f && angle <= offset);
+}
 
-        pPlayer->Teleport(NULL, NULL, &vecVelocity);
-        return true;
+bool TR_EntityFilter(IHandleEntity *ignore, int contentsMask)
+{
+    if (!ignore)
+        return false;
+
+    CBaseEntity *pEntity = CTraceFilterSimple::EntityFromEntityHandle(ignore);
+    if (!pEntity)
+        return false;
+
+    int index = pEntity->entindex();
+    if (index > 0 && index <= gpGlobals->maxClients)
+        return false;
+
+    const char *classname = pEntity->GetClassName();
+    
+    if (V_strcmp(classname, "infected") == 0
+    || V_strcmp(classname, "witch") == 0
+    || V_strcmp(classname, "prop_physics") == 0
+    || V_strcmp(classname, "tank_rock") == 0)
+    {
+        return false;
     }
 
-    return false;
+    return true;
 }
 
 // false means will, true otherwise.
@@ -258,6 +265,26 @@ bool WillHitWallOrFall(CBasePlayer* pPlayer, Vector vec)
         if (V_strcmp(pEntity->GetClassName(), "trigger_hurt") == 0)
             return false;
 
+        return true;
+    }
+
+    return false;
+}
+
+bool ClientPush(CBasePlayer* pPlayer, Vector vec)
+{
+    Vector vecVelocity;
+    pPlayer->GetVelocity(&vecVelocity);
+    vecVelocity += vec;
+    if (WillHitWallOrFall(pPlayer, vecVelocity))
+    {
+        if (vecVelocity.Length() <= 250.0f)
+        {
+            VectorNormalize(vecVelocity);
+            VectorScale(vecVelocity, 251.0f, vecVelocity);
+        }
+
+        pPlayer->Teleport(NULL, NULL, &vecVelocity);
         return true;
     }
 
@@ -410,3 +437,5 @@ static float CalculateTeamDistance(CTerrorPlayer *pIgnorePlayer = NULL)
 
     return flTeamDistance;
 }
+
+#endif // _UTILS_H_INCLUDED_

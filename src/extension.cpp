@@ -36,7 +36,6 @@
 #include <sourcehook.h>
 #include "vtable_hook_helper.h"
 #include <vector>
-#include "wrappers.h"
 
 /**
  * @file extension.cpp
@@ -45,6 +44,20 @@
 
 CAnneHappy g_TemplateExtention;		/**< Global singleton for extension's main interface */
 SMEXT_LINK(&g_TemplateExtention);
+
+
+ICvar* icvar = NULL;
+IServerGameEnts *gameents= NULL;
+IGameEventManager2 *gameevents= NULL;
+CGlobalVars *gpGlobals= NULL;
+ISDKHooks *sdkhooks= NULL;
+IServerGameClients *serverClients= NULL;
+IBinTools *bintools= NULL;
+IEngineTrace *enginetrace= NULL;
+IStaticPropMgr *staticpropmgr = NULL;
+
+TerrorNavMesh *g_pNavMesh = NULL;
+ZombieManager *g_pZombieManager = NULL;
 
 CBoomerEventListner g_BoomerEventListner;
 CSmokerEventListner g_SmokerEventListner;

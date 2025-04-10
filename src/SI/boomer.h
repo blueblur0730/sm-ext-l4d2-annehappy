@@ -1,6 +1,5 @@
 #ifndef _BOMMER_H_INCLUDED_
-	#define _BOMMER_H_INCLUDED_
-#endif
+#define _BOMMER_H_INCLUDED_
 
 #include <vector>
 
@@ -56,3 +55,5 @@ class CBoomerEntityListner {
 public:
     void OnPostThink(CBaseEntity *pPlayer);
 };
+
+#endif // _BOMMER_H_INCLUDED_

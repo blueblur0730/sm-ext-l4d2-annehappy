@@ -1,13 +1,12 @@
 #ifndef _WRAPPERS_H_INCLUDED_
-	#define _WRAPPERS_H_INCLUDED_
-#endif
+#define _WRAPPERS_H_INCLUDED_
 
 #include <vector>
 
 #include "extension.h"
 #include "IBinTools.h"
 #include "ISDKHooks.h"
-#include "detours.h"
+#include "CDetour/detours.h"
 
 #include "edict.h"
 #include "igameevents.h"
@@ -49,6 +48,30 @@ enum ZombieClassType {
 typedef bool (*ShouldHitFunc_t)(IHandleEntity* pHandleEntity, int contentsMask);
 typedef bool (*ShouldHitFunc2_t)(IHandleEntity* pHandleEntity, int contentsMask, void* data);
 
+bool PassServerEntityFilter( const IHandleEntity *pTouch, const IHandleEntity *pPass ) 
+{
+	if ( !pPass )
+		return true;
+
+	if ( pTouch == pPass )
+		return false;
+
+	CBaseEntity *pEntTouch = CTraceFilterSimple::EntityFromEntityHandle( pTouch );
+	CBaseEntity *pEntPass = CTraceFilterSimple::EntityFromEntityHandle( pPass );
+	if ( !pEntTouch || !pEntPass )
+		return true;
+
+	// don't clip against own missiles
+	if ( pEntTouch->GetOwnerEntity() == pEntPass )
+		return false;
+	
+	// don't clip against owner
+	if ( pEntPass->GetOwnerEntity() == pEntTouch )
+		return false;	
+
+	return true;
+}
+
 class CTraceFilterSimple : public CTraceFilter
 {
 public:
@@ -74,7 +97,7 @@ public:
 		pCallCTraceFilterSimple->Execute(&stack, NULL);
 	}
 
-	CTraceFilterSimple(const IHandleEntity* passedict = NULL, Collision_Group_t collisionGroup = COLLISION_GROUP_NONE, ShouldHitFunc2_t pExtraShouldHitFunc = NULL, void* data)
+	CTraceFilterSimple(const IHandleEntity* passedict = NULL, Collision_Group_t collisionGroup = COLLISION_GROUP_NONE, ShouldHitFunc2_t pExtraShouldHitFunc = NULL, void* data = NULL)
 	{
 		m_pPassEnt = passedict;
 		m_collisionGroup = collisionGroup;
@@ -147,6 +170,16 @@ private:
 	ShouldHitFunc2_t m_pExtraShouldHitCheckFunction2;
 	void *m_data;
 };
+
+class CNavAreaExt {
+	public:
+		static int m_iOff_m_flow;
+	
+	public:
+		float GetFlow() {
+			return *(float *)((byte *)(this) + m_iOff_m_flow);
+		}
+	};
 
 class CBaseTraceFilter : public ITraceFilter {
 public:
@@ -404,7 +437,7 @@ public:
 	}
 
 	inline bool IsSpectator() {
-		return (GetTeam() == TEAM_SPECTATOR);
+		return (GetTeam() == L4D2Teams_Spectator);
 	}
 
 	inline bool HasVisibleThreats() {
@@ -494,16 +527,6 @@ public:
 	void DTRCallBack_OnVomitedUpon(CBasePlayer *pAttacker, bool bIsExplodedByBoomer);
 };
 
-class CNavAreaExt {
-public:
-	static int m_iOff_m_flow;
-
-public:
-	float GetFlow() {
-		return *(float *)((byte *)(this) + m_iOff_m_flow);
-	}
-};
-
 class TerrorNavMesh {
 public:
 	static int m_iOff_m_fMapMaxFlowDistance;
@@ -560,26 +583,4 @@ public:
 	CTerrorPlayer *OnTankChooseVictim(CTerrorPlayer *pLastVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer);
 };
 
-static bool PassServerEntityFilter( const IHandleEntity *pTouch, const IHandleEntity *pPass ) 
-{
-	if ( !pPass )
-		return true;
-
-	if ( pTouch == pPass )
-		return false;
-
-	CBaseEntity *pEntTouch = CTraceFilterSimple::EntityFromEntityHandle( pTouch );
-	CBaseEntity *pEntPass = CTraceFilterSimple::EntityFromEntityHandle( pPass );
-	if ( !pEntTouch || !pEntPass )
-		return true;
-
-	// don't clip against own missiles
-	if ( pEntTouch->GetOwnerEntity() == pEntPass )
-		return false;
-	
-	// don't clip against owner
-	if ( pEntPass->GetOwnerEntity() == pEntTouch )
-		return false;	
-
-	return true;
-}
+#endif // _WRAPPERS_H_INCLUDED

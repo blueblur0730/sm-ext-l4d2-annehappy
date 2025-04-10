@@ -1,6 +1,5 @@
 #ifndef _SMOKER_H_INCLUDED_
-	#define _SMOKER_H_INCLUDED_
-#endif
+#define _SMOKER_H_INCLUDED_
 
 #include "convar.h"
 #include "wrappers.h"
@@ -48,3 +47,5 @@ class CSmokerEntityListner {
 public:
     void OnPostThink(CBaseEntity *pEntity);
 };
+
+#endif // _SMOKER_H_INCLUDED_

@@ -531,29 +531,3 @@ static bool DoBhop(CBasePlayer* pPlayer, int buttons, Vector vec)
     if (buttons & IN_FORWARD || buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT)
         return ClientPush(pPlayer, vec);
 }
-
-static bool TR_EntityFilter(IHandleEntity *ignore, int contentsMask)
-{
-    if (!ignore)
-        return false;
-
-    CBaseEntity *pEntity = CTraceFilterSimple::EntityFromEntityHandle(ignore);
-    if (!pEntity)
-        return false;
-
-    int index = pEntity->entindex();
-    if (index > 0 && index <= gpGlobals->maxClients)
-        return false;
-
-    const char *classname = pEntity->GetClassName();
-    
-    if (V_strcmp(classname, "infected") == 0
-    || V_strcmp(classname, "witch") == 0
-    || V_strcmp(classname, "prop_physics") == 0
-    || V_strcmp(classname, "tank_rock") == 0)
-    {
-        return false;
-    }
-
-    return true;
-}
