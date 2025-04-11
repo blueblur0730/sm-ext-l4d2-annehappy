@@ -9,6 +9,7 @@
 #include "CDetour/detours.h"
 
 #include "edict.h"
+#include "eiface.h"
 #include "igameevents.h"
 #include "iplayerinfo.h"
 #include "engine/IEngineTrace.h"
@@ -19,6 +20,8 @@
 
 #define NAV_MESH_HEIGHT 20.0
 #define PLAYER_HEIGHT 72.0
+
+extern IServerGameEnts *gameents;
 
 // https://developer.valvesoftware.com/wiki/Env_physics_blocker
 enum BlockType_t {
@@ -64,9 +67,6 @@ public:
 	CTraceFilterSimpleExt(const IHandleEntity *passedict = NULL, Collision_Group_t collisionGroup = COLLISION_GROUP_NONE, ShouldHitFunc2_t pExtraShouldHitFunc = NULL, void *data = NULL);
 
 	virtual bool ShouldHitEntity(IHandleEntity *pHandleEntity, int contentsMask) override;
-	void SetTraceType(TraceType_t traceType) {
-		m_TraceType = traceType;
-	}
 
 private:
 	TraceType_t m_TraceType;
@@ -82,7 +82,10 @@ public:
 	static int m_iOff_m_flow;
 	
 public:
-	float GetFlow();
+	inline float GetFlow()
+	{
+		return *(float *)((byte *)(this) + m_iOff_m_flow);
+	}
 };
 
 /*
@@ -112,13 +115,25 @@ public:
 	static int vtblindex_CBaseEntity_PostThink;
 
 public:
-	inline edict_t* edict();
+	inline edict_t* edict()
+	{
+		return gameents->BaseEntityToEdict((CBaseEntity *)this);
+	}
 
-	inline int entindex();
+	inline int entindex()
+	{
+		return gamehelpers->EntityToBCompatRef((CBaseEntity *)this);
+	}
 
-	inline const char *GetClassName();
+	inline const char *GetClassName()
+	{
+		return edict()->GetClassName();
+	}
 
-	inline void GetVelocity(Vector *velocity);
+	inline void GetVelocity(Vector *velocity)
+	{
+		velocity = (Vector *)((byte *)(this) + CBaseEntity::m_iOff_m_vecVelocity);
+	}
 
 	CBaseEntity *GetOwnerEntity();
 
@@ -134,7 +149,10 @@ public:
 	static int m_iOff_m_nBlockType;
 
 public:
-	inline BlockType_t GetBlockType();
+	inline BlockType_t GetBlockType()
+	{
+		return *(BlockType_t*)((byte*)(this) + CEnvPhysicsBlocker::m_iOff_m_nBlockType);
+	}
 };
 
 class CBaseAbility : public CBaseEntity {
@@ -142,7 +160,10 @@ public:
 	static int m_iOff_m_isSpraying;
 
 public:
-	inline bool IsSpraying();
+	inline bool IsSpraying()
+	{
+		return *(bool*)((byte*)(this) + CBaseAbility::m_iOff_m_isSpraying);
+	}
 };
 
 class CBaseCombatWeapon : public CBaseEntity {
@@ -150,7 +171,10 @@ public:
 	static int m_iOff_m_bInReload;
 
 public:
-	inline bool IsReloading();
+	inline bool IsReloading()
+	{
+		return *(bool*)((byte*)(this) + CBaseCombatWeapon::m_iOff_m_bInReload);
+	}
 };
 
 class CBasePlayer : public CBaseEntity {
@@ -158,9 +182,15 @@ public:
 	static int m_iOff_m_fFlags;
 
 public:
-	inline int GetFlags();
+	inline int GetFlags()
+	{
+		return *(int*)((byte*)(this) + CBasePlayer::m_iOff_m_fFlags);
+	}
 
-	inline bool IsBot();
+	inline bool IsBot()
+	{
+		return (GetFlags() & FL_FAKECLIENT) != 0;
+	}
 
 	int GetButton();
 
@@ -193,35 +223,95 @@ public:
 public:
 	IPlayerInfo *GetPlayerInfo();
 
-	inline IGamePlayer *GetGamePlayer();
+	inline IGamePlayer *GetGamePlayer()
+	{
+		return playerhelpers->GetGamePlayer(entindex());
+	}
 
 	Vector GetEyeOrigin();
 
-	inline Vector GetAbsOrigin();
+	inline Vector GetAbsOrigin()
+	{
+		IPlayerInfo *pPlayerInfo = GetPlayerInfo();
+		if (!pPlayerInfo)
+			return Vector(0, 0, 0);
+	
+		return GetPlayerInfo()->GetAbsOrigin();
+	}
 
 	// this is fastest and the most simple.
 	// if not, use m_lifeState.
-	inline bool IsDead();
+	inline bool IsDead()
+	{
+		IPlayerInfo *pPlayerInfo = GetPlayerInfo();
+		if (!pPlayerInfo)
+			return false;
+	
+		return GetPlayerInfo()->IsDead();
+	}
 
-	inline Vector GetPlayerMins();
+	inline Vector GetPlayerMins()
+	{
+		IPlayerInfo *pPlayerInfo = GetPlayerInfo();
+		if (!pPlayerInfo)
+			return Vector(0, 0, 0);
+	
+		return GetPlayerInfo()->GetPlayerMins();
+	}
 
-	inline Vector GetPlayerMaxs();
+	inline Vector GetPlayerMaxs()
+	{
+		IPlayerInfo *pPlayerInfo = GetPlayerInfo();
+		if (!pPlayerInfo)
+			return Vector(0, 0, 0);
+	
+		return GetPlayerInfo()->GetPlayerMaxs();
+	}
 
-	inline bool IsFakeClient();
+	inline bool IsFakeClient()
+	{   
+		IGamePlayer *pPlayerInfo = GetGamePlayer();
+		if (!pPlayerInfo)
+			return false;
+	
+		return GetGamePlayer()->IsFakeClient();
+	}
 
-	inline bool IsInGame();
+	inline bool IsInGame()
+	{
+		IGamePlayer *pPlayerInfo = GetGamePlayer();
+		if (!pPlayerInfo)
+			return false;
+	
+		return GetGamePlayer()->IsInGame();
+	}
 
-	inline bool IsIncapped();
+	inline bool IsIncapped()
+	{
+		return *(bool*)((byte*)(this) + m_iOff_m_isIncapacitated);
+	}
 
 	L4D2Teams GetTeam();
 
-	inline bool IsSurvivor();
+	inline bool IsSurvivor()
+	{
+		return (GetTeam() == L4D2Teams_Survivor);
+	}
 
-	inline bool IsInfected();
+	inline bool IsInfected()
+	{
+		return (GetTeam() == L4D2Teams_Infected);
+	}
 
-	inline bool IsSpectator();
+	inline bool IsSpectator()
+	{
+		return (GetTeam() == L4D2Teams_Spectator);
+	}
 
-	inline bool HasVisibleThreats();
+	inline bool HasVisibleThreats()
+	{
+		return *(bool*)((byte*)(this) + m_iOff_m_hasVisibleThreats);
+	}
 
 	CBaseAbility *GetAbility();
 
@@ -231,11 +321,21 @@ public:
 	
 	CTerrorPlayer *GetTongueVictim();
 
-	inline ZombieClassType GetClass();
+	inline ZombieClassType GetClass()
+	{
+		return *(ZombieClassType *)((uint8_t *)this + m_iOff_m_zombieClass);
+	}
 
-	inline bool IsBoomer();
+	inline bool IsBoomer()
+	{
+		return (GetClass() == ZC_BOOMER);
+	}
 
-	inline bool IsSmoker();
+	inline bool IsSmoker()
+	{
+		return (GetClass() == ZC_SMOKER);
+	}
+	
 
 	CBaseEntity *OffsetEHandleToEntity(int iOff);
 
@@ -255,7 +355,10 @@ public:
 	static int m_iOff_m_fMapMaxFlowDistance;
 
 public:
-	inline float GetMapMaxFlowDistance();
+	inline float GetMapMaxFlowDistance()
+	{
+		return *(float *)((byte *)(this) + m_iOff_m_fMapMaxFlowDistance);
+	}
 };
 
 class ZombieManager {

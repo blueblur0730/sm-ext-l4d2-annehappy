@@ -246,7 +246,7 @@ static bool TR_RayFilterBySmoker(IHandleEntity* pHandleEntity, int contentsMask,
     return true;
 }
 
-static CTerrorPlayer *SmokerTargetChoose(int method, CTerrorPlayer *pSmoker, CTerrorPlayer *pSpecificTarget = NULL)
+static CTerrorPlayer *SmokerTargetChoose(int method, CTerrorPlayer *pSmoker, CTerrorPlayer *pSpecificTarget)
 {
     switch (method)
     {

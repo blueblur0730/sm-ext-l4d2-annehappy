@@ -480,7 +480,7 @@ static bool secondCheck(CBaseEntity *pPlayer, CBaseEntity *pTarget)
     IGamePlayer *pGamePlayer = ((CTerrorPlayer *)pPlayer)->GetGamePlayer();
     IGamePlayer *pGameTarget = ((CTerrorPlayer *)pTarget)->GetGamePlayer();
     if (!pGamePlayer || !pGameTarget)
-        return;
+        return false;
 
     Vector vecSelfEyePos, vecTargetEyePos;
     serverClients->ClientEarPosition(pGamePlayer->GetEdict(), &vecSelfEyePos);
@@ -530,4 +530,6 @@ static bool DoBhop(CBasePlayer* pPlayer, int buttons, Vector vec)
 {
     if (buttons & IN_FORWARD || buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT)
         return ClientPush(pPlayer, vec);
+
+    return false;
 }

@@ -49,6 +49,9 @@
 
 #define GAMEDATA_FILE "l4d2_annehappy.gamedata"
 
+class TerrorNavMesh;
+class ZombieManager;
+
 /**
  * @brief Sample implementation of the SDK Extension.
  * Note: Uncomment one of the pre-defined virtual functions in order to use it.

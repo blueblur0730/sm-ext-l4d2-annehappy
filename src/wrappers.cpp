@@ -1,7 +1,7 @@
 #include "utils.h"
 #include "wrappers.h"
 
-CTraceFilterSimpleExt::CTraceFilterSimpleExt(const IHandleEntity* passedict = NULL, Collision_Group_t collisionGroup = COLLISION_GROUP_NONE, ShouldHitFunc_t pExtraShouldHitFunc = NULL)
+CTraceFilterSimpleExt::CTraceFilterSimpleExt(const IHandleEntity* passedict, Collision_Group_t collisionGroup, ShouldHitFunc_t pExtraShouldHitFunc)
 {
     m_pPassEnt = passedict;
     m_collisionGroup = collisionGroup;
@@ -18,7 +18,7 @@ CTraceFilterSimpleExt::CTraceFilterSimpleExt(const IHandleEntity* passedict = NU
     pCallCTraceFilterSimple->Execute(&stack, NULL);
 }
 
-CTraceFilterSimpleExt::CTraceFilterSimpleExt(const IHandleEntity* passedict = NULL, Collision_Group_t collisionGroup = COLLISION_GROUP_NONE, ShouldHitFunc2_t pExtraShouldHitFunc = NULL, void* data = NULL)
+CTraceFilterSimpleExt::CTraceFilterSimpleExt(const IHandleEntity* passedict, Collision_Group_t collisionGroup, ShouldHitFunc2_t pExtraShouldHitFunc, void* data)
 {
     m_pPassEnt = passedict;
     m_collisionGroup = collisionGroup;
@@ -258,163 +258,4 @@ bool ZombieManager::GetRandomPZSpawnPosition(ZombieClassType type, int attampts,
     pCallGetRandomPZSpawnPosition->Execute(&stake, &ret);
 
     return *(bool *)((byte *)ret);
-}
-
-inline void CTraceFilterSimpleExt::SetTraceType(TraceType_t traceType)
-{
-    m_TraceType = traceType;
-}
-
-inline edict_t *CBaseEntity::edict()
-{
-    return gameents->BaseEntityToEdict((CBaseEntity *)this);
-}
-
-inline int CBaseEntity::entindex()
-{
-    return gamehelpers->EntityToBCompatRef((CBaseEntity *)this);
-}
-
-inline const char *CBaseEntity::GetClassName()
-{
-    return edict()->GetClassName();
-}
-
-inline float CNavArea::GetFlow()
-{
-    return *(float *)((byte *)(this) + m_iOff_m_flow);
-}
-
-inline void CBaseEntity::GetVelocity(Vector *velocity)
-{
-    velocity = (Vector *)((byte *)(this) + CBaseEntity::m_iOff_m_vecVelocity);
-}
-
-inline BlockType_t CEnvPhysicsBlocker::GetBlockType()
-{
-    return *(BlockType_t*)((byte*)(this) + CEnvPhysicsBlocker::m_iOff_m_nBlockType);
-}
-
-inline bool CBaseAbility::IsSpraying()
-{
-    return *(bool*)((byte*)(this) + CBaseAbility::m_iOff_m_isSpraying);
-}
-
-inline bool CBaseCombatWeapon::IsReloading()
-{
-    return *(bool*)((byte*)(this) + CBaseCombatWeapon::m_iOff_m_bInReload);
-}
-
-inline int CBasePlayer::GetFlags()
-{
-    return *(int*)((byte*)(this) + CBasePlayer::m_iOff_m_fFlags);
-}
-
-inline bool CBasePlayer::IsBot()
-{
-    return (GetFlags() & FL_FAKECLIENT) != 0;
-}
-
-inline IGamePlayer *CTerrorPlayer::GetGamePlayer()
-{
-    return playerhelpers->GetGamePlayer(entindex());
-}
-
-inline Vector CTerrorPlayer::GetAbsOrigin()
-{
-    IPlayerInfo *pPlayerInfo = GetPlayerInfo();
-    if (!pPlayerInfo)
-        return Vector(0, 0, 0);
-
-    return GetPlayerInfo()->GetAbsOrigin();
-}
-
-inline bool CTerrorPlayer::IsDead()
-{
-    IPlayerInfo *pPlayerInfo = GetPlayerInfo();
-    if (!pPlayerInfo)
-        return false;
-
-    return GetPlayerInfo()->IsDead();
-}
-
-inline Vector CTerrorPlayer::GetPlayerMins()
-{
-    IPlayerInfo *pPlayerInfo = GetPlayerInfo();
-    if (!pPlayerInfo)
-        return Vector(0, 0, 0);
-
-    return GetPlayerInfo()->GetPlayerMins();
-}
-
-inline Vector CTerrorPlayer::GetPlayerMaxs()
-{
-    IPlayerInfo *pPlayerInfo = GetPlayerInfo();
-    if (!pPlayerInfo)
-        return Vector(0, 0, 0);
-
-    return GetPlayerInfo()->GetPlayerMaxs();
-}
-
-inline bool CTerrorPlayer::IsFakeClient()
-{   
-    IGamePlayer *pPlayerInfo = GetGamePlayer();
-    if (!pPlayerInfo)
-        return false;
-
-    return GetGamePlayer()->IsFakeClient();
-}
-
-inline bool CTerrorPlayer::IsInGame()
-{
-    IGamePlayer *pPlayerInfo = GetGamePlayer();
-    if (!pPlayerInfo)
-        return false;
-
-    return GetGamePlayer()->IsInGame();
-}
-
-inline bool CTerrorPlayer::IsIncapped()
-{
-    return *(bool*)((byte*)(this) + m_iOff_m_isIncapacitated);
-}
-
-inline bool CTerrorPlayer::IsSurvivor()
-{
-    return (GetTeam() == L4D2Teams_Survivor);
-}
-
-inline bool CTerrorPlayer::IsInfected()
-{
-    return (GetTeam() == L4D2Teams_Infected);
-}
-
-inline bool CTerrorPlayer::IsSpectator()
-{
-    return (GetTeam() == L4D2Teams_Spectator);
-}
-
-inline bool CTerrorPlayer::HasVisibleThreats()
-{
-    return *(bool*)((byte*)(this) + m_iOff_m_hasVisibleThreats);
-}
-
-inline ZombieClassType CTerrorPlayer::GetClass()
-{
-    return *(ZombieClassType *)((uint8_t *)this + m_iOff_m_zombieClass);
-}
-
-inline bool CTerrorPlayer::IsBoomer()
-{
-    return (GetClass() == ZC_BOOMER);
-}
-
-inline bool CTerrorPlayer::IsSmoker()
-{
-    return (GetClass() == ZC_SMOKER);
-}
-
-inline float TerrorNavMesh::GetMapMaxFlowDistance()
-{
-    return *(float *)((byte *)(this) + m_iOff_m_fMapMaxFlowDistance);
 }

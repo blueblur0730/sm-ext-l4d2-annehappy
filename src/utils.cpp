@@ -29,7 +29,7 @@ CBasePlayer* _UTIL_PlayerByUserId(int userID)
 	return NULL;
 }
 
-CBasePlayer* UTIL_GetClosetSurvivor(CBasePlayer* pPlayer, CBasePlayer* pIgnorePlayer = NULL, bool bCheckIncapp = false, bool bCheckDominated = false)
+CBasePlayer* UTIL_GetClosetSurvivor(CBasePlayer* pPlayer, CBasePlayer* pIgnorePlayer, bool bCheckIncapp, bool bCheckDominated)
 {
     int index = -1;
     index = pPlayer->entindex();
@@ -74,7 +74,11 @@ CBasePlayer* UTIL_GetClosetSurvivor(CBasePlayer* pPlayer, CBasePlayer* pIgnorePl
         return NULL;
 
     // sorting ascending.
-    std::sort(aTargetList.begin(), aTargetList.end());
+    std::sort(aTargetList.begin(), aTargetList.end(), 
+        [](const utils_t& a, const utils_t& b) {
+            return a.dist < b.dist;
+        }
+    );
 
     int closetIndex = aTargetList[0].index;
     aTargetList.clear();
@@ -90,7 +94,7 @@ Vector UTIL_MakeVectorFromPoints(Vector src1, Vector src2)
     return output;
 }
 
-void UTIL_ComputeAimAngles(CBasePlayer *pPlayer, CBasePlayer *pTarget, QAngle* angles, AimType type = AimEye)
+void UTIL_ComputeAimAngles(CBasePlayer *pPlayer, CBasePlayer *pTarget, QAngle* angles, AimType type)
 {
     Vector vecTargetPos;
 
@@ -197,7 +201,7 @@ bool WillHitWallOrFall(CBasePlayer *pPlayer, Vector vec)
     trace_t tr;
     UTIL_TraceHull(vecSelfPos, vecResult, vecMins, vecMaxs, MASK_NPCSOLID_BRUSHONLY, NULL, COLLISION_GROUP_NONE, &tr, TR_EntityFilter);
 
-    bool bHullRayHit;
+    bool bHullRayHit = false;
     if (tr.DidHit())
     {
         bHullRayHit = true;
@@ -299,7 +303,7 @@ CBaseEntity *UTIL_GetClientAimTarget(CBaseEntity *pEntity, bool only_players)
 	ray.Init(eye_position, vec_end);
 
 	trace_t tr;
-    UTIL_TraceRay(ray, MASK_SOLID | CONTENTS_DEBRIS | CONTENTS_HITBOX, pEdict->GetIServerEntity(), COLLISION_GROUP_NONE, NULL, &tr);
+    UTIL_TraceRay(ray, MASK_SOLID | CONTENTS_DEBRIS | CONTENTS_HITBOX, pEdict->GetIServerEntity(), &tr, COLLISION_GROUP_NONE, NULL);
 
     if (tr.fraction == 1.0f || tr.m_pEnt == NULL)
         return NULL;
@@ -337,7 +341,7 @@ bool UTIL_IsLeftBehind(CTerrorPlayer *pPlayer)
     return false;
 }
 
-static float CalculateTeamDistance(CTerrorPlayer *pIgnorePlayer = NULL)
+float CalculateTeamDistance(CTerrorPlayer *pIgnorePlayer)
 {
     int counter = 0;
     float flTeamDistance = 0.0f;
@@ -400,73 +404,4 @@ bool PassServerEntityFilter( const IHandleEntity *pTouch, const IHandleEntity *p
 		return false;	
 
 	return true;
-}
-
-inline const CBaseEntity *EntityFromEntityHandle( const IHandleEntity *pConstHandleEntity )
-{
-	IHandleEntity *pHandleEntity = const_cast<IHandleEntity*>(pConstHandleEntity);
-
-#ifdef CLIENT_DLL
-	IClientUnknown *pUnk = (IClientUnknown*)pHandleEntity;
-	return pUnk->GetBaseEntity();
-#else
-	if ( staticpropmgr->IsStaticProp( pHandleEntity ) )
-		return NULL;
-
-	IServerUnknown *pUnk = (IServerUnknown*)pHandleEntity;
-	return pUnk->GetBaseEntity();
-#endif
-}
-
-inline CBaseEntity *EntityFromEntityHandle( IHandleEntity *pHandleEntity )
-{
-#ifdef CLIENT_DLL
-	IClientUnknown *pUnk = (IClientUnknown*)pHandleEntity;
-	return pUnk->GetBaseEntity();
-#else
-	if ( staticpropmgr->IsStaticProp( pHandleEntity ) )
-		return NULL;
-
-	IServerUnknown *pUnk = (IServerUnknown*)pHandleEntity;
-	return pUnk->GetBaseEntity();
-#endif
-}
-
-inline float FloatAbs(float f)
-{
-	return f > 0 ? f : -f;
-}
-
-static bool (__cdecl *pFnIsVisibleToPlayer)(const Vector&, CBasePlayer *, int, int, float, const IHandleEntity *, void *, bool *);
-
-// int __usercall IsVisibleToPlayer@<eax>(long double@<st0>, float *, CBaseEntity *, int, char, int, const IHandleEntity *, CNavArea **, _BYTE *)
-// bool IsVisibleToPlayer(const Vector vecTargetPos, CBasePlayer *pPlayer, int team, int team_target, float fl, const IHandleEntity *pIgnore, CNavArea *pArea, bool *b)
-inline bool IsVisiableToPlayer(const Vector &vecTargetPos, CBasePlayer *pPlayer, int team, int team_target, float flUnknow, const IHandleEntity *pIgnore, void *pArea, bool *bUnknown)
-{
-    return pFnIsVisibleToPlayer(vecTargetPos, pPlayer, team, team_target, flUnknow, pIgnore, pArea, bUnknown);
-}
-
-inline void UTIL_TraceRay( const Ray_t &ray, unsigned int mask, 
-    IHandleEntity *ignore, Collision_Group_t collisionGroup, ShouldHitFunc_t pExtraShouldHitCheckFn = NULL, trace_t *ptr )
-{
-    CTraceFilterSimpleExt traceFilter(ignore, collisionGroup, pExtraShouldHitCheckFn);
-    enginetrace->TraceRay( ray, mask, &traceFilter, ptr );
-}
-
-inline void UTIL_TraceRay(  const Ray_t &ray, unsigned int mask, 
-    IHandleEntity *ignore, Collision_Group_t collisionGroup, trace_t *ptr, ShouldHitFunc2_t pExtraShouldHitCheckFn = NULL, void *data = NULL )
-{
-   CTraceFilterSimpleExt traceFilter(ignore, collisionGroup, pExtraShouldHitCheckFn, data);
-   enginetrace->TraceRay( ray, mask, &traceFilter, ptr );
-}
-
-inline void UTIL_TraceHull( const Vector& vecAbsStart, const Vector& vecAbsEnd, 
-    const Vector& hullMin, const Vector& hullMax, unsigned int mask, 
-    IHandleEntity* ignore, Collision_Group_t collisionGroup, trace_t* ptr, ShouldHitFunc_t pExtraShouldHitCheckFn = NULL)
-{
-   Ray_t ray;
-   ray.Init(vecAbsStart, vecAbsEnd, hullMin, hullMax);
-   CTraceFilterSimpleExt traceFilter(ignore, collisionGroup, pExtraShouldHitCheckFn);
-
-   enginetrace->TraceRay(ray, mask, &traceFilter, ptr);
 }
