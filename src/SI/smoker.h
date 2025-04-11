@@ -1,6 +1,5 @@
 #ifndef _SMOKER_H_INCLUDED_
-	#define _SMOKER_H_INCLUDED_
-#endif
+#define _SMOKER_H_INCLUDED_
 
 #include "convar.h"
 #include "wrappers.h"
@@ -26,6 +25,7 @@ ConVar z_smoker_instant_shoot_range_cofficient("z_smoker_instant_shoot_range_cof
 class CSmokerEventListner : public IGameEventListener2 {
 public:
     virtual void FireGameEvent(IGameEvent *event);
+    virtual int	 GetEventDebugID( void );
 };
 
 class CSmokerTimerEvent : public ITimedEvent {
@@ -48,3 +48,9 @@ class CSmokerEntityListner {
 public:
     void OnPostThink(CBaseEntity *pEntity);
 };
+
+static CTerrorPlayer *SmokerTargetChoose(int method, CTerrorPlayer *pSmoker, CTerrorPlayer *pSpecificTarget = NULL);
+static bool TR_RayFilterBySmoker(IHandleEntity *pHandleEntity, int contentsMask, void *data);
+static int TeamMeleeCheck();
+
+#endif // _SMOKER_H_INCLUDED_

@@ -7,6 +7,8 @@ project = builder.LibraryProject(projectName)
 
 project.sources += [
   os.path.join(Extension.sm_root, "public", "smsdk_ext.cpp"),
+  'src/wrappers.cpp',
+  'src/utils.cpp',
   'src/extension.cpp',
   'src/SI/boomer.cpp',
   'src/SI/smoker.cpp'

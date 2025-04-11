@@ -1,11 +1,14 @@
 #ifndef _BOMMER_H_INCLUDED_
-	#define _BOMMER_H_INCLUDED_
-#endif
+#define _BOMMER_H_INCLUDED_
 
 #include <vector>
 
 #include "convar.h"
 #include "wrappers.h"
+
+#define TURN_ANGLE_DIVIDE 3.0
+#define EYE_ANGLE_UP_HEIGHT 15.0
+#define COMMAND_INTERVAL 1.0
 
 ConVar z_boomer_bhop("z_boomer_bhop", "1", FCVAR_NOTIFY | FCVAR_CHEAT, "Enable boomer bhop.", true, 0.0f, true, 1.0f);
 ConVar z_boomer_bhop_speed("z_boomer_bhop_speed", "150.0", FCVAR_NOTIFY | FCVAR_CHEAT, "Boomer bhop speed.", true, 0.0f, false, 0.0f);
@@ -20,6 +23,7 @@ ConVar z_boomer_predict_pos("z_boomer_predict_pos", "1", FCVAR_NOTIFY | FCVAR_CH
 class CBoomerEventListner : public IGameEventListener2 {
 public:
     virtual void FireGameEvent(IGameEvent *event);
+    virtual int	 GetEventDebugID( void );
     void OnPlayerSpawned(IGameEvent *event);
     void OnPlayerShoved(IGameEvent *event);
     void OnPlayerNowIt(IGameEvent *event);
@@ -56,3 +60,9 @@ class CBoomerEntityListner {
 public:
     void OnPostThink(CBaseEntity *pPlayer);
 };
+
+static bool secondCheck(CBaseEntity *pPlayer, CBaseEntity *pTarget);
+static bool TR_VomitClientFilter(IHandleEntity *pHandleEntity, int contentsMask, void *data);
+static bool DoBhop(CBasePlayer *pPlayer, int buttons, Vector vec);
+
+#endif // _BOMMER_H_INCLUDED_

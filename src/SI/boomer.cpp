@@ -181,7 +181,7 @@ void CBoomerEntityListner::OnPostThink(CBaseEntity *pEntity)
                 }
             }
 
-            ((CBaseEntity *)pPlayer)->Teleport(NULL, &vecAngles, NULL);
+            pPlayer->Teleport(NULL, &vecAngles, NULL);
 
             CTerrorBoomerVictim *pVictim = (CTerrorBoomerVictim *)pTarget;
             if (z_boomer_degree_force_bile.GetInt() > 0 && UTIL_IsInAimOffset(pPlayer, pTarget, z_boomer_degree_force_bile.GetFloat()) &&
@@ -314,7 +314,7 @@ void CBoomerEntityListner::OnPostThink(CBaseEntity *pEntity)
 
         bool bUnknown;
         Vector vecTargetEyePos = pTarget->GetEyeOrigin();
-        if (!IsVisiableToPlayer(vecTargetEyePos, pPlayer, CTerrorPlayer::L4D2Teams_Survivor, CTerrorPlayer::L4D2Teams_Infected, 0.0, NULL, NULL, &bUnknown))
+        if (!IsVisiableToPlayer(vecTargetEyePos, (CBasePlayer *)pPlayer, L4D2Teams_Survivor, L4D2Teams_Infected, 0.0, NULL, NULL, &bUnknown))
             return;
         
         CUserCmd *cmd = pPlayer->GetCurrentCommand();
@@ -480,7 +480,7 @@ static bool secondCheck(CBaseEntity *pPlayer, CBaseEntity *pTarget)
     IGamePlayer *pGamePlayer = ((CTerrorPlayer *)pPlayer)->GetGamePlayer();
     IGamePlayer *pGameTarget = ((CTerrorPlayer *)pTarget)->GetGamePlayer();
     if (!pGamePlayer || !pGameTarget)
-        return;
+        return false;
 
     Vector vecSelfEyePos, vecTargetEyePos;
     serverClients->ClientEarPosition(pGamePlayer->GetEdict(), &vecSelfEyePos);
@@ -519,7 +519,7 @@ static bool TR_VomitClientFilter(IHandleEntity* pHandleEntity, int contentsMask,
     if (!pEntity)
         return false;
 
-    int index = pEntity->entindex();
+    int index = gamehelpers->EntityToBCompatRef(pEntity);
     if (index > 0 && index <= gpGlobals->maxClients && ((CTerrorBoomerVictim *)pEntity)->m_bBiled)
         return false;
 
@@ -530,30 +530,6 @@ static bool DoBhop(CBasePlayer* pPlayer, int buttons, Vector vec)
 {
     if (buttons & IN_FORWARD || buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT)
         return ClientPush(pPlayer, vec);
-}
 
-static bool TR_EntityFilter(IHandleEntity *ignore, int contentsMask)
-{
-    if (!ignore)
-        return false;
-
-    CBaseEntity *pEntity = CTraceFilterSimple::EntityFromEntityHandle(ignore);
-    if (!pEntity)
-        return false;
-
-    int index = pEntity->entindex();
-    if (index > 0 && index <= gpGlobals->maxClients)
-        return false;
-
-    const char *classname = pEntity->GetClassName();
-    
-    if (V_strcmp(classname, "infected") == 0
-    || V_strcmp(classname, "witch") == 0
-    || V_strcmp(classname, "prop_physics") == 0
-    || V_strcmp(classname, "tank_rock") == 0)
-    {
-        return false;
-    }
-
-    return true;
+    return false;
 }
