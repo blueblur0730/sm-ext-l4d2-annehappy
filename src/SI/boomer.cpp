@@ -1,6 +1,7 @@
 #include "SI/boomer.h"
 #include "utils.h"
 #include "in_buttons.h"
+#include "player.h"
 
 CBoomerTimerEvent g_BoomerTimerEvent;
 
@@ -181,7 +182,7 @@ void CBoomerEntityListner::OnPostThink(CBaseEntity *pEntity)
                 }
             }
 
-            ((CBaseEntity *)pPlayer)->Teleport(NULL, &vecAngles, NULL);
+            pPlayer->Teleport(NULL, &vecAngles, NULL);
 
             CTerrorBoomerVictim *pVictim = (CTerrorBoomerVictim *)pTarget;
             if (z_boomer_degree_force_bile.GetInt() > 0 && UTIL_IsInAimOffset(pPlayer, pTarget, z_boomer_degree_force_bile.GetFloat()) &&
@@ -314,7 +315,7 @@ void CBoomerEntityListner::OnPostThink(CBaseEntity *pEntity)
 
         bool bUnknown;
         Vector vecTargetEyePos = pTarget->GetEyeOrigin();
-        if (!IsVisiableToPlayer(vecTargetEyePos, pPlayer, CTerrorPlayer::L4D2Teams_Survivor, CTerrorPlayer::L4D2Teams_Infected, 0.0, NULL, NULL, &bUnknown))
+        if (!IsVisiableToPlayer(vecTargetEyePos, pPlayer, L4D2Teams_Survivor, L4D2Teams_Infected, 0.0, NULL, NULL, &bUnknown))
             return;
         
         CUserCmd *cmd = pPlayer->GetCurrentCommand();
@@ -418,7 +419,7 @@ CTerrorPlayer* BossZombiePlayerBot::OnBoomerChooseVictim(CTerrorPlayer *pLastVic
     return NULL;
 }
 
-void CTerrorPlayer::DTRCallBack_OnVomitedUpon(CBasePlayer *pAttacker, bool bIsExplodedByBoomer)
+void CTerrorPlayer::DTRCallBack_OnVomitedUpon(CBasePlayerExt *pAttacker, bool bIsExplodedByBoomer)
 {
     CTerrorBoomerVictim *pBoomerVictim = (CTerrorBoomerVictim *)this;
     if (!pBoomerVictim)
@@ -475,7 +476,7 @@ void CTerrorPlayer::DTRCallBack_OnVomitedUpon(CBasePlayer *pAttacker, bool bIsEx
     }
 }
 
-static bool secondCheck(CBaseEntity *pPlayer, CBaseEntity *pTarget)
+static bool secondCheck(CBaseEntityExt *pPlayer, CBaseEntityExt *pTarget)
 {
     IGamePlayer *pGamePlayer = ((CTerrorPlayer *)pPlayer)->GetGamePlayer();
     IGamePlayer *pGameTarget = ((CTerrorPlayer *)pTarget)->GetGamePlayer();
@@ -488,7 +489,7 @@ static bool secondCheck(CBaseEntity *pPlayer, CBaseEntity *pTarget)
 
     vec_t flDistance = vecSelfEyePos.DistTo(vecTargetEyePos);
     if (flDistance <= g_pCVar->FindVar("z_vomit_range")->GetFloat() || 
-        UTIL_IsInAimOffset((CBasePlayer *)pPlayer, (CBasePlayer *)pTarget, z_boomer_degree_force_bile.GetFloat()) ||
+        UTIL_IsInAimOffset((CBasePlayerExt *)pPlayer, (CBasePlayerExt *)pTarget, z_boomer_degree_force_bile.GetFloat()) ||
         ((CTerrorBoomerVictim *)pTarget)->m_bBiled)
     {
         return false;
@@ -519,14 +520,14 @@ static bool TR_VomitClientFilter(IHandleEntity* pHandleEntity, int contentsMask,
     if (!pEntity)
         return false;
 
-    int index = pEntity->entindex();
+    int index = gamehelpers->EntityToBCompatRef(pEntity);
     if (index > 0 && index <= gpGlobals->maxClients && ((CTerrorBoomerVictim *)pEntity)->m_bBiled)
         return false;
 
     return index != *(uint8_t *)data;
 }
 
-static bool DoBhop(CBasePlayer* pPlayer, int buttons, Vector vec)
+static bool DoBhop(CBasePlayerExt* pPlayer, int buttons, Vector vec)
 {
     if (buttons & IN_FORWARD || buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT)
         return ClientPush(pPlayer, vec);

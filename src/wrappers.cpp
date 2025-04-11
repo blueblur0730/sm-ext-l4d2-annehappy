@@ -1,7 +1,8 @@
 #include "utils.h"
 #include "wrappers.h"
+#include "player.h"
 
-CTraceFilterSimple::CTraceFilterSimple(const IHandleEntity* passedict = NULL, Collision_Group_t collisionGroup = COLLISION_GROUP_NONE, ShouldHitFunc_t pExtraShouldHitFunc = NULL)
+CTraceFilterSimpleExt::CTraceFilterSimpleExt(const IHandleEntity* passedict = NULL, Collision_Group_t collisionGroup = COLLISION_GROUP_NONE, ShouldHitFunc_t pExtraShouldHitFunc = NULL)
 {
     m_pPassEnt = passedict;
     m_collisionGroup = collisionGroup;
@@ -9,7 +10,7 @@ CTraceFilterSimple::CTraceFilterSimple(const IHandleEntity* passedict = NULL, Co
 
     // Call contrustor to replace vtable on this instance
     struct {
-        const CTraceFilterSimple* pFilter;
+        const CTraceFilterSimpleExt* pFilter;
         const IHandleEntity* passedict;
         Collision_Group_t collisionGroup;
         ShouldHitFunc_t pExtraShouldHitFunc;
@@ -18,7 +19,7 @@ CTraceFilterSimple::CTraceFilterSimple(const IHandleEntity* passedict = NULL, Co
     pCallCTraceFilterSimple->Execute(&stack, NULL);
 }
 
-CTraceFilterSimple::CTraceFilterSimple(const IHandleEntity* passedict = NULL, Collision_Group_t collisionGroup = COLLISION_GROUP_NONE, ShouldHitFunc2_t pExtraShouldHitFunc = NULL, void* data = NULL)
+CTraceFilterSimpleExt::CTraceFilterSimpleExt(const IHandleEntity* passedict = NULL, Collision_Group_t collisionGroup = COLLISION_GROUP_NONE, ShouldHitFunc2_t pExtraShouldHitFunc = NULL, void* data = NULL)
 {
     m_pPassEnt = passedict;
     m_collisionGroup = collisionGroup;
@@ -27,7 +28,7 @@ CTraceFilterSimple::CTraceFilterSimple(const IHandleEntity* passedict = NULL, Co
 
     // Call contrustor to replace vtable on this instance
     struct {
-        const CTraceFilterSimple* pFilter;
+        const CTraceFilterSimpleExt* pFilter;
         const IHandleEntity* passedict;
         Collision_Group_t collisionGroup;
         ShouldHitFunc2_t pExtraShouldHitFunc;
@@ -36,7 +37,7 @@ CTraceFilterSimple::CTraceFilterSimple(const IHandleEntity* passedict = NULL, Co
     pCallCTraceFilterSimple2->Execute(&stack, NULL);
 }
 
-bool CTraceFilterSimple::ShouldHitEntity(IHandleEntity *pHandleEntity, int contentsMask)
+bool CTraceFilterSimpleExt::ShouldHitEntity(IHandleEntity *pHandleEntity, int contentsMask)
 {
 	// Don't test if the game code tells us we should ignore this collision...
 	CBaseEntity *pEntity = EntityFromEntityHandle( pHandleEntity );
@@ -69,10 +70,10 @@ bool CTraceFilterSimple::ShouldHitEntity(IHandleEntity *pHandleEntity, int conte
 	return true;
 }
 
-CBaseEntity *CBaseEntity::GetOwnerEntity()
+CBaseEntity *CBaseEntityExt::GetOwnerEntity()
 {
     sm_datatable_info_t offset_data_info;
-    datamap_t *offsetMap = gamehelpers->GetDataMap(this);
+    datamap_t *offsetMap = gamehelpers->GetDataMap((CBaseEntity *)this);
     if (!gamehelpers->FindDataMapInfo(offsetMap, "m_hOwnerEntity", &offset_data_info))
         return NULL;
     
@@ -80,21 +81,21 @@ CBaseEntity *CBaseEntity::GetOwnerEntity()
     return gamehelpers->ReferenceToEntity(hndl->GetEntryIndex());
 }
 
-MoveType_t CBaseEntity::GetMoveType()
+MoveType_t CBaseEntityExt::GetMoveType()
 {
     sm_datatable_info_t offset_data_info;
-    datamap_t *offsetMap = gamehelpers->GetDataMap(this);
+    datamap_t *offsetMap = gamehelpers->GetDataMap((CBaseEntity *)this);
     if (!gamehelpers->FindDataMapInfo(offsetMap, "m_MoveType", &offset_data_info))
         return MOVETYPE_NONE;
 
     return (MoveType_t)*(char*)((byte *)(this) + offset_data_info.actual_offset);
 }
 
-void CBaseEntity::Teleport(Vector *newPosition, QAngle *newAngles, Vector *newVelocity)
+void CBaseEntityExt::Teleport(Vector *newPosition, QAngle *newAngles, Vector *newVelocity)
 {
     unsigned char params[sizeof(void *) * 4];
     unsigned char *vptr = params;
-    *(CBaseEntity **)vptr = this;
+    *(CBaseEntity **)vptr = (CBaseEntity *)this;
     vptr += sizeof(CBaseEntity *);
     *(Vector **)vptr = newPosition;
     vptr += sizeof(Vector *);
@@ -105,29 +106,29 @@ void CBaseEntity::Teleport(Vector *newPosition, QAngle *newAngles, Vector *newVe
     pCallTeleport->Execute(params, NULL);
 }
 
-void CBaseEntity::GetEyeAngles(QAngle *pRetAngle)
+void CBaseEntityExt::GetEyeAngles(QAngle *pRetAngle)
 {
     unsigned char params[sizeof(void *)];
     unsigned char *vptr = params;
 
-    *(CBaseEntity **)vptr = this;
+    *(CBaseEntity **)vptr = (CBaseEntity *)this;
     pCallGetEyeAngle->Execute(params, &pRetAngle);
 }
 
-int CBasePlayer::GetButton()
+int CBasePlayerExt::GetButton()
 {
     sm_datatable_info_t pDataTable;
-    if (!gamehelpers->FindDataMapInfo(gamehelpers->GetDataMap(this), "m_nButtons", &pDataTable))
+    if (!gamehelpers->FindDataMapInfo(gamehelpers->GetDataMap((CBaseEntity *)this), "m_nButtons", &pDataTable))
         return -1;
 
     return *(int*)((byte*)(this) + pDataTable.actual_offset);
 }
 
 // Thanks to Forgetest from his l4d_lagcomp_skeet.
-CUserCmd *CBasePlayer::GetCurrentCommand()
+CUserCmd *CBasePlayerExt::GetCurrentCommand()
 {
     sm_datatable_info_t pDataTable;
-    if (!gamehelpers->FindDataMapInfo(gamehelpers->GetDataMap(this), "m_hViewModel", &pDataTable))
+    if (!gamehelpers->FindDataMapInfo(gamehelpers->GetDataMap((CBaseEntity *)this), "m_hViewModel", &pDataTable))
         return NULL;
 
     int offset = pDataTable.actual_offset 
@@ -200,11 +201,11 @@ CBaseEntity *CTerrorPlayer::OffsetEHandleToEntity(int iOff) {
     return gameents->EdictToBaseEntity(pEdict);
 }
 
-void CTerrorPlayer::OnVomitedUpon(CBasePlayer *pAttacker, bool bIsExplodedByBoomer)
+void CTerrorPlayer::OnVomitedUpon(CBasePlayerExt *pAttacker, bool bIsExplodedByBoomer)
 {
     struct {
         CTerrorPlayer *pVictim;
-        CBasePlayer *pAttacker;
+        CBasePlayerExt *pAttacker;
         bool bIsExplodedByBoomer;
     } stake {this, pAttacker, bIsExplodedByBoomer};
 
@@ -260,22 +261,22 @@ bool ZombieManager::GetRandomPZSpawnPosition(ZombieClassType type, int attampts,
     return *(bool *)((byte *)ret);
 }
 
-inline void CTraceFilterSimple::SetTraceType(TraceType_t traceType)
+inline void CTraceFilterSimpleExt::SetTraceType(TraceType_t traceType)
 {
     m_TraceType = traceType;
 }
 
-inline edict_t *CBaseEntity::edict()
+inline edict_t *CBaseEntityExt::edict()
 {
-    return gameents->BaseEntityToEdict(this);
+    return gameents->BaseEntityToEdict((CBaseEntity *)this);
 }
 
-inline int CBaseEntity::entindex()
+inline int CBaseEntityExt::entindex()
 {
-    return gamehelpers->EntityToBCompatRef(this);
+    return gamehelpers->EntityToBCompatRef((CBaseEntity *)this);
 }
 
-inline const char *CBaseEntity::GetClassName()
+inline const char *CBaseEntityExt::GetClassName()
 {
     return edict()->GetClassName();
 }
@@ -285,9 +286,9 @@ inline float CNavAreaExt::GetFlow()
     return *(float *)((byte *)(this) + m_iOff_m_flow);
 }
 
-inline void CBaseEntity::GetVelocity(Vector *velocity)
+inline void CBaseEntityExt::GetVelocity(Vector *velocity)
 {
-    velocity = (Vector *)((byte *)(this) + CBaseEntity::m_iOff_m_vecVelocity);
+    velocity = (Vector *)((byte *)(this) + CBaseEntityExt::m_iOff_m_vecVelocity);
 }
 
 inline BlockType_t CEnvPhysicsBlocker::GetBlockType()
@@ -305,12 +306,12 @@ inline bool CBaseCombatWeaponExt::IsReloading()
     return *(bool*)((byte*)(this) + CBaseCombatWeaponExt::m_iOff_m_bInReload);
 }
 
-inline int CBasePlayer::GetFlags()
+inline int CBasePlayerExt::GetFlags()
 {
-    return *(int*)((byte*)(this) + CBasePlayer::m_iOff_m_fFlags);
+    return *(int*)((byte*)(this) + CBasePlayerExt::m_iOff_m_fFlags);
 }
 
-inline bool CBasePlayer::IsBot()
+inline bool CBasePlayerExt::IsBot()
 {
     return (GetFlags() & FL_FAKECLIENT) != 0;
 }

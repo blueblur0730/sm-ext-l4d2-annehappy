@@ -1,6 +1,7 @@
 #include "SI/smoker.h"
 #include "utils.h"
 #include "in_buttons.h"
+#include "player.h"
 
 CSmokerTimerEvent g_SmokerTimerEvent;
 static ITimer *g_hTimerCoolDown = NULL;
@@ -99,7 +100,7 @@ void CSmokerEntityListner::OnPostThink(CBaseEntity *pEntity)
 
                 if ((pCmd->buttons & IN_FORWARD) || (pCmd->buttons & IN_BACK) || (pCmd->buttons & IN_MOVELEFT) || (pCmd->buttons & IN_MOVERIGHT))
                 {
-                    ClientPush((CBasePlayer *)pSmoker, vecForward);
+                    ClientPush((CBasePlayerExt *)pSmoker, vecForward);
                 }
             }
         }
@@ -108,7 +109,7 @@ void CSmokerEntityListner::OnPostThink(CBaseEntity *pEntity)
     if (pSmoker->HasVisibleThreats())
     {
         QAngle vecTargetAngle;
-        UTIL_ComputeAimAngles((CBasePlayer *)pSmoker, (CBasePlayer *)pTarget, &vecTargetAngle, AimChest);
+        UTIL_ComputeAimAngles((CBasePlayerExt *)pSmoker, (CBasePlayerExt *)pTarget, &vecTargetAngle, AimChest);
         vecTargetAngle.z = 0.0f;
         pSmoker->Teleport(NULL, &vecTargetAngle, NULL);
     }
@@ -173,7 +174,7 @@ CTerrorPlayer* BossZombiePlayerBot::OnSmokerChooseVictim(CTerrorPlayer *pLastVic
 
         if (pLastVictim->IsSurvivor())
         {
-            CBaseEntity *pWeapon = pLastVictim->GetActiveWeapon();
+            CBaseCombatWeaponExt *pWeapon = pLastVictim->GetActiveWeapon();
             if (pWeapon && pWeapon->edict())
             {
                 const char *szClassName = pWeapon->GetClassName();
@@ -222,7 +223,7 @@ static bool TR_RayFilterBySmoker(IHandleEntity* pHandleEntity, int contentsMask,
     if (!pEdict)
         return false;
 
-    CBaseEntity *pEntity = gameents->EdictToBaseEntity(pEdict);
+    CBaseEntityExt *pEntity = (CBaseEntityExt *)gameents->EdictToBaseEntity(pEdict);
     if (!pEntity)
         return false;
 
@@ -274,7 +275,7 @@ static CTerrorPlayer *SmokerTargetChoose(int method, CTerrorPlayer *pSmoker, CTe
                 if (pSpecificTarget && pPlayer == pSpecificTarget)
                     continue;
                     
-                CBaseEntity *pWeapon = pPlayer->GetActiveWeapon();
+                CBaseCombatWeaponExt *pWeapon = pPlayer->GetActiveWeapon();
                 if (pWeapon && pWeapon->edict())
                 {
                     const char *szClassName = pWeapon->GetClassName();
@@ -382,7 +383,7 @@ static int TeamMeleeCheck()
             continue;
 
         g_iValidSurvivor += 1;
-        CBaseEntity *pWeapon = pPlayer->GetActiveWeapon();
+        CBaseCombatWeaponExt *pWeapon = pPlayer->GetActiveWeapon();
         if (pWeapon && pWeapon->edict())
         {
             const char *szClassName = pWeapon->GetClassName();

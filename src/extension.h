@@ -79,7 +79,7 @@ public:
 
 protected:
 	bool LoadGameData(IGameConfig *pGameData, char* error, size_t maxlen);
-	bool FindSendProps(char* error, size_t maxlen);
+	bool FindSendProps(IGameConfig *pGameData, char* error, size_t maxlen);
 	bool AddEventListner();
 	void RemoveEventListner();
 	void DestroyCalls(ICallWrapper *pCall);

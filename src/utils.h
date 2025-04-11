@@ -26,24 +26,40 @@ struct utils_t {
     int index;
 };
 
-CBasePlayer* UTIL_PlayerByIndex(int playerIndex);
-CBasePlayer* UTIL_PlayerByUserId(int userID);
-CBasePlayer* UTIL_GetClosetSurvivor(CBasePlayer* pPlayer, CBasePlayer* pIgnorePlayer = NULL, bool bCheckIncapp = false, bool bCheckDominated = false);
+CBasePlayerExt* UTIL_PlayerByIndex(int playerIndex);
+
+CBasePlayerExt* UTIL_PlayerByUserId(int userID);
+
+CBasePlayerExt* UTIL_GetClosetSurvivor(CBasePlayerExt* pPlayer, CBasePlayerExt* pIgnorePlayer = NULL, bool bCheckIncapp = false, bool bCheckDominated = false);
+
 Vector UTIL_MakeVectorFromPoints(Vector src1, Vector src2);
-void UTIL_ComputeAimAngles(CBasePlayer* pPlayer, CBasePlayer* pTarget, QAngle* angles, AimType type = AimEye);
-vec_t GetSelfTargetAngle(CBasePlayer* pAttacker, CBasePlayer* pTarget);
-bool UTIL_IsInAimOffset(CBasePlayer* pAttacker, CBasePlayer* pTarget, float offset);
+
+void UTIL_ComputeAimAngles(CBasePlayerExt* pPlayer, CBasePlayerExt* pTarget, QAngle* angles, AimType type = AimEye);
+
+vec_t GetSelfTargetAngle(CBasePlayerExt* pAttacker, CBasePlayerExt* pTarget);
+
+bool UTIL_IsInAimOffset(CBasePlayerExt* pAttacker, CBasePlayerExt* pTarget, float offset);
+
 bool TR_EntityFilter(IHandleEntity *ignore, int contentsMask);
+
 // false means will, true otherwise.
-bool WillHitWallOrFall(CBasePlayer* pPlayer, Vector vec);
-bool ClientPush(CBasePlayer* pPlayer, Vector vec);
+bool WillHitWallOrFall(CBasePlayerExt* pPlayer, Vector vec);
+
+bool ClientPush(CBasePlayerExt* pPlayer, Vector vec);
+
 Vector UTIL_CaculateVel(const Vector& vecSelfPos, const Vector& vecTargetPos, vec_t flForce);
+
 // from sourcemod.
-CBaseEntity *UTIL_GetClientAimTarget(CBaseEntity *pEntity, bool only_players);
+CBaseEntity *UTIL_GetClientAimTarget(CBaseEntityExt *pEntity, bool only_players);
+
 bool UTIL_IsLeftBehind(CTerrorPlayer *pPlayer);
+
 static float CalculateTeamDistance(CTerrorPlayer *pIgnorePlayer = NULL);
+
 inline const CBaseEntity *EntityFromEntityHandle(const IHandleEntity *pConstHandleEntity);
+
 inline CBaseEntity *EntityFromEntityHandle(IHandleEntity *pHandleEntity);
+
 bool PassServerEntityFilter(const IHandleEntity *pTouch, const IHandleEntity *pPass);
 
 static bool (__cdecl *pFnIsVisibleToPlayer)(const Vector&, CBasePlayer *, int, int, float, const IHandleEntity *, void *, bool *);

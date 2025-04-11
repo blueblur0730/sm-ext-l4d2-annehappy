@@ -52,7 +52,7 @@ enum ZombieClassType {
 typedef bool (*ShouldHitFunc_t)(IHandleEntity* pHandleEntity, int contentsMask);
 typedef bool (*ShouldHitFunc2_t)(IHandleEntity* pHandleEntity, int contentsMask, void* data);
 
-class CTraceFilterSimple : public CTraceFilter
+class CTraceFilterSimpleExt : public CTraceFilter
 {
 public:
 	static void* pFnCTraceFilterSimple;
@@ -60,8 +60,8 @@ public:
 	static ICallWrapper* pCallCTraceFilterSimple2;
 
 public:
-	CTraceFilterSimple(const IHandleEntity *passedict = NULL, Collision_Group_t collisionGroup = COLLISION_GROUP_NONE, ShouldHitFunc_t pExtraShouldHitFunc = NULL);
-	CTraceFilterSimple(const IHandleEntity *passedict = NULL, Collision_Group_t collisionGroup = COLLISION_GROUP_NONE, ShouldHitFunc2_t pExtraShouldHitFunc = NULL, void *data = NULL);
+	CTraceFilterSimpleExt(const IHandleEntity *passedict = NULL, Collision_Group_t collisionGroup = COLLISION_GROUP_NONE, ShouldHitFunc_t pExtraShouldHitFunc = NULL);
+	CTraceFilterSimpleExt(const IHandleEntity *passedict = NULL, Collision_Group_t collisionGroup = COLLISION_GROUP_NONE, ShouldHitFunc2_t pExtraShouldHitFunc = NULL, void *data = NULL);
 
 	virtual bool ShouldHitEntity(IHandleEntity *pHandleEntity, int contentsMask) override;
 	void SetTraceType(TraceType_t traceType) {
@@ -99,7 +99,7 @@ private:
 };
 */
 
-class CBaseEntity : public IServerEntity {
+class CBaseEntityExt : public IServerEntity {
 public:
 	static int m_iOff_m_vecVelocity;
 
@@ -129,7 +129,7 @@ public:
 	void GetEyeAngles(QAngle *pRetAngle);
 };
 
-class CEnvPhysicsBlocker : public CBaseEntity {
+class CEnvPhysicsBlocker : public CBaseEntityExt {
 public:
 	static int m_iOff_m_nBlockType;
 
@@ -137,7 +137,7 @@ public:
 	inline BlockType_t GetBlockType();
 };
 
-class CBaseAbility : public CBaseEntity {
+class CBaseAbility : public CBaseEntityExt {
 public:
 	static int m_iOff_m_isSpraying;
 
@@ -145,7 +145,7 @@ public:
 	inline bool IsSpraying();
 };
 
-class CBaseCombatWeaponExt : public CBaseEntity {
+class CBaseCombatWeaponExt : public CBaseEntityExt {
 public:
 	static int m_iOff_m_bInReload;
 
@@ -153,7 +153,7 @@ public:
 	inline bool IsReloading();
 };
 
-class CBasePlayer : public CBaseEntity {
+class CBasePlayerExt : public CBaseEntityExt {
 public:
 	static int m_iOff_m_fFlags;
 
@@ -167,7 +167,7 @@ public:
 	CUserCmd *GetCurrentCommand();
 };
 
-class CTerrorPlayer : public CBasePlayer {
+class CTerrorPlayer : public CBasePlayerExt {
 public:
     static int m_iOff_m_zombieClass;
 	static int m_iOff_m_customAbility;
@@ -239,7 +239,7 @@ public:
 
 	CBaseEntity *OffsetEHandleToEntity(int iOff);
 
-	void OnVomitedUpon(CBasePlayer *pAttacker, bool bIsExplodedByBoomer);
+	void OnVomitedUpon(CBasePlayerExt *pAttacker, bool bIsExplodedByBoomer);
 
 	CTerrorPlayer *GetSpecialInfectedDominatingMe();
 
@@ -247,7 +247,7 @@ public:
 
 	CNavAreaExt *GetLastKnownArea();
 
-	void DTRCallBack_OnVomitedUpon(CBasePlayer *pAttacker, bool bIsExplodedByBoomer);
+	void DTRCallBack_OnVomitedUpon(CBasePlayerExt *pAttacker, bool bIsExplodedByBoomer);
 };
 
 class TerrorNavMesh {

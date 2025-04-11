@@ -1,23 +1,24 @@
 #include "utils.h"
 #include "extension.h"
+#include "player.h"
 
-CBasePlayer* UTIL_PlayerByIndex(int playerIndex)
+CBasePlayerExt* UTIL_PlayerByIndex(int playerIndex)
 {
 	if (playerIndex > 0 && playerIndex <= playerhelpers->GetMaxClients()) 
 	{
 		IGamePlayer* pPlayer = playerhelpers->GetGamePlayer(playerIndex);
 		if (pPlayer != NULL) 
-			return (CBasePlayer*)gameents->EdictToBaseEntity(pPlayer->GetEdict());
+			return (CBasePlayerExt *)gameents->EdictToBaseEntity(pPlayer->GetEdict());
 	}
 
 	return NULL;
 }
 
-CBasePlayer* UTIL_PlayerByUserId(int userID)
+CBasePlayerExt* UTIL_PlayerByUserId(int userID)
 {
 	for (int i = 1; i <= gpGlobals->maxClients; i++ )
 	{
-		CBasePlayer *pPlayer = UTIL_PlayerByIndex(i);
+		CBasePlayerExt *pPlayer = UTIL_PlayerByIndex(i);
 
 		if (!pPlayer)
 			continue;
@@ -29,7 +30,7 @@ CBasePlayer* UTIL_PlayerByUserId(int userID)
 	return NULL;
 }
 
-CBasePlayer* UTIL_GetClosetSurvivor(CBasePlayer* pPlayer, CBasePlayer* pIgnorePlayer = NULL, bool bCheckIncapp = false, bool bCheckDominated = false)
+CBasePlayerExt* UTIL_GetClosetSurvivor(CBasePlayerExt* pPlayer, CBasePlayerExt* pIgnorePlayer = NULL, bool bCheckIncapp = false, bool bCheckDominated = false)
 {
     int index = -1;
     index = pPlayer->entindex();
@@ -78,7 +79,7 @@ CBasePlayer* UTIL_GetClosetSurvivor(CBasePlayer* pPlayer, CBasePlayer* pIgnorePl
 
     int closetIndex = aTargetList[0].index;
     aTargetList.clear();
-    return (CBasePlayer *)UTIL_PlayerByIndex(closetIndex);
+    return UTIL_PlayerByIndex(closetIndex);
 }
 
 Vector UTIL_MakeVectorFromPoints(Vector src1, Vector src2)
@@ -90,7 +91,7 @@ Vector UTIL_MakeVectorFromPoints(Vector src1, Vector src2)
     return output;
 }
 
-void UTIL_ComputeAimAngles(CBasePlayer* pPlayer, CBasePlayer* pTarget, QAngle* angles, AimType type = AimEye)
+void UTIL_ComputeAimAngles(CBasePlayerExt *pPlayer, CBasePlayerExt *pTarget, QAngle* angles, AimType type = AimEye)
 {
     Vector vecTargetPos;
 
@@ -129,7 +130,7 @@ void UTIL_ComputeAimAngles(CBasePlayer* pPlayer, CBasePlayer* pTarget, QAngle* a
     VectorAngles(vecLookAt, *angles);
 }
 
-vec_t GetSelfTargetAngle(CBasePlayer* pAttacker, CBasePlayer* pTarget)
+vec_t GetSelfTargetAngle(CBasePlayerExt *pAttacker, CBasePlayerExt *pTarget)
 {
     Vector vecSelfEyePos = ((CTerrorPlayer *)pAttacker)->GetEyeOrigin();
     Vector vecTargetEyePos = ((CTerrorPlayer *)pTarget)->GetEyeOrigin();
@@ -139,7 +140,7 @@ vec_t GetSelfTargetAngle(CBasePlayer* pAttacker, CBasePlayer* pTarget)
     VectorNormalize(vecResult);
 
     QAngle vecAngle;
-    ((CBaseEntity *)pAttacker)->GetEyeAngles(&vecAngle);
+    pAttacker->GetEyeAngles(&vecAngle);
     vecAngle.x = vecAngle.z = 0.0f;
 
     Vector vecSelfEyeVector;
@@ -149,7 +150,7 @@ vec_t GetSelfTargetAngle(CBasePlayer* pAttacker, CBasePlayer* pTarget)
     return (acos(vecSelfEyeVector.Dot(vecResult)) * 180.0 / M_PI);
 }
 
-bool UTIL_IsInAimOffset(CBasePlayer* pAttacker, CBasePlayer* pTarget, float offset)
+bool UTIL_IsInAimOffset(CBasePlayerExt *pAttacker, CBasePlayerExt *pTarget, float offset)
 {
     vec_t angle = GetSelfTargetAngle(pAttacker, pTarget);
     return (angle != 1.0f && angle <= offset);
@@ -160,7 +161,7 @@ bool TR_EntityFilter(IHandleEntity *ignore, int contentsMask)
     if (!ignore)
         return false;
 
-    CBaseEntity *pEntity = EntityFromEntityHandle(ignore);
+    CBaseEntityExt *pEntity = (CBaseEntityExt *)EntityFromEntityHandle(ignore);
     if (!pEntity)
         return false;
 
@@ -182,7 +183,7 @@ bool TR_EntityFilter(IHandleEntity *ignore, int contentsMask)
 }
 
 // false means will, true otherwise.
-bool WillHitWallOrFall(CBasePlayer* pPlayer, Vector vec)
+bool WillHitWallOrFall(CBasePlayerExt *pPlayer, Vector vec)
 {
     CTerrorPlayer *pTerrorPlayer = (CTerrorPlayer *)pPlayer;
     Vector vecSelfPos = pTerrorPlayer->GetAbsOrigin();
@@ -231,7 +232,7 @@ bool WillHitWallOrFall(CBasePlayer* pPlayer, Vector vec)
         if (index <= 0 || index > gpGlobals->maxClients)
             return false;
 
-        CBaseEntity *pEntity = (CBaseEntity *)UTIL_PlayerByIndex(index);
+        CBaseEntityExt *pEntity = (CBaseEntityExt *)UTIL_PlayerByIndex(index);
         if (!pEntity)
             return false;
 
@@ -244,7 +245,7 @@ bool WillHitWallOrFall(CBasePlayer* pPlayer, Vector vec)
     return false;
 }
 
-bool ClientPush(CBasePlayer* pPlayer, Vector vec)
+bool ClientPush(CBasePlayerExt *pPlayer, Vector vec)
 {
     Vector vecVelocity;
     pPlayer->GetVelocity(&vecVelocity);
@@ -272,42 +273,8 @@ Vector UTIL_CaculateVel(const Vector& vecSelfPos, const Vector& vecTargetPos, ve
     return vecResult;
 }
 
-inline void UTIL_TraceRay( const Ray_t &ray, unsigned int mask, 
-						   IHandleEntity *ignore, Collision_Group_t collisionGroup, ShouldHitFunc_t pExtraShouldHitCheckFn = NULL, trace_t *ptr )
-{
-	CTraceFilterSimple traceFilter(ignore, collisionGroup, pExtraShouldHitCheckFn);
-	enginetrace->TraceRay( ray, mask, &traceFilter, ptr );
-}
-
-inline void UTIL_TraceRay(  const Ray_t &ray, unsigned int mask, 
-                            IHandleEntity *ignore, Collision_Group_t collisionGroup, trace_t *ptr, ShouldHitFunc2_t pExtraShouldHitCheckFn = NULL, void *data = NULL )
-{
-    CTraceFilterSimple traceFilter(ignore, collisionGroup, pExtraShouldHitCheckFn, data);
-    enginetrace->TraceRay( ray, mask, &traceFilter, ptr );
-}
-
-inline void UTIL_TraceHull( const Vector& vecAbsStart, const Vector& vecAbsEnd, 
-                            const Vector& hullMin, const Vector& hullMax, unsigned int mask, 
-                            IHandleEntity* ignore, Collision_Group_t collisionGroup, trace_t* ptr, ShouldHitFunc_t pExtraShouldHitCheckFn = NULL)
-{
-	Ray_t ray;
-	ray.Init(vecAbsStart, vecAbsEnd, hullMin, hullMax);
-	CTraceFilterSimple traceFilter(ignore, collisionGroup, pExtraShouldHitCheckFn);
-
-	enginetrace->TraceRay(ray, mask, &traceFilter, ptr);
-}
-
-static bool (__cdecl *pFnIsVisibleToPlayer)(const Vector&, CBasePlayer *, int, int, float, const IHandleEntity *, void *, bool *);
-
-// int __usercall IsVisibleToPlayer@<eax>(long double@<st0>, float *, CBaseEntity *, int, char, int, const IHandleEntity *, CNavArea **, _BYTE *)
-// bool IsVisibleToPlayer(const Vector vecTargetPos, CBasePlayer *pPlayer, int team, int team_target, float fl, const IHandleEntity *pIgnore, CNavArea *pArea, bool *b)
-inline bool IsVisiableToPlayer(const Vector &vecTargetPos, CBasePlayer *pPlayer, int team, int team_target, float flUnknow, const IHandleEntity *pIgnore, void *pArea, bool *bUnknown)
-{
-    return pFnIsVisibleToPlayer(vecTargetPos, pPlayer, team, team_target, flUnknow, pIgnore, pArea, bUnknown);
-}
-
 // from sourcemod.
-CBaseEntity *UTIL_GetClientAimTarget(CBaseEntity *pEntity, bool only_players)
+CBaseEntity *UTIL_GetClientAimTarget(CBaseEntityExt *pEntity, bool only_players)
 {
 	if (!pEntity)
 		return NULL;
@@ -338,7 +305,7 @@ CBaseEntity *UTIL_GetClientAimTarget(CBaseEntity *pEntity, bool only_players)
     if (tr.fraction == 1.0f || tr.m_pEnt == NULL)
         return NULL;
 
-    int index = tr.m_pEnt->entindex();
+    int index = ((CBaseEntityExt *)tr.m_pEnt)->entindex();
 
 	IGamePlayer *pTargetPlayer = playerhelpers->GetGamePlayer(index);
 	if (pTargetPlayer != NULL && !pTargetPlayer->IsInGame())
@@ -350,7 +317,7 @@ CBaseEntity *UTIL_GetClientAimTarget(CBaseEntity *pEntity, bool only_players)
 		return NULL;
 	}
 
-	return gameents->EdictToBaseEntity(tr.m_pEnt->edict());
+	return gameents->EdictToBaseEntity(((CBaseEntityExt *)tr.m_pEnt)->edict());
 }
 
 bool UTIL_IsLeftBehind(CTerrorPlayer *pPlayer)
@@ -419,18 +386,18 @@ bool PassServerEntityFilter( const IHandleEntity *pTouch, const IHandleEntity *p
 	if ( pTouch == pPass )
 		return false;
 
-	const CBaseEntity *pEntTouch = EntityFromEntityHandle( pTouch );
-	const CBaseEntity *pEntPass = EntityFromEntityHandle( pPass );
+	const CBaseEntityExt *pEntTouch = (CBaseEntityExt *)EntityFromEntityHandle( pTouch );
+	const CBaseEntityExt *pEntPass = (CBaseEntityExt *)EntityFromEntityHandle( pPass );
 	if ( !pEntTouch || !pEntPass )
 		return true;
 
 	// don't clip against own missiles
     // what the hell are the consts doing here?
-	if ( const_cast<CBaseEntity *>(pEntTouch)->GetOwnerEntity() == pEntPass )
+	if ( (CBaseEntityExt *)(const_cast<CBaseEntityExt *>(pEntTouch)->GetOwnerEntity()) == pEntPass )
 		return false;
 	
 	// don't clip against owner
-	if ( const_cast<CBaseEntity *>(pEntPass)->GetOwnerEntity() == pEntTouch )
+	if ( (CBaseEntityExt *)(const_cast<CBaseEntityExt *>(pEntPass)->GetOwnerEntity()) == pEntTouch )
 		return false;	
 
 	return true;
@@ -471,6 +438,10 @@ inline float FloatAbs(float f)
 	return f > 0 ? f : -f;
 }
 
+static bool (__cdecl *pFnIsVisibleToPlayer)(const Vector&, CBasePlayer *, int, int, float, const IHandleEntity *, void *, bool *);
+
+// int __usercall IsVisibleToPlayer@<eax>(long double@<st0>, float *, CBaseEntity *, int, char, int, const IHandleEntity *, CNavArea **, _BYTE *)
+// bool IsVisibleToPlayer(const Vector vecTargetPos, CBasePlayer *pPlayer, int team, int team_target, float fl, const IHandleEntity *pIgnore, CNavArea *pArea, bool *b)
 inline bool IsVisiableToPlayer(const Vector &vecTargetPos, CBasePlayer *pPlayer, int team, int team_target, float flUnknow, const IHandleEntity *pIgnore, void *pArea, bool *bUnknown)
 {
     return pFnIsVisibleToPlayer(vecTargetPos, pPlayer, team, team_target, flUnknow, pIgnore, pArea, bUnknown);
@@ -479,14 +450,14 @@ inline bool IsVisiableToPlayer(const Vector &vecTargetPos, CBasePlayer *pPlayer,
 inline void UTIL_TraceRay( const Ray_t &ray, unsigned int mask, 
     IHandleEntity *ignore, Collision_Group_t collisionGroup, ShouldHitFunc_t pExtraShouldHitCheckFn = NULL, trace_t *ptr )
 {
-    CTraceFilterSimple traceFilter(ignore, collisionGroup, pExtraShouldHitCheckFn);
+    CTraceFilterSimpleExt traceFilter(ignore, collisionGroup, pExtraShouldHitCheckFn);
     enginetrace->TraceRay( ray, mask, &traceFilter, ptr );
 }
 
 inline void UTIL_TraceRay(  const Ray_t &ray, unsigned int mask, 
     IHandleEntity *ignore, Collision_Group_t collisionGroup, trace_t *ptr, ShouldHitFunc2_t pExtraShouldHitCheckFn = NULL, void *data = NULL )
 {
-   CTraceFilterSimple traceFilter(ignore, collisionGroup, pExtraShouldHitCheckFn, data);
+   CTraceFilterSimpleExt traceFilter(ignore, collisionGroup, pExtraShouldHitCheckFn, data);
    enginetrace->TraceRay( ray, mask, &traceFilter, ptr );
 }
 
@@ -496,7 +467,7 @@ inline void UTIL_TraceHull( const Vector& vecAbsStart, const Vector& vecAbsEnd,
 {
    Ray_t ray;
    ray.Init(vecAbsStart, vecAbsEnd, hullMin, hullMax);
-   CTraceFilterSimple traceFilter(ignore, collisionGroup, pExtraShouldHitCheckFn);
+   CTraceFilterSimpleExt traceFilter(ignore, collisionGroup, pExtraShouldHitCheckFn);
 
    enginetrace->TraceRay(ray, mask, &traceFilter, ptr);
 }
