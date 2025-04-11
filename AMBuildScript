@@ -219,7 +219,6 @@ class ExtensionConfig(object):
       '-std=c++20',
     ]
 
-    
     have_gcc = cxx.family == 'gcc'
     have_clang = cxx.family == 'clang'
 
