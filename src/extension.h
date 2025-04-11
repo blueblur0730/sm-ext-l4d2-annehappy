@@ -113,6 +113,9 @@ extern IEngineTrace *enginetrace;
 // static prop entity manager interface.
 extern IStaticPropMgr *staticpropmgr;
 
+TerrorNavMesh *g_pNavMesh;
+ZombieManager *g_pZombieManager;
+
 // ai_boomer
 extern ConVar z_boomer_bhop;
 extern ConVar z_boomer_bhop_speed;

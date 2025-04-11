@@ -17,12 +17,8 @@
 #include "mathlib.h"
 #include "usercmd.h"
 
-#define EYE_ANGLE_UP_HEIGHT 15.0
 #define NAV_MESH_HEIGHT 20.0
-#define FALL_DETECT_HEIGHT 120.0
-#define COMMAND_INTERVAL 1.0
 #define PLAYER_HEIGHT 72.0
-#define TURN_ANGLE_DIVIDE 3.0
 
 // https://developer.valvesoftware.com/wiki/Env_physics_blocker
 enum BlockType_t {
@@ -116,13 +112,20 @@ public:
 	static int vtblindex_CBaseEntity_PostThink;
 
 public:
-	edict_t* edict();
-	int entindex();
-	const char *GetClassName();
-	void GetVelocity(Vector *velocity);
+	inline edict_t* edict();
+
+	inline int entindex();
+
+	inline const char *GetClassName();
+
+	inline void GetVelocity(Vector *velocity);
+
 	CBaseEntity *GetOwnerEntity();
+
 	MoveType_t GetMoveType();
+
 	void Teleport(Vector *newPosition, QAngle *newAngles, Vector *newVelocity);
+
 	void GetEyeAngles(QAngle *pRetAngle);
 };
 
@@ -131,7 +134,7 @@ public:
 	static int m_iOff_m_nBlockType;
 
 public:
-	BlockType_t GetBlockType();
+	inline BlockType_t GetBlockType();
 };
 
 class CBaseAbility : public CBaseEntity {
@@ -139,7 +142,7 @@ public:
 	static int m_iOff_m_isSpraying;
 
 public:
-	bool IsSpraying();
+	inline bool IsSpraying();
 };
 
 class CBaseCombatWeaponExt : public CBaseEntity {
@@ -147,7 +150,7 @@ public:
 	static int m_iOff_m_bInReload;
 
 public:
-	bool IsReloading();
+	inline bool IsReloading();
 };
 
 class CBasePlayer : public CBaseEntity {
@@ -155,15 +158,12 @@ public:
 	static int m_iOff_m_fFlags;
 
 public:
-	inline int GetFlags() const {
-		return *(int*)((byte*)(this) + CBasePlayer::m_iOff_m_fFlags);
-	}
+	inline int GetFlags();
 
-	inline bool IsBot() {
-		return (GetFlags() & FL_FAKECLIENT) != 0;
-	}
+	inline bool IsBot();
 
 	int GetButton();
+
 	CUserCmd *GetCurrentCommand();
 };
 
@@ -193,83 +193,58 @@ public:
 public:
 	IPlayerInfo *GetPlayerInfo();
 
-	inline IGamePlayer *GetGamePlayer() {
-		return playerhelpers->GetGamePlayer(entindex());
-	}
+	inline IGamePlayer *GetGamePlayer();
 
 	Vector GetEyeOrigin();
 
-	inline Vector GetAbsOrigin() {
-		return GetPlayerInfo()->GetAbsOrigin();
-	}
+	inline Vector GetAbsOrigin();
 
 	// this is fastest and the most simple.
 	// if not, use m_lifeState.
-	inline bool IsDead() {
-		return GetPlayerInfo()->IsDead();
-	}
+	inline bool IsDead();
 
-	inline Vector GetPlayerMins() {
-		return GetPlayerInfo()->GetPlayerMins();
-	}
+	inline Vector GetPlayerMins();
 
-	inline Vector GetPlayerMaxs() {
-		return GetPlayerInfo()->GetPlayerMaxs();
-	}
+	inline Vector GetPlayerMaxs();
 
-	inline bool IsFakeClient() {
-		IGamePlayer *pPlayer = GetGamePlayer();
-		return pPlayer->IsFakeClient();
-	}
+	inline bool IsFakeClient();
 
-	inline bool IsInGame() {
-		return GetGamePlayer()->IsInGame();
-	}
+	inline bool IsInGame();
 
-	inline bool IsIncapped() {
-		return *(bool*)((byte*)(this) + m_iOff_m_isIncapacitated);
-	}
+	inline bool IsIncapped();
 
 	L4D2Teams GetTeam();
 
-	inline bool IsSurvivor() {
-		return (GetTeam() == L4D2Teams_Survivor);
-	}
+	inline bool IsSurvivor();
 
-	inline bool IsInfected() {
-		return (GetTeam() == L4D2Teams_Infected);
-	}
+	inline bool IsInfected();
 
-	inline bool IsSpectator() {
-		return (GetTeam() == L4D2Teams_Spectator);
-	}
+	inline bool IsSpectator();
 
-	inline bool HasVisibleThreats() {
-		return *(bool*)((byte*)(this) + m_iOff_m_hasVisibleThreats);
-	}
+	inline bool HasVisibleThreats();
 
 	CBaseAbility *GetAbility();
+
 	CBaseEntity *GetGroundEntity();
+
 	CBaseCombatWeaponExt *GetActiveWeapon();
+	
 	CTerrorPlayer *GetTongueVictim();
 
-	inline int GetClass() {
-		return *(uint8_t *)((uint8_t *)this + m_iOff_m_zombieClass);
-	}
+	inline ZombieClassType GetClass();
 
-	inline bool IsBoomer() {
-        return (GetClass() == ZC_BOOMER);
-    }
+	inline bool IsBoomer();
 
-	inline bool IsSmoker() {
-        return (GetClass() == ZC_SMOKER);
-	}
+	inline bool IsSmoker();
 
 	CBaseEntity *OffsetEHandleToEntity(int iOff);
 
 	void OnVomitedUpon(CBasePlayer *pAttacker, bool bIsExplodedByBoomer);
+
 	CTerrorPlayer *GetSpecialInfectedDominatingMe();
+
 	bool IsStaggering();
+
 	CNavAreaExt *GetLastKnownArea();
 
 	void DTRCallBack_OnVomitedUpon(CBasePlayer *pAttacker, bool bIsExplodedByBoomer);
@@ -280,9 +255,7 @@ public:
 	static int m_iOff_m_fMapMaxFlowDistance;
 
 public:
-	inline float GetMapMaxFlowDistance() {
-		return *(float *)((byte *)(this) + m_iOff_m_fMapMaxFlowDistance);
-	}
+	inline float GetMapMaxFlowDistance();
 };
 
 class ZombieManager {

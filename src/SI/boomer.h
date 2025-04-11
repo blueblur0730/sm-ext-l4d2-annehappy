@@ -6,6 +6,10 @@
 #include "convar.h"
 #include "wrappers.h"
 
+#define TURN_ANGLE_DIVIDE 3.0
+#define EYE_ANGLE_UP_HEIGHT 15.0
+#define COMMAND_INTERVAL 1.0
+
 ConVar z_boomer_bhop("z_boomer_bhop", "1", FCVAR_NOTIFY | FCVAR_CHEAT, "Enable boomer bhop.", true, 0.0f, true, 1.0f);
 ConVar z_boomer_bhop_speed("z_boomer_bhop_speed", "150.0", FCVAR_NOTIFY | FCVAR_CHEAT, "Boomer bhop speed.", true, 0.0f, false, 0.0f);
 ConVar z_boomer_vision_up_on_vomit("z_boomer_vision_up_on_vomit", "1", FCVAR_NOTIFY | FCVAR_CHEAT, "Boomer vision will turn up when vomitting.", true, 0.0f, true, 1.0f);

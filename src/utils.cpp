@@ -1,4 +1,5 @@
 #include "utils.h"
+#include "extension.h"
 
 CBasePlayer* UTIL_PlayerByIndex(int playerIndex)
 {
@@ -159,7 +160,7 @@ bool TR_EntityFilter(IHandleEntity *ignore, int contentsMask)
     if (!ignore)
         return false;
 
-    CBaseEntity *pEntity = CTraceFilterSimple::EntityFromEntityHandle(ignore);
+    CBaseEntity *pEntity = EntityFromEntityHandle(ignore);
     if (!pEntity)
         return false;
 
@@ -410,7 +411,7 @@ static float CalculateTeamDistance(CTerrorPlayer *pIgnorePlayer = NULL)
     return flTeamDistance;
 }
 
-bool PassServerEntityFilter( const IHandleEntity *pTouch, const IHandleEntity *pPass ) 
+bool PassServerEntityFilter( const IHandleEntity *pTouch, const IHandleEntity *pPass )
 {
 	if ( !pPass )
 		return true;
@@ -418,26 +419,84 @@ bool PassServerEntityFilter( const IHandleEntity *pTouch, const IHandleEntity *p
 	if ( pTouch == pPass )
 		return false;
 
-	CBaseEntity *pEntTouch = CTraceFilterSimple::EntityFromEntityHandle( pTouch );
-	CBaseEntity *pEntPass = CTraceFilterSimple::EntityFromEntityHandle( pPass );
+	const CBaseEntity *pEntTouch = EntityFromEntityHandle( pTouch );
+	const CBaseEntity *pEntPass = EntityFromEntityHandle( pPass );
 	if ( !pEntTouch || !pEntPass )
 		return true;
 
 	// don't clip against own missiles
-	if ( pEntTouch->GetOwnerEntity() == pEntPass )
+    // what the hell are the consts doing here?
+	if ( const_cast<CBaseEntity *>(pEntTouch)->GetOwnerEntity() == pEntPass )
 		return false;
 	
 	// don't clip against owner
-	if ( pEntPass->GetOwnerEntity() == pEntTouch )
+	if ( const_cast<CBaseEntity *>(pEntPass)->GetOwnerEntity() == pEntTouch )
 		return false;	
 
 	return true;
 }
 
-CBaseEntity *EntityFromEntityHandle(const IHandleEntity *pHandleEntity) {
-    if ( staticpropmgr->IsStaticProp( pHandleEntity ) )
-        return NULL;
+inline const CBaseEntity *EntityFromEntityHandle( const IHandleEntity *pConstHandleEntity )
+{
+	IHandleEntity *pHandleEntity = const_cast<IHandleEntity*>(pConstHandleEntity);
 
-    IServerUnknown *pUnk = (IServerUnknown*)pHandleEntity;
-    return (CBaseEntity *)pUnk->GetBaseEntity();
+#ifdef CLIENT_DLL
+	IClientUnknown *pUnk = (IClientUnknown*)pHandleEntity;
+	return pUnk->GetBaseEntity();
+#else
+	if ( staticpropmgr->IsStaticProp( pHandleEntity ) )
+		return NULL;
+
+	IServerUnknown *pUnk = (IServerUnknown*)pHandleEntity;
+	return pUnk->GetBaseEntity();
+#endif
+}
+
+inline CBaseEntity *EntityFromEntityHandle( IHandleEntity *pHandleEntity )
+{
+#ifdef CLIENT_DLL
+	IClientUnknown *pUnk = (IClientUnknown*)pHandleEntity;
+	return pUnk->GetBaseEntity();
+#else
+	if ( staticpropmgr->IsStaticProp( pHandleEntity ) )
+		return NULL;
+
+	IServerUnknown *pUnk = (IServerUnknown*)pHandleEntity;
+	return pUnk->GetBaseEntity();
+#endif
+}
+
+inline float FloatAbs(float f)
+{
+	return f > 0 ? f : -f;
+}
+
+inline bool IsVisiableToPlayer(const Vector &vecTargetPos, CBasePlayer *pPlayer, int team, int team_target, float flUnknow, const IHandleEntity *pIgnore, void *pArea, bool *bUnknown)
+{
+    return pFnIsVisibleToPlayer(vecTargetPos, pPlayer, team, team_target, flUnknow, pIgnore, pArea, bUnknown);
+}
+
+inline void UTIL_TraceRay( const Ray_t &ray, unsigned int mask, 
+    IHandleEntity *ignore, Collision_Group_t collisionGroup, ShouldHitFunc_t pExtraShouldHitCheckFn = NULL, trace_t *ptr )
+{
+    CTraceFilterSimple traceFilter(ignore, collisionGroup, pExtraShouldHitCheckFn);
+    enginetrace->TraceRay( ray, mask, &traceFilter, ptr );
+}
+
+inline void UTIL_TraceRay(  const Ray_t &ray, unsigned int mask, 
+    IHandleEntity *ignore, Collision_Group_t collisionGroup, trace_t *ptr, ShouldHitFunc2_t pExtraShouldHitCheckFn = NULL, void *data = NULL )
+{
+   CTraceFilterSimple traceFilter(ignore, collisionGroup, pExtraShouldHitCheckFn, data);
+   enginetrace->TraceRay( ray, mask, &traceFilter, ptr );
+}
+
+inline void UTIL_TraceHull( const Vector& vecAbsStart, const Vector& vecAbsEnd, 
+    const Vector& hullMin, const Vector& hullMax, unsigned int mask, 
+    IHandleEntity* ignore, Collision_Group_t collisionGroup, trace_t* ptr, ShouldHitFunc_t pExtraShouldHitCheckFn = NULL)
+{
+   Ray_t ray;
+   ray.Init(vecAbsStart, vecAbsEnd, hullMin, hullMax);
+   CTraceFilterSimple traceFilter(ignore, collisionGroup, pExtraShouldHitCheckFn);
+
+   enginetrace->TraceRay(ray, mask, &traceFilter, ptr);
 }

@@ -275,7 +275,7 @@ void CAnneHappy::SDK_OnAllLoaded()
 	PassInfo ret2[] = {
 		{PassType_Basic, PASSFLAG_BYVAL, sizeof(void *), NULL, 0},
 	};
-	CTerrorPlayer::pCallGetLastKnownArea = bintools->CreateVCall(CTerrorPlayer::vtblindex_CTerrorPlayer_GetLastKnownArea, 0, 0, NULL, ret2[0], 0);
+	CTerrorPlayer::pCallGetLastKnownArea = bintools->CreateVCall(CTerrorPlayer::vtblindex_CTerrorPlayer_GetLastKnownArea, 0, 0, NULL, &ret2[0], 0);
 	if (!CTerrorPlayer::pCallGetLastKnownArea)
 	{
 		smutils->LogError(myself, "Extension failed to create vcall: 'CTerrorPlayer::GetLastKnownArea'");

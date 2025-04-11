@@ -69,36 +69,6 @@ bool CTraceFilterSimple::ShouldHitEntity(IHandleEntity *pHandleEntity, int conte
 	return true;
 }
 
-void CTraceFilterSimple::SetTraceType(TraceType_t traceType)
-{
-    m_TraceType = traceType;
-}
-
-float CNavAreaExt::GetFlow()
-{
-    return *(float *)((byte *)(this) + m_iOff_m_flow);
-}
-
-edict_t *CBaseEntity::edict()
-{
-    return gameents->BaseEntityToEdict(this);
-}
-
-int CBaseEntity::entindex()
-{
-    return gamehelpers->EntityToBCompatRef(this);
-}
-
-const char *CBaseEntity::GetClassName()
-{
-    return edict()->GetClassName();
-}
-
-void CBaseEntity::GetVelocity(Vector *velocity)
-{
-    velocity = (Vector *)((byte *)(this) + CBaseEntity::m_iOff_m_vecVelocity);
-}
-
 CBaseEntity *CBaseEntity::GetOwnerEntity()
 {
     sm_datatable_info_t offset_data_info;
@@ -142,21 +112,6 @@ void CBaseEntity::GetEyeAngles(QAngle *pRetAngle)
 
     *(CBaseEntity **)vptr = this;
     pCallGetEyeAngle->Execute(params, &pRetAngle);
-}
-
-BlockType_t CEnvPhysicsBlocker::GetBlockType()
-{
-    return *(BlockType_t*)((byte*)(this) + CEnvPhysicsBlocker::m_iOff_m_nBlockType);
-}
-
-bool CBaseAbility::IsSpraying()
-{
-    return *(bool*)((byte*)(this) + CBaseAbility::m_iOff_m_isSpraying);
-}
-
-bool CBaseCombatWeaponExt::IsReloading()
-{
-    return *(bool*)((byte*)(this) + CBaseCombatWeaponExt::m_iOff_m_bInReload);
 }
 
 int CBasePlayer::GetButton()
@@ -303,4 +258,163 @@ bool ZombieManager::GetRandomPZSpawnPosition(ZombieClassType type, int attampts,
     pCallGetRandomPZSpawnPosition->Execute(&stake, &ret);
 
     return *(bool *)((byte *)ret);
+}
+
+inline void CTraceFilterSimple::SetTraceType(TraceType_t traceType)
+{
+    m_TraceType = traceType;
+}
+
+inline edict_t *CBaseEntity::edict()
+{
+    return gameents->BaseEntityToEdict(this);
+}
+
+inline int CBaseEntity::entindex()
+{
+    return gamehelpers->EntityToBCompatRef(this);
+}
+
+inline const char *CBaseEntity::GetClassName()
+{
+    return edict()->GetClassName();
+}
+
+inline float CNavAreaExt::GetFlow()
+{
+    return *(float *)((byte *)(this) + m_iOff_m_flow);
+}
+
+inline void CBaseEntity::GetVelocity(Vector *velocity)
+{
+    velocity = (Vector *)((byte *)(this) + CBaseEntity::m_iOff_m_vecVelocity);
+}
+
+inline BlockType_t CEnvPhysicsBlocker::GetBlockType()
+{
+    return *(BlockType_t*)((byte*)(this) + CEnvPhysicsBlocker::m_iOff_m_nBlockType);
+}
+
+inline bool CBaseAbility::IsSpraying()
+{
+    return *(bool*)((byte*)(this) + CBaseAbility::m_iOff_m_isSpraying);
+}
+
+inline bool CBaseCombatWeaponExt::IsReloading()
+{
+    return *(bool*)((byte*)(this) + CBaseCombatWeaponExt::m_iOff_m_bInReload);
+}
+
+inline int CBasePlayer::GetFlags()
+{
+    return *(int*)((byte*)(this) + CBasePlayer::m_iOff_m_fFlags);
+}
+
+inline bool CBasePlayer::IsBot()
+{
+    return (GetFlags() & FL_FAKECLIENT) != 0;
+}
+
+inline IGamePlayer *CTerrorPlayer::GetGamePlayer()
+{
+    return playerhelpers->GetGamePlayer(entindex());
+}
+
+inline Vector CTerrorPlayer::GetAbsOrigin()
+{
+    IPlayerInfo *pPlayerInfo = GetPlayerInfo();
+    if (!pPlayerInfo)
+        return Vector(0, 0, 0);
+
+    return GetPlayerInfo()->GetAbsOrigin();
+}
+
+inline bool CTerrorPlayer::IsDead()
+{
+    IPlayerInfo *pPlayerInfo = GetPlayerInfo();
+    if (!pPlayerInfo)
+        return false;
+
+    return GetPlayerInfo()->IsDead();
+}
+
+inline Vector CTerrorPlayer::GetPlayerMins()
+{
+    IPlayerInfo *pPlayerInfo = GetPlayerInfo();
+    if (!pPlayerInfo)
+        return Vector(0, 0, 0);
+
+    return GetPlayerInfo()->GetPlayerMins();
+}
+
+inline Vector CTerrorPlayer::GetPlayerMaxs()
+{
+    IPlayerInfo *pPlayerInfo = GetPlayerInfo();
+    if (!pPlayerInfo)
+        return Vector(0, 0, 0);
+
+    return GetPlayerInfo()->GetPlayerMaxs();
+}
+
+inline bool CTerrorPlayer::IsFakeClient()
+{   
+    IGamePlayer *pPlayerInfo = GetGamePlayer();
+    if (!pPlayerInfo)
+        return false;
+
+    return GetGamePlayer()->IsFakeClient();
+}
+
+inline bool CTerrorPlayer::IsInGame()
+{
+    IGamePlayer *pPlayerInfo = GetGamePlayer();
+    if (!pPlayerInfo)
+        return false;
+
+    return GetGamePlayer()->IsInGame();
+}
+
+inline bool CTerrorPlayer::IsIncapped()
+{
+    return *(bool*)((byte*)(this) + m_iOff_m_isIncapacitated);
+}
+
+inline bool CTerrorPlayer::IsSurvivor()
+{
+    return (GetTeam() == L4D2Teams_Survivor);
+}
+
+inline bool CTerrorPlayer::IsInfected()
+{
+    return (GetTeam() == L4D2Teams_Infected);
+}
+
+inline bool CTerrorPlayer::IsSpectator()
+{
+    return (GetTeam() == L4D2Teams_Spectator);
+}
+
+inline bool CTerrorPlayer::HasVisibleThreats()
+{
+    return *(bool*)((byte*)(this) + m_iOff_m_hasVisibleThreats);
+}
+
+inline ZombieClassType CTerrorPlayer::GetClass()
+{
+    return *(ZombieClassType *)((uint8_t *)this + m_iOff_m_zombieClass);
+}
+
+inline bool CTerrorPlayer::IsBoomer()
+{
+    return (GetClass() == ZC_BOOMER);
+}
+
+inline bool CTerrorPlayer::IsSmoker()
+{
+    return (GetClass() == ZC_SMOKER);
+}
+
+inline float TerrorNavMesh::GetMapMaxFlowDistance()
+{
+    return *(float *)((byte *)(this) + m_iOff_m_fMapMaxFlowDistance);
 }
