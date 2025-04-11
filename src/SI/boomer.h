@@ -23,6 +23,7 @@ ConVar z_boomer_predict_pos("z_boomer_predict_pos", "1", FCVAR_NOTIFY | FCVAR_CH
 class CBoomerEventListner : public IGameEventListener2 {
 public:
     virtual void FireGameEvent(IGameEvent *event);
+    virtual int	 GetEventDebugID( void );
     void OnPlayerSpawned(IGameEvent *event);
     void OnPlayerShoved(IGameEvent *event);
     void OnPlayerNowIt(IGameEvent *event);

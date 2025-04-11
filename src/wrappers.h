@@ -372,8 +372,8 @@ public:
 
 class CTerrorEntityListner : public ISMEntityListener {
 public:
-	virtual void OnEntityCreated(CBaseEntity *pEntity, const char *classname) {};
-	virtual void OnEntityDestroyed(CBaseEntity *pEntity) {};
+	virtual void OnEntityCreated(CBaseEntity *pEntity, const char *classname);
+	virtual void OnEntityDestroyed(CBaseEntity *pEntity);
 	
 protected:
 	void OnPostThink();

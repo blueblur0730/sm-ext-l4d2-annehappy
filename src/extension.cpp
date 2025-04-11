@@ -58,9 +58,6 @@ IBinTools *bintools= NULL;
 IEngineTrace *enginetrace= NULL;
 IStaticPropMgr *staticpropmgr = NULL;
 
-TerrorNavMesh *g_pNavMesh = NULL;
-ZombieManager *g_pZombieManager = NULL;
-
 CBoomerEventListner g_BoomerEventListner;
 CSmokerEventListner g_SmokerEventListner;
 
@@ -103,6 +100,44 @@ CDetour *CTerrorPlayer::DTR_OnVomitedUpon = NULL;
 CDetour *BossZombiePlayerBot::DTR_ChooseVictim = NULL;
 
 std::vector<CVTableHook *> g_hookList;
+
+// so yeah the detours like to take the lead.
+DETOUR_DECL_MEMBER2(DTRHandler_CTerrorPlayer_OnVomitedUpon, void, CBasePlayer *, pAttacker, bool, bIsExplodedByBoomer)
+{
+	((CTerrorPlayer *)this)->DTRCallBack_OnVomitedUpon(pAttacker, bIsExplodedByBoomer);
+}
+
+DETOUR_DECL_MEMBER3(DTRHandler_BossZombiePlayerBot_ChooseVictim, CTerrorPlayer *, CTerrorPlayer *, pLastVictim, int, targetScanFlags, CBasePlayer *, pIgnorePlayer)
+{
+	CTerrorPlayer *_this = (CTerrorPlayer *)this;
+	CTerrorPlayer *pPlayer = NULL;
+
+	// if not found, call original, make sure they have a target.
+	switch (_this->GetClass())
+	{
+		case ZC_BOOMER:
+		{
+			pPlayer = ((BossZombiePlayerBot *)_this)->OnBoomerChooseVictim(pLastVictim, targetScanFlags, pIgnorePlayer);
+
+			pPlayer == NULL ?
+			DETOUR_MEMBER_CALL(DTRHandler_BossZombiePlayerBot_ChooseVictim)(pLastVictim, targetScanFlags, pIgnorePlayer) : 
+			DETOUR_MEMBER_CALL(DTRHandler_BossZombiePlayerBot_ChooseVictim)(pPlayer, targetScanFlags, pIgnorePlayer);
+			break;
+		}
+
+		case ZC_SMOKER:
+		{
+			pPlayer = ((BossZombiePlayerBot *)_this)->OnSmokerChooseVictim(pLastVictim, targetScanFlags, pIgnorePlayer);
+
+			pPlayer == NULL ?
+			DETOUR_MEMBER_CALL(DTRHandler_BossZombiePlayerBot_ChooseVictim)(pLastVictim, targetScanFlags, pIgnorePlayer) : 
+			DETOUR_MEMBER_CALL(DTRHandler_BossZombiePlayerBot_ChooseVictim)(pPlayer, targetScanFlags, pIgnorePlayer);
+			break;
+		}
+	}
+
+	return DETOUR_MEMBER_CALL(DTRHandler_BossZombiePlayerBot_ChooseVictim)(pPlayer, targetScanFlags, pIgnorePlayer);
+}
 
 bool CAnneHappy::SDK_OnLoad(char* error, size_t maxlen, bool late) 
 {
@@ -189,25 +224,25 @@ void CAnneHappy::SDK_OnAllLoaded()
 		return;
 	}
 
-	PassInfo _info[] = {
+	PassInfo info1[] = {
 		{PassType_Basic, PASSFLAG_BYVAL, sizeof(IHandleEntity *), NULL, 0},
 		{PassType_Basic, PASSFLAG_BYVAL, sizeof(int), NULL, 0},
 		{PassType_Basic, PASSFLAG_BYVAL, sizeof(ShouldHitFunc2_t), NULL, 0},
 	};
 
-	CTraceFilterSimpleExt::pCallCTraceFilterSimple2 = bintools->CreateCall(CTraceFilterSimpleExt::pFnCTraceFilterSimple, CallConv_ThisCall, NULL, &_info[0], 3);
+	CTraceFilterSimpleExt::pCallCTraceFilterSimple2 = bintools->CreateCall(CTraceFilterSimpleExt::pFnCTraceFilterSimple, CallConv_ThisCall, NULL, &info1[0], 3);
 	if (!CTraceFilterSimpleExt::pCallCTraceFilterSimple2)
 	{
 		smutils->LogError(myself, "Extension failed to create call: 'CTraceFilterSimpleExt::CTraceFilterSimpleExt'");
 		return;
 	}
 
-	PassInfo info1[] = {
+	PassInfo info2[] = {
 		{PassType_Basic, PASSFLAG_BYVAL, sizeof(CBasePlayer *), NULL, 0},	// this is the size of a pointer, not a class.
 		{PassType_Basic, PASSFLAG_BYVAL, sizeof(bool), NULL, 0},
 	};
 
-	CTerrorPlayer::pCallOnVomitedUpon = bintools->CreateCall(CTerrorPlayer::pFnOnVomitedUpon, CallConv_ThisCall, NULL, &info1[0], 0);
+	CTerrorPlayer::pCallOnVomitedUpon = bintools->CreateCall(CTerrorPlayer::pFnOnVomitedUpon, CallConv_ThisCall, NULL, &info2[0], 0);
 	if (!CTerrorPlayer::pCallOnVomitedUpon)
 	{
 		smutils->LogError(myself, "Extension failed to create call: 'CTerrorPlayer::OnVomitedUpon'");
@@ -225,24 +260,24 @@ void CAnneHappy::SDK_OnAllLoaded()
 		return;
 	}
 
-	PassInfo info[3];
+	PassInfo info3[3];
 	info[0].flags = info[1].flags = info[2].flags = PASSFLAG_BYVAL;
 	info[0].size = info[1].size = info[2].size = sizeof(void *);
 	info[0].type = info[1].type = info[2].type = PassType_Basic;
 
-	CBaseEntity::pCallTeleport = bintools->CreateVCall(CBaseEntity::vtblindex_CBaseEntity_Teleport, 0, 0, NULL, info, 3);
+	CBaseEntity::pCallTeleport = bintools->CreateVCall(CBaseEntity::vtblindex_CBaseEntity_Teleport, 0, 0, NULL, info3, 3);
 	if (!CBaseEntity::pCallTeleport)
 	{
 		smutils->LogError(myself, "Extension failed to create vcall: 'CBaseEntity::Teleport'");
 		return;
 	}
 
-	PassInfo info1[1];
+	PassInfo info4[1];
 	info1[0].flags = PASSFLAG_BYVAL;
 	info1[0].size = sizeof(void *);
 	info1[0].type = PassType_Basic;
 	
-	CBaseEntity::pCallGetEyeAngle = bintools->CreateVCall(CBaseEntity::vtblindex_CBaseEntity_GetEyeAngle, 0, 0, info1, NULL, 0);
+	CBaseEntity::pCallGetEyeAngle = bintools->CreateVCall(CBaseEntity::vtblindex_CBaseEntity_GetEyeAngle, 0, 0, info4, NULL, 0);
 	if (!CBaseEntity::pCallGetEyeAngle)
 	{
 		smutils->LogError(myself, "Extension failed to create vcall: 'CBaseEntity::GetEyeAngle'");
@@ -260,14 +295,14 @@ void CAnneHappy::SDK_OnAllLoaded()
 		return;
 	}
 
-	PassInfo info2[] = {
+	PassInfo info5[] = {
 		{PassType_Basic, PASSFLAG_BYVAL, sizeof(ZombieClassType), NULL, 0},
 		{PassType_Basic, PASSFLAG_BYVAL, sizeof(int), NULL, 0},
 		{PassType_Basic, PASSFLAG_BYVAL, sizeof(CTerrorPlayer *), NULL, 0},
 		{PassType_Basic, PASSFLAG_BYREF, sizeof(Vector *), NULL, 0}
 	};
 
-	ZombieManager::pCallGetRandomPZSpawnPosition = bintools->CreateCall(ZombieManager::pFnGetRandomPZSpawnPosition, CallConv_ThisCall, NULL, &info2[0], 0);
+	ZombieManager::pCallGetRandomPZSpawnPosition = bintools->CreateCall(ZombieManager::pFnGetRandomPZSpawnPosition, CallConv_ThisCall, NULL, &info5[0], 0);
 	if (!ZombieManager::pCallGetRandomPZSpawnPosition)
 	{
 		smutils->LogError(myself, "Extension failed to create call: 'ZombieManager::GetRandomPZSpawnPosition'");
@@ -431,6 +466,8 @@ bool CAnneHappy::AddEventListner()
 		smutils->LogError(myself, "Extension failed to add event listner: '%s' for ai_smoker.", "round_start");
 		return false;
 	}
+
+	return true;
 }
 
 void CAnneHappy::RemoveEventListner()
@@ -483,6 +520,8 @@ bool CAnneHappy::FindSendProps(IGameConfig *pGameData, char* propName, size_t ma
 
 		prop.pOffset = sendprop->GetOffset();
 	}
+
+	return true;
 }
 
 void CTerrorEntityListner::OnEntityCreated(CBaseEntity* pEntity, const char *classname)
@@ -566,41 +605,6 @@ void CTerrorEntityListner::OnPostThink()
 	}
 
 	RETURN_META(MRES_IGNORED);
-}
-
-DETOUR_DECL_MEMBER2(DTRHandler_CTerrorPlayer_OnVomitedUpon, void, CBasePlayer *, pAttacker, bool, bIsExplodedByBoomer)
-{
-	((CTerrorPlayer *)this)->DTRCallBack_OnVomitedUpon((CBasePlayer *)pAttacker, bIsExplodedByBoomer);
-}
-
-DETOUR_DECL_MEMBER3(DTRHandler_BossZombiePlayerBot_ChooseVictim, CTerrorPlayer *, CTerrorPlayer *, pLastVictim, int, targetScanFlags, CBasePlayer *, pIgnorePlayer)
-{
-	CTerrorPlayer *_this = (CTerrorPlayer *)this;
-	CTerrorPlayer *pPlayer = NULL;
-
-	// if not found, call original, make sure they have a target.
-	switch (_this->GetClass())
-	{
-		case ZC_BOOMER:
-		{
-			pPlayer = ((BossZombiePlayerBot *)_this)->OnBoomerChooseVictim(pLastVictim, targetScanFlags, pIgnorePlayer);
-
-			pPlayer == NULL ?
-			DETOUR_MEMBER_CALL(DTRHandler_BossZombiePlayerBot_ChooseVictim)(pLastVictim, targetScanFlags, pIgnorePlayer) : 
-			DETOUR_MEMBER_CALL(DTRHandler_BossZombiePlayerBot_ChooseVictim)(pPlayer, targetScanFlags, pIgnorePlayer);
-			break;
-		}
-
-		case ZC_SMOKER:
-		{
-			pPlayer = ((BossZombiePlayerBot *)_this)->OnSmokerChooseVictim(pLastVictim, targetScanFlags, pIgnorePlayer);
-
-			pPlayer == NULL ?
-			DETOUR_MEMBER_CALL(DTRHandler_BossZombiePlayerBot_ChooseVictim)(pLastVictim, targetScanFlags, pIgnorePlayer) : 
-			DETOUR_MEMBER_CALL(DTRHandler_BossZombiePlayerBot_ChooseVictim)(pPlayer, targetScanFlags, pIgnorePlayer);
-			break;
-		}
-	}
 }
 
 void CAnneHappy::DestroyCalls(ICallWrapper *pCall)

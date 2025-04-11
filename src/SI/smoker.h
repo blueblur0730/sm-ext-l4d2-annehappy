@@ -25,6 +25,7 @@ ConVar z_smoker_instant_shoot_range_cofficient("z_smoker_instant_shoot_range_cof
 class CSmokerEventListner : public IGameEventListener2 {
 public:
     virtual void FireGameEvent(IGameEvent *event);
+    virtual int	 GetEventDebugID( void );
 };
 
 class CSmokerTimerEvent : public ITimedEvent {
