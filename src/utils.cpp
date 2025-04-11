@@ -1,24 +1,23 @@
 #include "utils.h"
 #include "extension.h"
-#include "player.h"
 
-CBasePlayerExt* UTIL_PlayerByIndex(int playerIndex)
+CBasePlayer* _UTIL_PlayerByIndex(int playerIndex)
 {
 	if (playerIndex > 0 && playerIndex <= playerhelpers->GetMaxClients()) 
 	{
 		IGamePlayer* pPlayer = playerhelpers->GetGamePlayer(playerIndex);
 		if (pPlayer != NULL) 
-			return (CBasePlayerExt *)gameents->EdictToBaseEntity(pPlayer->GetEdict());
+			return (CBasePlayer *)gameents->EdictToBaseEntity(pPlayer->GetEdict());
 	}
 
 	return NULL;
 }
 
-CBasePlayerExt* UTIL_PlayerByUserId(int userID)
+CBasePlayer* _UTIL_PlayerByUserId(int userID)
 {
 	for (int i = 1; i <= gpGlobals->maxClients; i++ )
 	{
-		CBasePlayerExt *pPlayer = UTIL_PlayerByIndex(i);
+		CBasePlayer *pPlayer = UTIL_PlayerByIndex(i);
 
 		if (!pPlayer)
 			continue;
@@ -30,7 +29,7 @@ CBasePlayerExt* UTIL_PlayerByUserId(int userID)
 	return NULL;
 }
 
-CBasePlayerExt* UTIL_GetClosetSurvivor(CBasePlayerExt* pPlayer, CBasePlayerExt* pIgnorePlayer = NULL, bool bCheckIncapp = false, bool bCheckDominated = false)
+CBasePlayer* UTIL_GetClosetSurvivor(CBasePlayer* pPlayer, CBasePlayer* pIgnorePlayer = NULL, bool bCheckIncapp = false, bool bCheckDominated = false)
 {
     int index = -1;
     index = pPlayer->entindex();
@@ -91,7 +90,7 @@ Vector UTIL_MakeVectorFromPoints(Vector src1, Vector src2)
     return output;
 }
 
-void UTIL_ComputeAimAngles(CBasePlayerExt *pPlayer, CBasePlayerExt *pTarget, QAngle* angles, AimType type = AimEye)
+void UTIL_ComputeAimAngles(CBasePlayer *pPlayer, CBasePlayer *pTarget, QAngle* angles, AimType type = AimEye)
 {
     Vector vecTargetPos;
 
@@ -130,7 +129,7 @@ void UTIL_ComputeAimAngles(CBasePlayerExt *pPlayer, CBasePlayerExt *pTarget, QAn
     VectorAngles(vecLookAt, *angles);
 }
 
-vec_t GetSelfTargetAngle(CBasePlayerExt *pAttacker, CBasePlayerExt *pTarget)
+vec_t GetSelfTargetAngle(CBasePlayer *pAttacker, CBasePlayer *pTarget)
 {
     Vector vecSelfEyePos = ((CTerrorPlayer *)pAttacker)->GetEyeOrigin();
     Vector vecTargetEyePos = ((CTerrorPlayer *)pTarget)->GetEyeOrigin();
@@ -150,7 +149,7 @@ vec_t GetSelfTargetAngle(CBasePlayerExt *pAttacker, CBasePlayerExt *pTarget)
     return (acos(vecSelfEyeVector.Dot(vecResult)) * 180.0 / M_PI);
 }
 
-bool UTIL_IsInAimOffset(CBasePlayerExt *pAttacker, CBasePlayerExt *pTarget, float offset)
+bool UTIL_IsInAimOffset(CBasePlayer *pAttacker, CBasePlayer *pTarget, float offset)
 {
     vec_t angle = GetSelfTargetAngle(pAttacker, pTarget);
     return (angle != 1.0f && angle <= offset);
@@ -161,7 +160,7 @@ bool TR_EntityFilter(IHandleEntity *ignore, int contentsMask)
     if (!ignore)
         return false;
 
-    CBaseEntityExt *pEntity = (CBaseEntityExt *)EntityFromEntityHandle(ignore);
+    CBaseEntity *pEntity = (CBaseEntity *)EntityFromEntityHandle(ignore);
     if (!pEntity)
         return false;
 
@@ -183,7 +182,7 @@ bool TR_EntityFilter(IHandleEntity *ignore, int contentsMask)
 }
 
 // false means will, true otherwise.
-bool WillHitWallOrFall(CBasePlayerExt *pPlayer, Vector vec)
+bool WillHitWallOrFall(CBasePlayer *pPlayer, Vector vec)
 {
     CTerrorPlayer *pTerrorPlayer = (CTerrorPlayer *)pPlayer;
     Vector vecSelfPos = pTerrorPlayer->GetAbsOrigin();
@@ -232,7 +231,7 @@ bool WillHitWallOrFall(CBasePlayerExt *pPlayer, Vector vec)
         if (index <= 0 || index > gpGlobals->maxClients)
             return false;
 
-        CBaseEntityExt *pEntity = (CBaseEntityExt *)UTIL_PlayerByIndex(index);
+        CBaseEntity *pEntity = (CBaseEntity *)_UTIL_PlayerByIndex(index);
         if (!pEntity)
             return false;
 
@@ -245,7 +244,7 @@ bool WillHitWallOrFall(CBasePlayerExt *pPlayer, Vector vec)
     return false;
 }
 
-bool ClientPush(CBasePlayerExt *pPlayer, Vector vec)
+bool ClientPush(CBasePlayer *pPlayer, Vector vec)
 {
     Vector vecVelocity;
     pPlayer->GetVelocity(&vecVelocity);
@@ -274,7 +273,7 @@ Vector UTIL_CaculateVel(const Vector& vecSelfPos, const Vector& vecTargetPos, ve
 }
 
 // from sourcemod.
-CBaseEntity *UTIL_GetClientAimTarget(CBaseEntityExt *pEntity, bool only_players)
+CBaseEntity *UTIL_GetClientAimTarget(CBaseEntity *pEntity, bool only_players)
 {
 	if (!pEntity)
 		return NULL;
@@ -305,7 +304,7 @@ CBaseEntity *UTIL_GetClientAimTarget(CBaseEntityExt *pEntity, bool only_players)
     if (tr.fraction == 1.0f || tr.m_pEnt == NULL)
         return NULL;
 
-    int index = ((CBaseEntityExt *)tr.m_pEnt)->entindex();
+    int index = ((CBaseEntity *)tr.m_pEnt)->entindex();
 
 	IGamePlayer *pTargetPlayer = playerhelpers->GetGamePlayer(index);
 	if (pTargetPlayer != NULL && !pTargetPlayer->IsInGame())
@@ -317,14 +316,14 @@ CBaseEntity *UTIL_GetClientAimTarget(CBaseEntityExt *pEntity, bool only_players)
 		return NULL;
 	}
 
-	return gameents->EdictToBaseEntity(((CBaseEntityExt *)tr.m_pEnt)->edict());
+	return gameents->EdictToBaseEntity(tr.m_pEnt->edict());
 }
 
 bool UTIL_IsLeftBehind(CTerrorPlayer *pPlayer)
 {
     float flTeamDistacne = CalculateTeamDistance(pPlayer);
 
-    CNavAreaExt *pNav = pPlayer->GetLastKnownArea();
+    CNavArea *pNav = pPlayer->GetLastKnownArea();
     if (!pNav)
         return false;
 
@@ -344,7 +343,7 @@ static float CalculateTeamDistance(CTerrorPlayer *pIgnorePlayer = NULL)
     float flTeamDistance = 0.0f;
     for (int i = 1; i <= gpGlobals->maxClients; i++)
     {
-        CTerrorSmokerVictim *pPlayer = (CTerrorSmokerVictim *)UTIL_PlayerByIndex(i);
+        CTerrorSmokerVictim *pPlayer = (CTerrorSmokerVictim *)_UTIL_PlayerByIndex(i);
         if (!pPlayer)
             continue;
 
@@ -354,7 +353,7 @@ static float CalculateTeamDistance(CTerrorPlayer *pIgnorePlayer = NULL)
         if (pPlayer == pIgnorePlayer)
             continue;
 
-        CNavAreaExt *pNav = pPlayer->GetLastKnownArea();
+        CNavArea *pNav = pPlayer->GetLastKnownArea();
         if (!pNav)
             continue;
 
@@ -386,18 +385,18 @@ bool PassServerEntityFilter( const IHandleEntity *pTouch, const IHandleEntity *p
 	if ( pTouch == pPass )
 		return false;
 
-	const CBaseEntityExt *pEntTouch = (CBaseEntityExt *)EntityFromEntityHandle( pTouch );
-	const CBaseEntityExt *pEntPass = (CBaseEntityExt *)EntityFromEntityHandle( pPass );
+	const CBaseEntity *pEntTouch = (CBaseEntity *)EntityFromEntityHandle( pTouch );
+	const CBaseEntity *pEntPass = (CBaseEntity *)EntityFromEntityHandle( pPass );
 	if ( !pEntTouch || !pEntPass )
 		return true;
 
 	// don't clip against own missiles
     // what the hell are the consts doing here?
-	if ( (CBaseEntityExt *)(const_cast<CBaseEntityExt *>(pEntTouch)->GetOwnerEntity()) == pEntPass )
+	if ( (CBaseEntity *)(const_cast<CBaseEntity *>(pEntTouch)->GetOwnerEntity()) == pEntPass )
 		return false;
 	
 	// don't clip against owner
-	if ( (CBaseEntityExt *)(const_cast<CBaseEntityExt *>(pEntPass)->GetOwnerEntity()) == pEntTouch )
+	if ( (CBaseEntity *)(const_cast<CBaseEntity *>(pEntPass)->GetOwnerEntity()) == pEntTouch )
 		return false;	
 
 	return true;

@@ -77,7 +77,7 @@ private:
 	void *m_data;
 };
 
-class CNavAreaExt {
+class CNavArea {
 public:
 	static int m_iOff_m_flow;
 	
@@ -99,7 +99,7 @@ private:
 };
 */
 
-class CBaseEntityExt : public IServerEntity {
+class CBaseEntity : public IServerEntity {
 public:
 	static int m_iOff_m_vecVelocity;
 
@@ -129,7 +129,7 @@ public:
 	void GetEyeAngles(QAngle *pRetAngle);
 };
 
-class CEnvPhysicsBlocker : public CBaseEntityExt {
+class CEnvPhysicsBlocker : public CBaseEntity {
 public:
 	static int m_iOff_m_nBlockType;
 
@@ -137,7 +137,7 @@ public:
 	inline BlockType_t GetBlockType();
 };
 
-class CBaseAbility : public CBaseEntityExt {
+class CBaseAbility : public CBaseEntity {
 public:
 	static int m_iOff_m_isSpraying;
 
@@ -145,7 +145,7 @@ public:
 	inline bool IsSpraying();
 };
 
-class CBaseCombatWeaponExt : public CBaseEntityExt {
+class CBaseCombatWeapon : public CBaseEntity {
 public:
 	static int m_iOff_m_bInReload;
 
@@ -153,7 +153,7 @@ public:
 	inline bool IsReloading();
 };
 
-class CBasePlayerExt : public CBaseEntityExt {
+class CBasePlayer : public CBaseEntity {
 public:
 	static int m_iOff_m_fFlags;
 
@@ -167,7 +167,7 @@ public:
 	CUserCmd *GetCurrentCommand();
 };
 
-class CTerrorPlayer : public CBasePlayerExt {
+class CTerrorPlayer : public CBasePlayer {
 public:
     static int m_iOff_m_zombieClass;
 	static int m_iOff_m_customAbility;
@@ -227,7 +227,7 @@ public:
 
 	CBaseEntity *GetGroundEntity();
 
-	CBaseCombatWeaponExt *GetActiveWeapon();
+	CBaseCombatWeapon *GetActiveWeapon();
 	
 	CTerrorPlayer *GetTongueVictim();
 
@@ -239,15 +239,15 @@ public:
 
 	CBaseEntity *OffsetEHandleToEntity(int iOff);
 
-	void OnVomitedUpon(CBasePlayerExt *pAttacker, bool bIsExplodedByBoomer);
+	void OnVomitedUpon(CBasePlayer *pAttacker, bool bIsExplodedByBoomer);
 
 	CTerrorPlayer *GetSpecialInfectedDominatingMe();
 
 	bool IsStaggering();
 
-	CNavAreaExt *GetLastKnownArea();
+	CNavArea *GetLastKnownArea();
 
-	void DTRCallBack_OnVomitedUpon(CBasePlayerExt *pAttacker, bool bIsExplodedByBoomer);
+	void DTRCallBack_OnVomitedUpon(CBasePlayer *pAttacker, bool bIsExplodedByBoomer);
 };
 
 class TerrorNavMesh {

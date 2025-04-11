@@ -1,6 +1,5 @@
 #include "utils.h"
 #include "wrappers.h"
-#include "player.h"
 
 CTraceFilterSimpleExt::CTraceFilterSimpleExt(const IHandleEntity* passedict = NULL, Collision_Group_t collisionGroup = COLLISION_GROUP_NONE, ShouldHitFunc_t pExtraShouldHitFunc = NULL)
 {
@@ -70,7 +69,7 @@ bool CTraceFilterSimpleExt::ShouldHitEntity(IHandleEntity *pHandleEntity, int co
 	return true;
 }
 
-CBaseEntity *CBaseEntityExt::GetOwnerEntity()
+CBaseEntity *CBaseEntity::GetOwnerEntity()
 {
     sm_datatable_info_t offset_data_info;
     datamap_t *offsetMap = gamehelpers->GetDataMap((CBaseEntity *)this);
@@ -81,7 +80,7 @@ CBaseEntity *CBaseEntityExt::GetOwnerEntity()
     return gamehelpers->ReferenceToEntity(hndl->GetEntryIndex());
 }
 
-MoveType_t CBaseEntityExt::GetMoveType()
+MoveType_t CBaseEntity::GetMoveType()
 {
     sm_datatable_info_t offset_data_info;
     datamap_t *offsetMap = gamehelpers->GetDataMap((CBaseEntity *)this);
@@ -91,7 +90,7 @@ MoveType_t CBaseEntityExt::GetMoveType()
     return (MoveType_t)*(char*)((byte *)(this) + offset_data_info.actual_offset);
 }
 
-void CBaseEntityExt::Teleport(Vector *newPosition, QAngle *newAngles, Vector *newVelocity)
+void CBaseEntity::Teleport(Vector *newPosition, QAngle *newAngles, Vector *newVelocity)
 {
     unsigned char params[sizeof(void *) * 4];
     unsigned char *vptr = params;
@@ -106,7 +105,7 @@ void CBaseEntityExt::Teleport(Vector *newPosition, QAngle *newAngles, Vector *ne
     pCallTeleport->Execute(params, NULL);
 }
 
-void CBaseEntityExt::GetEyeAngles(QAngle *pRetAngle)
+void CBaseEntity::GetEyeAngles(QAngle *pRetAngle)
 {
     unsigned char params[sizeof(void *)];
     unsigned char *vptr = params;
@@ -115,7 +114,7 @@ void CBaseEntityExt::GetEyeAngles(QAngle *pRetAngle)
     pCallGetEyeAngle->Execute(params, &pRetAngle);
 }
 
-int CBasePlayerExt::GetButton()
+int CBasePlayer::GetButton()
 {
     sm_datatable_info_t pDataTable;
     if (!gamehelpers->FindDataMapInfo(gamehelpers->GetDataMap((CBaseEntity *)this), "m_nButtons", &pDataTable))
@@ -125,7 +124,7 @@ int CBasePlayerExt::GetButton()
 }
 
 // Thanks to Forgetest from his l4d_lagcomp_skeet.
-CUserCmd *CBasePlayerExt::GetCurrentCommand()
+CUserCmd *CBasePlayer::GetCurrentCommand()
 {
     sm_datatable_info_t pDataTable;
     if (!gamehelpers->FindDataMapInfo(gamehelpers->GetDataMap((CBaseEntity *)this), "m_hViewModel", &pDataTable))
@@ -174,9 +173,9 @@ CBaseAbility *CTerrorPlayer::GetAbility()
     return (CBaseAbility *)OffsetEHandleToEntity(m_iOff_m_customAbility);
 }
 
-CBaseCombatWeaponExt *CTerrorPlayer::GetActiveWeapon()
+CBaseCombatWeapon *CTerrorPlayer::GetActiveWeapon()
 {
-    return (CBaseCombatWeaponExt *)OffsetEHandleToEntity(m_iOff_m_hActiveWeapon);
+    return (CBaseCombatWeapon *)OffsetEHandleToEntity(m_iOff_m_hActiveWeapon);
 }
 
 CTerrorPlayer *CTerrorPlayer::GetTongueVictim()
@@ -201,11 +200,11 @@ CBaseEntity *CTerrorPlayer::OffsetEHandleToEntity(int iOff) {
     return gameents->EdictToBaseEntity(pEdict);
 }
 
-void CTerrorPlayer::OnVomitedUpon(CBasePlayerExt *pAttacker, bool bIsExplodedByBoomer)
+void CTerrorPlayer::OnVomitedUpon(CBasePlayer *pAttacker, bool bIsExplodedByBoomer)
 {
     struct {
         CTerrorPlayer *pVictim;
-        CBasePlayerExt *pAttacker;
+        CBasePlayer *pAttacker;
         bool bIsExplodedByBoomer;
     } stake {this, pAttacker, bIsExplodedByBoomer};
 
@@ -234,7 +233,7 @@ bool CTerrorPlayer::IsStaggering()
     return *(bool *)((byte *)ret);
 }
 
-CNavAreaExt *CTerrorPlayer::GetLastKnownArea()
+CNavArea *CTerrorPlayer::GetLastKnownArea()
 {
     struct {
         CTerrorPlayer *pThis;
@@ -242,7 +241,7 @@ CNavAreaExt *CTerrorPlayer::GetLastKnownArea()
 
     void *ret;
     pCallGetLastKnownArea->Execute(&stake, &ret);
-    return (CNavAreaExt *)ret;
+    return (CNavArea *)ret;
 }
 
 bool ZombieManager::GetRandomPZSpawnPosition(ZombieClassType type, int attampts, CTerrorPlayer *pPlayer, Vector *pOutPos)
@@ -266,29 +265,29 @@ inline void CTraceFilterSimpleExt::SetTraceType(TraceType_t traceType)
     m_TraceType = traceType;
 }
 
-inline edict_t *CBaseEntityExt::edict()
+inline edict_t *CBaseEntity::edict()
 {
     return gameents->BaseEntityToEdict((CBaseEntity *)this);
 }
 
-inline int CBaseEntityExt::entindex()
+inline int CBaseEntity::entindex()
 {
     return gamehelpers->EntityToBCompatRef((CBaseEntity *)this);
 }
 
-inline const char *CBaseEntityExt::GetClassName()
+inline const char *CBaseEntity::GetClassName()
 {
     return edict()->GetClassName();
 }
 
-inline float CNavAreaExt::GetFlow()
+inline float CNavArea::GetFlow()
 {
     return *(float *)((byte *)(this) + m_iOff_m_flow);
 }
 
-inline void CBaseEntityExt::GetVelocity(Vector *velocity)
+inline void CBaseEntity::GetVelocity(Vector *velocity)
 {
-    velocity = (Vector *)((byte *)(this) + CBaseEntityExt::m_iOff_m_vecVelocity);
+    velocity = (Vector *)((byte *)(this) + CBaseEntity::m_iOff_m_vecVelocity);
 }
 
 inline BlockType_t CEnvPhysicsBlocker::GetBlockType()
@@ -301,17 +300,17 @@ inline bool CBaseAbility::IsSpraying()
     return *(bool*)((byte*)(this) + CBaseAbility::m_iOff_m_isSpraying);
 }
 
-inline bool CBaseCombatWeaponExt::IsReloading()
+inline bool CBaseCombatWeapon::IsReloading()
 {
-    return *(bool*)((byte*)(this) + CBaseCombatWeaponExt::m_iOff_m_bInReload);
+    return *(bool*)((byte*)(this) + CBaseCombatWeapon::m_iOff_m_bInReload);
 }
 
-inline int CBasePlayerExt::GetFlags()
+inline int CBasePlayer::GetFlags()
 {
-    return *(int*)((byte*)(this) + CBasePlayerExt::m_iOff_m_fFlags);
+    return *(int*)((byte*)(this) + CBasePlayer::m_iOff_m_fFlags);
 }
 
-inline bool CBasePlayerExt::IsBot()
+inline bool CBasePlayer::IsBot()
 {
     return (GetFlags() & FL_FAKECLIENT) != 0;
 }

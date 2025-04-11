@@ -1,7 +1,6 @@
 #include "SI/smoker.h"
 #include "utils.h"
 #include "in_buttons.h"
-#include "player.h"
 
 CSmokerTimerEvent g_SmokerTimerEvent;
 static ITimer *g_hTimerCoolDown = NULL;
@@ -100,7 +99,7 @@ void CSmokerEntityListner::OnPostThink(CBaseEntity *pEntity)
 
                 if ((pCmd->buttons & IN_FORWARD) || (pCmd->buttons & IN_BACK) || (pCmd->buttons & IN_MOVELEFT) || (pCmd->buttons & IN_MOVERIGHT))
                 {
-                    ClientPush((CBasePlayerExt *)pSmoker, vecForward);
+                    ClientPush(pSmoker, vecForward);
                 }
             }
         }
@@ -109,7 +108,7 @@ void CSmokerEntityListner::OnPostThink(CBaseEntity *pEntity)
     if (pSmoker->HasVisibleThreats())
     {
         QAngle vecTargetAngle;
-        UTIL_ComputeAimAngles((CBasePlayerExt *)pSmoker, (CBasePlayerExt *)pTarget, &vecTargetAngle, AimChest);
+        UTIL_ComputeAimAngles(pSmoker, pTarget, &vecTargetAngle, AimChest);
         vecTargetAngle.z = 0.0f;
         pSmoker->Teleport(NULL, &vecTargetAngle, NULL);
     }
@@ -174,7 +173,7 @@ CTerrorPlayer* BossZombiePlayerBot::OnSmokerChooseVictim(CTerrorPlayer *pLastVic
 
         if (pLastVictim->IsSurvivor())
         {
-            CBaseCombatWeaponExt *pWeapon = pLastVictim->GetActiveWeapon();
+            CBaseCombatWeapon *pWeapon = pLastVictim->GetActiveWeapon();
             if (pWeapon && pWeapon->edict())
             {
                 const char *szClassName = pWeapon->GetClassName();
@@ -223,7 +222,7 @@ static bool TR_RayFilterBySmoker(IHandleEntity* pHandleEntity, int contentsMask,
     if (!pEdict)
         return false;
 
-    CBaseEntityExt *pEntity = (CBaseEntityExt *)gameents->EdictToBaseEntity(pEdict);
+    CBaseEntity *pEntity = (CBaseEntity *)gameents->EdictToBaseEntity(pEdict);
     if (!pEntity)
         return false;
 
@@ -275,7 +274,7 @@ static CTerrorPlayer *SmokerTargetChoose(int method, CTerrorPlayer *pSmoker, CTe
                 if (pSpecificTarget && pPlayer == pSpecificTarget)
                     continue;
                     
-                CBaseCombatWeaponExt *pWeapon = pPlayer->GetActiveWeapon();
+                CBaseCombatWeapon *pWeapon = pPlayer->GetActiveWeapon();
                 if (pWeapon && pWeapon->edict())
                 {
                     const char *szClassName = pWeapon->GetClassName();
@@ -317,7 +316,7 @@ static CTerrorPlayer *SmokerTargetChoose(int method, CTerrorPlayer *pSmoker, CTe
 
                 float flTeamDistance = CalculateTeamDistance(pPlayer);
 
-                CNavAreaExt *pNav = pPlayer->GetLastKnownArea();
+                CNavArea *pNav = pPlayer->GetLastKnownArea();
                 if (!pNav)
                     return NULL;
 
@@ -355,7 +354,7 @@ static CTerrorPlayer *SmokerTargetChoose(int method, CTerrorPlayer *pSmoker, CTe
                 if (pSpecificTarget && pPlayer == pSpecificTarget)
                     continue;
 
-                CBaseCombatWeaponExt *pWeapon = pPlayer->GetActiveWeapon();
+                CBaseCombatWeapon *pWeapon = pPlayer->GetActiveWeapon();
                 if (pWeapon && pWeapon->IsReloading())
                 {
                     return pPlayer;
@@ -383,7 +382,7 @@ static int TeamMeleeCheck()
             continue;
 
         g_iValidSurvivor += 1;
-        CBaseCombatWeaponExt *pWeapon = pPlayer->GetActiveWeapon();
+        CBaseCombatWeapon *pWeapon = pPlayer->GetActiveWeapon();
         if (pWeapon && pWeapon->edict())
         {
             const char *szClassName = pWeapon->GetClassName();

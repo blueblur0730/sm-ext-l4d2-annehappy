@@ -26,31 +26,31 @@ struct utils_t {
     int index;
 };
 
-CBasePlayerExt* UTIL_PlayerByIndex(int playerIndex);
+CBasePlayer* UTIL_PlayerByIndex(int playerIndex);
 
-CBasePlayerExt* UTIL_PlayerByUserId(int userID);
+CBasePlayer* UTIL_PlayerByUserId(int userID);
 
-CBasePlayerExt* UTIL_GetClosetSurvivor(CBasePlayerExt* pPlayer, CBasePlayerExt* pIgnorePlayer = NULL, bool bCheckIncapp = false, bool bCheckDominated = false);
+CBasePlayer* UTIL_GetClosetSurvivor(CBasePlayer* pPlayer, CBasePlayer* pIgnorePlayer = NULL, bool bCheckIncapp = false, bool bCheckDominated = false);
 
 Vector UTIL_MakeVectorFromPoints(Vector src1, Vector src2);
 
-void UTIL_ComputeAimAngles(CBasePlayerExt* pPlayer, CBasePlayerExt* pTarget, QAngle* angles, AimType type = AimEye);
+void UTIL_ComputeAimAngles(CBasePlayer* pPlayer, CBasePlayer* pTarget, QAngle* angles, AimType type = AimEye);
 
-vec_t GetSelfTargetAngle(CBasePlayerExt* pAttacker, CBasePlayerExt* pTarget);
+vec_t GetSelfTargetAngle(CBasePlayer* pAttacker, CBasePlayer* pTarget);
 
-bool UTIL_IsInAimOffset(CBasePlayerExt* pAttacker, CBasePlayerExt* pTarget, float offset);
+bool UTIL_IsInAimOffset(CBasePlayer* pAttacker, CBasePlayer* pTarget, float offset);
 
 bool TR_EntityFilter(IHandleEntity *ignore, int contentsMask);
 
 // false means will, true otherwise.
-bool WillHitWallOrFall(CBasePlayerExt* pPlayer, Vector vec);
+bool WillHitWallOrFall(CBasePlayer* pPlayer, Vector vec);
 
-bool ClientPush(CBasePlayerExt* pPlayer, Vector vec);
+bool ClientPush(CBasePlayer* pPlayer, Vector vec);
 
 Vector UTIL_CaculateVel(const Vector& vecSelfPos, const Vector& vecTargetPos, vec_t flForce);
 
 // from sourcemod.
-CBaseEntity *UTIL_GetClientAimTarget(CBaseEntityExt *pEntity, bool only_players);
+CBaseEntity *UTIL_GetClientAimTarget(CBaseEntity *pEntity, bool only_players);
 
 bool UTIL_IsLeftBehind(CTerrorPlayer *pPlayer);
 
