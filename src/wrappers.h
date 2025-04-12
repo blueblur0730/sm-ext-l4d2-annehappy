@@ -1,6 +1,8 @@
 #ifndef _WRAPPERS_H_INCLUDED_
 #define _WRAPPERS_H_INCLUDED_
 
+#pragma once
+
 #include <vector>
 
 #include "extension.h"

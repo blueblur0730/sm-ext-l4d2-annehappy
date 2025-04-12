@@ -32,6 +32,8 @@
 #ifndef _INCLUDE_SOURCEMOD_EXTENSION_PROPER_H_
 #define _INCLUDE_SOURCEMOD_EXTENSION_PROPER_H_
 
+#pragma once
+
 /**
  * @file extension.h
  * @brief Sample extension code header.
@@ -116,26 +118,7 @@ extern IEngineTrace *enginetrace;
 // static prop entity manager interface.
 extern IStaticPropMgr *staticpropmgr;
 
-TerrorNavMesh *g_pNavMesh = NULL;
-ZombieManager *g_pZombieManager = NULL;
-
-// ai_boomer
-extern ConVar z_boomer_bhop;
-extern ConVar z_boomer_bhop_speed;
-extern ConVar z_boomer_vision_up_on_vomit;
-extern ConVar z_boomer_vision_spin_on_vomit;
-extern ConVar z_boomer_force_bile;
-extern ConVar z_boomer_bile_find_range;
-extern ConVar z_boomer_spin_interval;
-extern ConVar z_boomer_degree_force_bile;
-extern ConVar z_boomer_predict_pos;
-
-// ai_smoker_new
-extern ConVar z_smoker_bhop;
-extern ConVar z_smoker_bhop_speed;
-extern ConVar z_smoker_target_rules;
-extern ConVar z_smoker_melee_avoid;
-extern ConVar z_smoker_left_behind_distance;
-extern ConVar z_smoker_instant_shoot_range_cofficient;
+extern TerrorNavMesh *g_pNavMesh;
+extern ZombieManager *g_pZombieManager;
 
 #endif // _INCLUDE_SOURCEMOD_EXTENSION_PROPER_H_

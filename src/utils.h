@@ -1,6 +1,8 @@
 #ifndef _UTILS_H_INCLUDED_
 #define _UTILS_H_INCLUDED_
 
+#pragma once
+
 #include "extension.h"
 #include "iplayerinfo.h"
 #include "engine/IStaticPropMgr.h"
@@ -12,6 +14,9 @@
 #include "wrappers.h"
 
 #include "SI/smoker.h"
+
+typedef bool (__cdecl *Fn_IsVisibleToPlayer)(const Vector&, CBasePlayer *, int, int, float, const IHandleEntity *, void *, bool *);
+extern Fn_IsVisibleToPlayer pFnIsVisibleToPlayer;
 
 #define FALL_DETECT_HEIGHT 120.0
 
@@ -97,8 +102,6 @@ inline float FloatAbs(float f)
 {
 	return f > 0 ? f : -f;
 }
-
-bool (__cdecl *pFnIsVisibleToPlayer)(const Vector&, CBasePlayer *, int, int, float, const IHandleEntity *, void *, bool *);
 
 // int __usercall IsVisibleToPlayer@<eax>(long double@<st0>, float *, CBaseEntity *, int, char, int, const IHandleEntity *, CNavArea **, _BYTE *)
 // bool IsVisibleToPlayer(const Vector vecTargetPos, CBasePlayer *pPlayer, int team, int team_target, float fl, const IHandleEntity *pIgnore, CNavArea *pArea, bool *b)

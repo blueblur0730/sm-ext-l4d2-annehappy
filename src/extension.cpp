@@ -37,6 +37,7 @@
 #include "vtable_hook_helper.h"
 #include <vector>
 #include "dt_send.h"
+#include "utils.h"
 //#include "KeyValues.h"
 
 /**
@@ -57,6 +58,9 @@ IServerGameClients *serverClients= NULL;
 IBinTools *bintools= NULL;
 IEngineTrace *enginetrace= NULL;
 IStaticPropMgr *staticpropmgr = NULL;
+
+TerrorNavMesh *g_pNavMesh = NULL;
+ZombieManager *g_pZombieManager = NULL;
 
 CBoomerEventListner g_BoomerEventListner;
 CSmokerEventListner g_SmokerEventListner;
@@ -94,7 +98,7 @@ void *CTerrorPlayer::pFnGetSpecialInfectedDominatingMe = NULL;
 void *CTerrorPlayer::pFnIsStaggering = NULL;
 void *BossZombiePlayerBot::pFnChooseVictim = NULL;
 void *ZombieManager::pFnGetRandomPZSpawnPosition = NULL;
-void *pFnIsVisibleToPlayer = NULL;
+Fn_IsVisibleToPlayer pFnIsVisibleToPlayer = NULL;
 
 CDetour *CTerrorPlayer::DTR_OnVomitedUpon = NULL;
 CDetour *BossZombiePlayerBot::DTR_ChooseVictim = NULL;
@@ -413,7 +417,7 @@ bool CAnneHappy::LoadGameData(IGameConfig *pGameData, char* error, size_t maxlen
 		{"CTraceFilterSimpleExt::CTraceFilterSimpleExt", &CTraceFilterSimpleExt::pFnCTraceFilterSimple},
 		{"CTerrorPlayer::OnVomitedUpon", &CTerrorPlayer::pFnOnVomitedUpon},
 		{"CTerrorPlayer::GetSpecialInfectedDominatingMe", &CTerrorPlayer::pFnGetSpecialInfectedDominatingMe},
-		{"IsVisibleToPlayer", &pFnIsVisibleToPlayer},
+		{"IsVisibleToPlayer", (void **)&pFnIsVisibleToPlayer},
 		{"BossZombiePlayerBot::ChooseVictim", &BossZombiePlayerBot::pFnChooseVictim},
 		{"CTerrorPlayer::IsStaggering", &CTerrorPlayer::pFnIsStaggering},
 		{"ZombieManager::GetRandomPZSpawnPosition", &ZombieManager::pFnGetRandomPZSpawnPosition}

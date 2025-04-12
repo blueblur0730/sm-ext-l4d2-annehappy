@@ -243,7 +243,7 @@ class ExtensionConfig(object):
         cxx.cflags += ['-O3']
         cxx.cxxflags += [
         '-g0',
-        '-flto=auto',
+        #'-flto=auto',
         '-funroll-loops',
         #'-floop-interchange',
         '-finline-functions',
