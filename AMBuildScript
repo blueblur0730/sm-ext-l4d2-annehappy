@@ -179,6 +179,8 @@ class ExtensionConfig(object):
     if builder.options.debug == '1':
       cxx.defines += ['DEBUG', '_DEBUG']
 
+    cxx.linkflags += ['-static-libstdc++'] # in case you are running different on this though it apperently incrased the size of the file.
+
     # Platform-specifics
     if cxx.target.platform == 'linux':
       self.configure_linux(cxx)
@@ -219,7 +221,6 @@ class ExtensionConfig(object):
       '-std=c++20',
     ]
 
-    
     have_gcc = cxx.family == 'gcc'
     have_clang = cxx.family == 'clang'
 
@@ -242,7 +243,7 @@ class ExtensionConfig(object):
         cxx.cflags += ['-O3']
         cxx.cxxflags += [
         '-g0',
-        '-flto=auto',
+        #'-flto=auto',
         '-funroll-loops',
         #'-floop-interchange',
         '-finline-functions',
@@ -304,7 +305,6 @@ class ExtensionConfig(object):
     cxx.linkflags += ['-lm']
     if cxx.family == 'gcc':
       cxx.linkflags += ['-static-libgcc']
-      cxx.linkflags += ['-static-libstdc++'] # in case you are running different on this though it apperently incrased the size of the file.
     elif cxx.family == 'clang':
       cxx.linkflags += ['-lgcc_eh']
 

@@ -32,6 +32,8 @@
 #ifndef _INCLUDE_SOURCEMOD_EXTENSION_PROPER_H_
 #define _INCLUDE_SOURCEMOD_EXTENSION_PROPER_H_
 
+#pragma once
+
 /**
  * @file extension.h
  * @brief Sample extension code header.
@@ -39,11 +41,18 @@
 
 #include "smsdk_ext.h"
 #include "igameevents.h"
+#include "IBinTools.h"
 #include "ISDKHooks.h"
 #include "wrappers.h"
 #include "eiface.h"
+#include "engine/IEngineTrace.h"
+#include "engine/IStaticPropMgr.h"
+#include "CDetour/detours.h"
 
 #define GAMEDATA_FILE "l4d2_annehappy.gamedata"
+
+class TerrorNavMesh;
+class ZombieManager;
 
 /**
  * @brief Sample implementation of the SDK Extension.
@@ -75,60 +84,41 @@ public:
 
 protected:
 	bool LoadGameData(IGameConfig *pGameData, char* error, size_t maxlen);
-	bool FindSendProps(char* error, size_t maxlen);
+	bool FindSendProps(IGameConfig *pGameData, char* error, size_t maxlen);
 	bool AddEventListner();
 	void RemoveEventListner();
 	void DestroyCalls(ICallWrapper *pCall);
 	void DestroyDetours(CDetour *pDetour);
 };
 
-#endif // _INCLUDE_SOURCEMOD_EXTENSION_PROPER_H_
-
 // convar interface.
-extern ICvar* icvar = NULL;
+extern ICvar* icvar;
 
 // game entities interface
-extern IServerGameEnts *gameents = NULL;
+extern IServerGameEnts *gameents;
 
 // game event manager interface
-extern IGameEventManager2 *gameevents = NULL;
+extern IGameEventManager2 *gameevents;
 
 // global variables interface
-extern CGlobalVars *gpGlobals = NULL;
+extern CGlobalVars *gpGlobals;
 
 // sdk hooks interface.
-extern ISDKHooks *sdkhooks = NULL;
+extern ISDKHooks *sdkhooks;
 
 // server game clients interface.
-extern IServerGameClients *serverClients = NULL;
+extern IServerGameClients *serverClients;
 
 // bin tools interface.
-extern IBinTools *bintools = NULL;
+extern IBinTools *bintools;
 
 // engine trace interface.
-extern IEngineTrace *enginetrace = NULL;
+extern IEngineTrace *enginetrace;
 
 // static prop entity manager interface.
-extern IStaticPropMgr *staticpropmgr = NULL;
+extern IStaticPropMgr *staticpropmgr;
 
-TerrorNavMesh *g_pNavMesh = NULL;
-ZombieManager *g_pZombieManager = NULL;
+extern TerrorNavMesh *g_pNavMesh;
+extern ZombieManager *g_pZombieManager;
 
-// ai_boomer
-extern ConVar z_boomer_bhop;
-extern ConVar z_boomer_bhop_speed;
-extern ConVar z_boomer_vision_up_on_vomit;
-extern ConVar z_boomer_vision_spin_on_vomit;
-extern ConVar z_boomer_force_bile;
-extern ConVar z_boomer_bile_find_range;
-extern ConVar z_boomer_spin_interval;
-extern ConVar z_boomer_degree_force_bile;
-extern ConVar z_boomer_predict_pos;
-
-// ai_smoker_new
-extern ConVar z_smoker_bhop;
-extern ConVar z_smoker_bhop_speed;
-extern ConVar z_smoker_target_rules;
-extern ConVar z_smoker_melee_avoid;
-extern ConVar z_smoker_left_behind_distance;
-extern ConVar z_smoker_instant_shoot_range_cofficient;
+#endif // _INCLUDE_SOURCEMOD_EXTENSION_PROPER_H_
