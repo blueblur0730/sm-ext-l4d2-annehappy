@@ -158,7 +158,7 @@ void CBoomerEntityListner::OnPostThink(CBaseEntity *pEntity)
     if (!pTarget)
         return;
 
-    CBaseAbility *pAbility = pPlayer->GetAbility();
+    CVomit *pAbility = (CVomit *)pPlayer->GetAbility();
     if (!pAbility)
         return;
 
@@ -374,7 +374,7 @@ void CBoomerEntityListner::OnPostThink(CBaseEntity *pEntity)
     }
 
     Vector vecVelocity;
-    pPlayer->GetVelocity(&vecVelocity);
+    pPlayer->GetVelocity(&vecVelocity, NULL);
     vec_t flCurSpeed = (vec_t)FastSqrt(vecVelocity.x * vecVelocity.x + vecVelocity.y * vecVelocity.y);
 
     if (z_boomer_bhop.GetBool() && pPlayer->HasVisibleThreats() 

@@ -106,7 +106,8 @@ private:
 
 class CBaseEntity : public IServerEntity {
 public:
-	static int m_iOff_m_vecVelocity;
+	static int vtblindex_CBaseEntity_GetVelocity;
+	static ICallWrapper *pCallGetVelocity;
 
 	static int vtblindex_CBaseEntity_Teleport;
 	static ICallWrapper *pCallTeleport;
@@ -132,10 +133,7 @@ public:
 		return edict()->GetClassName();
 	}
 
-	inline void GetVelocity(Vector *velocity)
-	{
-		velocity = (Vector *)((byte *)(this) + CBaseEntity::m_iOff_m_vecVelocity);
-	}
+	void GetVelocity(Vector *velocity, AngularImpulse *vAngVelocity);
 
 	CBaseEntity *GetOwnerEntity();
 
@@ -158,14 +156,6 @@ public:
 };
 
 class CBaseAbility : public CBaseEntity {
-public:
-	static int m_iOff_m_isSpraying;
-
-public:
-	inline bool IsSpraying()
-	{
-		return *(bool*)((byte*)(this) + CBaseAbility::m_iOff_m_isSpraying);
-	}
 };
 
 class CBaseCombatWeapon : public CBaseEntity {

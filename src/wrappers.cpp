@@ -69,6 +69,20 @@ bool CTraceFilterSimpleExt::ShouldHitEntity(IHandleEntity *pHandleEntity, int co
 	return true;
 }
 
+void CBaseEntity::GetVelocity(Vector *velocity, AngularImpulse *vAngVelocity)
+{
+    unsigned char params[sizeof(void *) * 4];
+    unsigned char *vptr = params;
+
+    *(CBaseEntity **)vptr = (CBaseEntity *)this;
+    vptr += sizeof(CBaseEntity *);
+    *(Vector **)vptr = velocity;
+    vptr += sizeof(Vector *);
+    *(AngularImpulse **)vptr = vAngVelocity;
+    
+    pCallTeleport->Execute(params, NULL);
+}
+
 CBaseEntity *CBaseEntity::GetOwnerEntity()
 {
     sm_datatable_info_t offset_data_info;

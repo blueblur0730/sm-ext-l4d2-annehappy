@@ -97,7 +97,7 @@ void CSmokerEntityListner::OnPostThink(CBaseEntity *pEntity)
     if (z_smoker_bhop.GetBool())
     {
         Vector vecVelocity;
-        pSmoker->GetVelocity(&vecVelocity);
+        pSmoker->GetVelocity(&vecVelocity, NULL);
 
         // vertical velocity is not considered?
         vec_t flSpeed = (vec_t)FastSqrt(vecVelocity.x * vecVelocity.x + vecVelocity.y * vecVelocity.y);

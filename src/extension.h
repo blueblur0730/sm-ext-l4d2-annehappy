@@ -83,6 +83,8 @@ public:
 	virtual bool RegisterConCommandBase(ConCommandBase* command) override;
 
 protected:
+	bool LoadSDKToolsData(IGameConfig *pGameData, char* error, size_t maxlen);
+	bool LoadSDKHooksData(IGameConfig *pGameData, char* error, size_t maxlen);
 	bool LoadGameData(IGameConfig *pGameData, char* error, size_t maxlen);
 	bool FindSendProps(IGameConfig *pGameData, char* error, size_t maxlen);
 	bool AddEventListner();

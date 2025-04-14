@@ -71,6 +71,7 @@ CSmokerEntityListner *g_SmokerEntityListner = NULL;
 
 SH_DECL_MANUALHOOK0_void(PostThink, 0, 0, 0);
 
+int CBaseEntity::vtblindex_CBaseEntity_GetVelocity = 0;
 int CBaseEntity::vtblindex_CBaseEntity_Teleport = 0;
 int CBaseEntity::vtblindex_CBaseEntity_PostThink = 0;
 int CBaseEntity::vtblindex_CBaseEntity_GetEyeAngle = 0;
@@ -78,6 +79,7 @@ int CTerrorPlayer::vtblindex_CTerrorPlayer_GetLastKnownArea = 0;
 
 ICallWrapper *CTraceFilterSimpleExt::pCallCTraceFilterSimple = NULL;
 ICallWrapper *CTraceFilterSimpleExt::pCallCTraceFilterSimple2 = NULL;
+ICallWrapper *CBaseEntity::pCallGetVelocity = NULL;
 ICallWrapper *CBaseEntity::pCallTeleport = NULL;
 ICallWrapper *CBaseEntity::pCallGetEyeAngle = NULL;
 ICallWrapper *CTerrorPlayer::pCallOnVomitedUpon = NULL;
@@ -86,9 +88,10 @@ ICallWrapper *CTerrorPlayer::pCallIsStaggering = NULL;
 ICallWrapper *CTerrorPlayer::pCallGetLastKnownArea = NULL;
 ICallWrapper *ZombieManager::pCallGetRandomPZSpawnPosition = NULL;
 
-int CBaseEntity::m_iOff_m_vecVelocity = 0;
-int CBaseAbility::m_iOff_m_isSpraying = 0;
+int CVomit::m_iOff_m_isSpraying = 0;
 int CBasePlayer::m_iOff_m_fFlags = 0;
+int CBaseCombatWeapon::m_iOff_m_bInReload = 0;
+int CEnvPhysicsBlocker::m_iOff_m_nBlockType = 0;
 int CTerrorPlayer::m_iOff_m_zombieClass = 0;
 int CTerrorPlayer::m_iOff_m_customAbility = 0;
 int CTerrorPlayer::m_iOff_m_hasVisibleThreats = 0;
@@ -96,10 +99,9 @@ int CTerrorPlayer::m_iOff_m_isIncapacitated = 0;
 int CTerrorPlayer::m_iOff_m_tongueVictim = 0;
 int CTerrorPlayer::m_iOff_m_hGroundEntity = 0;
 int CTerrorPlayer::m_iOff_m_hActiveWeapon = 0;
+
 int TerrorNavMesh::m_iOff_m_fMapMaxFlowDistance = 0;
 int CNavArea::m_iOff_m_flow = 0;
-int CBaseCombatWeapon::m_iOff_m_bInReload = 0;
-int CEnvPhysicsBlocker::m_iOff_m_nBlockType = 0;
 
 void *CTraceFilterSimpleExt::pFnCTraceFilterSimple = NULL;
 void *CTerrorPlayer::pFnOnVomitedUpon = NULL;
@@ -163,11 +165,21 @@ bool CAnneHappy::SDK_OnLoad(char* error, size_t maxlen, bool late)
 		ke::SafeStrcpy(error, maxlen, "Extension failed to load gamedata file: 'sdktools.games'");
 		return false;
 	}
+	else
+	{
+		if (!LoadSDKToolsData(pGameData, error, maxlen))
+			return false;
+	}
 
 	if (!gameconfs->LoadGameConfigFile("sdkhooks.games", &pGameData, error, maxlen))
 	{
 		ke::SafeStrcpy(error, maxlen, "Extension failed to load gamedata file: 'sdkhooks.games'");
 		return false;
+	}
+	else
+	{
+		if (!LoadSDKHooksData(pGameData, error, maxlen))
+			return false;
 	}
 
 	if (!gameconfs->LoadGameConfigFile(GAMEDATA_FILE, &pGameData, error, maxlen))
@@ -175,15 +187,13 @@ bool CAnneHappy::SDK_OnLoad(char* error, size_t maxlen, bool late)
 		ke::SafeStrcpy(error, maxlen, "Extension failed to load gamedata file: \"" GAMEDATA_FILE ".txt\"");
 		return false;
 	}
-
-	if (!LoadGameData(pGameData, error, maxlen))
-		return false;
-
-	char msg[64];
-	if (!FindSendProps(pGameData, msg, sizeof(msg)))
+	else
 	{
-		smutils->LogError(myself, "Extension failed to find send props: '%s'", msg);
-		return false;
+		if (!LoadGameData(pGameData, error, maxlen))
+			return false;
+
+		if (!FindSendProps(pGameData, error, maxlen))
+			return false;
 	}
 
 	gameconfs->CloseGameConfigFile(pGameData);
@@ -332,6 +342,18 @@ void CAnneHappy::SDK_OnAllLoaded()
 		return;
 	}
 
+	PassInfo info6[] = {
+		{PassType_Basic, PASSFLAG_BYREF, sizeof(Vector *), NULL, 0},
+		{PassType_Basic, PASSFLAG_BYREF, sizeof(AngularImpulse *), NULL, 0},
+	};
+
+	CBaseEntity::pCallGetVelocity = bintools->CreateVCall(CBaseEntity::vtblindex_CBaseEntity_GetVelocity, 0, 0, &info6[0], NULL, 0);
+	if (!CBaseEntity::pCallGetVelocity)
+	{
+		smutils->LogError(myself, "Extension failed to create vcall: 'CBaseEntity::GetVelocity'");
+		return;
+	}
+
 	SH_MANUALHOOK_RECONFIGURE(PostThink, CBaseEntity::vtblindex_CBaseEntity_PostThink, 0, 0);
 	sdkhooks->AddEntityListener(&g_EntityListener);
 
@@ -357,6 +379,7 @@ void CAnneHappy::SDK_OnUnload()
 
 	DestroyCalls(CTraceFilterSimpleExt::pCallCTraceFilterSimple);
 	DestroyCalls(CTraceFilterSimpleExt::pCallCTraceFilterSimple2);
+	DestroyCalls(CBaseEntity::pCallGetVelocity);
 	DestroyCalls(CBaseEntity::pCallTeleport);
 	DestroyCalls(CBaseEntity::pCallGetEyeAngle);
 	DestroyCalls(CTerrorPlayer::pCallGetSpecialInfectedDominatingMe);
@@ -395,6 +418,52 @@ bool CAnneHappy::RegisterConCommandBase(ConCommandBase* command)
 	return META_REGCVAR(command);
 }
 
+bool CAnneHappy::LoadSDKToolsData(IGameConfig *pGameData, char* error, size_t maxlen)
+{
+	static const struct {
+		char const* name;
+		int& pOffset;
+		char const *filename;
+	} s_offsets[] = {
+		{"GetVelocity", CBaseEntity::vtblindex_CBaseEntity_GetVelocity, "sdktools.games"},
+		{"Teleport", CBaseEntity::vtblindex_CBaseEntity_Teleport, "sdktools.games"},
+		{"EyeAngles", CBaseEntity::vtblindex_CBaseEntity_GetEyeAngle, "sdktools.games"},
+	};
+
+	for (auto &offset : s_offsets)
+	{
+		if (!pGameData->GetOffset(offset.name, &offset.pOffset))
+		{
+			ke::SafeSprintf(error, maxlen, "Could not find offset for \"%s\" in \"%s\"", offset.name, offset.filename);
+			return false;
+		}
+	}
+
+	return true;
+}
+
+bool CAnneHappy::LoadSDKHooksData(IGameConfig *pGameData, char* error, size_t maxlen)
+{
+	static const struct {
+		char const* name;
+		int& pOffset;
+		char const *filename;
+	} s_offsets[] = {
+		{"PostThink", CBaseEntity::vtblindex_CBaseEntity_PostThink, "sdkhooks.games"},
+	};
+
+	for (auto &offset : s_offsets)
+	{
+		if (!pGameData->GetOffset(offset.name, &offset.pOffset))
+		{
+			ke::SafeSprintf(error, maxlen, "Could not find offset for \"%s\" in \"%s\"", offset.name, offset.filename);
+			return false;
+		}
+	}
+
+	return true;
+}
+
 bool CAnneHappy::LoadGameData(IGameConfig *pGameData, char* error, size_t maxlen)
 {
 	static const struct {
@@ -402,9 +471,6 @@ bool CAnneHappy::LoadGameData(IGameConfig *pGameData, char* error, size_t maxlen
 		int& pOffset;
 		char const *filename;
 	} s_offsets[] = {
-		{"Teleport", CBaseEntity::vtblindex_CBaseEntity_Teleport, "sdktools.games"},
-		{"EyeAngles", CBaseEntity::vtblindex_CBaseEntity_GetEyeAngle, "sdktools.games"},
-		{"PostThink", CBaseEntity::vtblindex_CBaseEntity_PostThink, "sdkhooks.games"},
 		{"m_fMapMaxFlowDistance", TerrorNavMesh::m_iOff_m_fMapMaxFlowDistance, GAMEDATA_FILE},
 		{"CTerrorPlayer::GetLastKnownArea", CTerrorPlayer::vtblindex_CTerrorPlayer_GetLastKnownArea, GAMEDATA_FILE},
 		{"m_flow", CNavArea::m_iOff_m_flow, GAMEDATA_FILE},
@@ -423,7 +489,7 @@ bool CAnneHappy::LoadGameData(IGameConfig *pGameData, char* error, size_t maxlen
 		char const* name;
 		void** pFn;
 	} s_sigs[] = {
-		{"CTraceFilterSimpleExt::CTraceFilterSimpleExt", &CTraceFilterSimpleExt::pFnCTraceFilterSimple},
+		{"CTraceFilterSimple::CTraceFilterSimple", &CTraceFilterSimpleExt::pFnCTraceFilterSimple},
 		{"CTerrorPlayer::OnVomitedUpon", &CTerrorPlayer::pFnOnVomitedUpon},
 		{"CTerrorPlayer::GetSpecialInfectedDominatingMe", &CTerrorPlayer::pFnGetSpecialInfectedDominatingMe},
 		{"IsVisibleToPlayer", (void **)&pFnIsVisibleToPlayer},
@@ -489,51 +555,51 @@ void CAnneHappy::RemoveEventListner()
 	gameevents->RemoveListener(&g_SmokerEventListner);
 }
 
-bool CAnneHappy::FindSendProps(IGameConfig *pGameData, char* propName, size_t maxlen)
+bool CAnneHappy::FindSendProps(IGameConfig *pGameData, char* error, size_t maxlen)
 {
 	static const struct {
 		char const *propName;
+		char const *className;
 		int& pOffset;
 	} s_props[] = {
-		{"m_vecVelocity", CBaseEntity::m_iOff_m_vecVelocity},
-		{"m_zombieClass", CTerrorPlayer::m_iOff_m_zombieClass},
-		{"m_customAbility", CTerrorPlayer::m_iOff_m_customAbility},
-		{"m_hasVisibleThreats", CTerrorPlayer::m_iOff_m_hasVisibleThreats},
-		{"m_isSpraying", CBaseAbility::m_iOff_m_isSpraying},
-		{"m_isIncapacitated", CTerrorPlayer::m_iOff_m_isIncapacitated},
-		{"m_tongueVictim", CTerrorPlayer::m_iOff_m_tongueVictim},
-		{"m_hGroundEntity", CTerrorPlayer::m_iOff_m_hGroundEntity},
-		{"m_hActiveWeapon", CTerrorPlayer::m_iOff_m_hActiveWeapon},
-		{"m_nBlockType", CEnvPhysicsBlocker::m_iOff_m_nBlockType},
-		{"m_bInReload", CBaseCombatWeapon::m_iOff_m_bInReload}
+		{"m_isSpraying", "CVomit", CVomit::m_iOff_m_isSpraying},
+		{"m_nBlockType", "CEnvPhysicsBlocker", CEnvPhysicsBlocker::m_iOff_m_nBlockType},
+		{"m_bInReload", "CBaseCombatWeapon", CBaseCombatWeapon::m_iOff_m_bInReload},
+		{"m_zombieClass", "CTerrorPlayer", CTerrorPlayer::m_iOff_m_zombieClass},
+		{"m_customAbility", "CTerrorPlayer", CTerrorPlayer::m_iOff_m_customAbility},
+		{"m_hasVisibleThreats", "CTerrorPlayer", CTerrorPlayer::m_iOff_m_hasVisibleThreats},
+		{"m_isIncapacitated", "CTerrorPlayer", CTerrorPlayer::m_iOff_m_isIncapacitated},
+		{"m_tongueVictim", "CTerrorPlayer", CTerrorPlayer::m_iOff_m_tongueVictim},
+		{"m_hGroundEntity", "CTerrorPlayer", CTerrorPlayer::m_iOff_m_hGroundEntity},
+		{"m_hActiveWeapon", "CTerrorPlayer", CTerrorPlayer::m_iOff_m_hActiveWeapon}
 	};
 
-/*
+
 	sm_sendprop_info_t info;
 	for (auto &prop : s_props)
 	{
 		if (!gamehelpers->FindSendPropInfo(prop.className, prop.propName, &info))
 		{
-			ke::SafeStrcpy(propName, maxlen, prop.propName);
+			ke::SafeSprintf(error, maxlen, "Extension failed to find send props: '%s' in class '%s'.", prop.propName, prop.className);
 			return false;
 		}
 
 		prop.pOffset = info.actual_offset;
 	}
-*/
 
+/*
 	for (auto &prop : s_props)
 	{
 		SendProp *sendprop = pGameData->GetSendProp(prop.propName);
 		if (!sendprop)
 		{
-		    ke::SafeStrcpy(propName, maxlen, prop.propName);
+			ke::SafeSprintf(error, maxlen, "Extension failed to find send props: '%s'", prop.propName);
 			return false;
 		}
 
 		prop.pOffset = sendprop->GetOffset();
 	}
-
+*/
 	return true;
 }
 

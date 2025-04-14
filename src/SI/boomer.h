@@ -46,6 +46,17 @@ public:
     int m_nBileFrame[2];
 };
 
+class CVomit : public CBaseAbility {
+public:
+	static int m_iOff_m_isSpraying;
+
+public:
+	inline bool IsSpraying()
+	{
+		return *(bool*)((byte*)(this) + CVomit::m_iOff_m_isSpraying);
+	}
+};
+
 class CTerrorBoomerVictim : public CTerrorPlayer {
 public:
     bool m_bBiled;
