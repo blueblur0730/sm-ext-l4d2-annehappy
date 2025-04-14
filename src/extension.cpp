@@ -124,34 +124,22 @@ DETOUR_DECL_MEMBER2(DTRHandler_CTerrorPlayer_OnVomitedUpon, void, CBasePlayer *,
 
 DETOUR_DECL_MEMBER3(DTRHandler_BossZombiePlayerBot_ChooseVictim, CTerrorPlayer *, CTerrorPlayer *, pLastVictim, int, targetScanFlags, CBasePlayer *, pIgnorePlayer)
 {
-	CTerrorPlayer *_this = (CTerrorPlayer *)this;
+	CTerrorPlayer *_this = reinterpret_cast<CTerrorPlayer *>(this);
 	CTerrorPlayer *pPlayer = NULL;
 
 	// if not found, call original, make sure they have a target.
 	switch (_this->GetClass())
 	{
 		case ZC_BOOMER:
-		{
 			pPlayer = ((BossZombiePlayerBot *)_this)->OnBoomerChooseVictim(pLastVictim, targetScanFlags, pIgnorePlayer);
-
-			pPlayer == NULL ?
-			DETOUR_MEMBER_CALL(DTRHandler_BossZombiePlayerBot_ChooseVictim)(pLastVictim, targetScanFlags, pIgnorePlayer) : 
-			DETOUR_MEMBER_CALL(DTRHandler_BossZombiePlayerBot_ChooseVictim)(pPlayer, targetScanFlags, pIgnorePlayer);
-			break;
-		}
-
+		
 		case ZC_SMOKER:
-		{
 			pPlayer = ((BossZombiePlayerBot *)_this)->OnSmokerChooseVictim(pLastVictim, targetScanFlags, pIgnorePlayer);
-
-			pPlayer == NULL ?
-			DETOUR_MEMBER_CALL(DTRHandler_BossZombiePlayerBot_ChooseVictim)(pLastVictim, targetScanFlags, pIgnorePlayer) : 
-			DETOUR_MEMBER_CALL(DTRHandler_BossZombiePlayerBot_ChooseVictim)(pPlayer, targetScanFlags, pIgnorePlayer);
-			break;
-		}
 	}
 
-	return DETOUR_MEMBER_CALL(DTRHandler_BossZombiePlayerBot_ChooseVictim)(pPlayer, targetScanFlags, pIgnorePlayer);
+	return pPlayer == NULL ?
+	DETOUR_MEMBER_CALL(DTRHandler_BossZombiePlayerBot_ChooseVictim)(pLastVictim, targetScanFlags, pIgnorePlayer) : 
+	DETOUR_MEMBER_CALL(DTRHandler_BossZombiePlayerBot_ChooseVictim)(pPlayer, targetScanFlags, pIgnorePlayer);
 }
 
 bool CAnneHappy::SDK_OnLoad(char* error, size_t maxlen, bool late) 
@@ -574,7 +562,6 @@ bool CAnneHappy::FindSendProps(IGameConfig *pGameData, char* error, size_t maxle
 		{"m_hGroundEntity", "CTerrorPlayer", CTerrorPlayer::m_iOff_m_hGroundEntity},
 		{"m_hActiveWeapon", "CTerrorPlayer", CTerrorPlayer::m_iOff_m_hActiveWeapon}
 	};
-
 
 	sm_sendprop_info_t info;
 	for (auto &prop : s_props)
