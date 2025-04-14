@@ -115,8 +115,6 @@ public:
 	static int vtblindex_CBaseEntity_GetEyeAngle;
 	static ICallWrapper *pCallGetEyeAngle;
 
-	static int vtblindex_CBaseEntity_PostThink;
-
 public:
 	inline edict_t* edict()
 	{
@@ -362,6 +360,7 @@ public:
 	bool GetRandomPZSpawnPosition(ZombieClassType type, int attampts, CTerrorPlayer *pPlayer, Vector *pOutPos);
 };
 
+/*
 class CTerrorEntityListner : public ISMEntityListener {
 public:
 	virtual void OnEntityCreated(CBaseEntity *pEntity, const char *classname);
@@ -370,6 +369,7 @@ public:
 protected:
 	void OnPostThink();
 };
+*/
 
 class BossZombiePlayerBot : public CTerrorPlayer {
 public:

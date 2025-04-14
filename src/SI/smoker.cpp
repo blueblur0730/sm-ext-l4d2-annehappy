@@ -63,7 +63,7 @@ void CSmokerTimerEvent::OnTimerEnd(ITimer *pTimer, void *pData)
     pTimer = nullptr;
 }
 
-void CSmokerEntityListner::OnPostThink(CBaseEntity *pEntity)
+void CSmokerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
 {
     CSmoker *pSmoker = (CSmoker *)pEntity;
     if (!pSmoker || !pSmoker->IsSmoker() || pSmoker->IsDead())
@@ -86,7 +86,6 @@ void CSmokerEntityListner::OnPostThink(CBaseEntity *pEntity)
         return;
     }
 
-    CUserCmd *pCmd = pSmoker->GetCurrentCommand();
     if (!pCmd)
         return;
 

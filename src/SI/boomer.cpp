@@ -148,7 +148,7 @@ void CBoomerTimerEvent::OnTimerEnd(ITimer *pTimer, void *pData)
     pTimer = nullptr;
 }
 
-void CBoomerEntityListner::OnPostThink(CBaseEntity *pEntity)
+void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
 {
     CBoomer *pPlayer = (CBoomer *)pEntity;
     if (!pPlayer || !pPlayer->IsBoomer() || pPlayer->IsDead())
@@ -302,17 +302,16 @@ void CBoomerEntityListner::OnPostThink(CBaseEntity *pEntity)
         }
     }
 
+    if (!pCmd)
+        return;
+
     int flags = pPlayer->GetFlags();
     if ((flags & FL_ONGROUND) && pPlayer->HasVisibleThreats()
         && (flTargetDist <= (int)(0.8 * g_pCVar->FindVar("z_vomit_range")->GetFloat()))
         && !pPlayer->m_bIsInCoolDown && pPlayer->m_bCanBile)
     {
-        CUserCmd *cmd = pPlayer->GetCurrentCommand();
-        if (!cmd)
-            return;
-
-        cmd->buttons |= IN_ATTACK;
-        cmd->buttons |= IN_FORWARD;
+        pCmd->buttons |= IN_ATTACK;
+        pCmd->buttons |= IN_FORWARD;
 
         if (pPlayer->m_bCanBile)
         {
@@ -332,15 +331,10 @@ void CBoomerEntityListner::OnPostThink(CBaseEntity *pEntity)
         Vector vecTargetEyePos = pTarget->GetEyeOrigin();
         if (!IsVisiableToPlayer(vecTargetEyePos, (CBasePlayer *)pPlayer, L4D2Teams_Survivor, L4D2Teams_Infected, 0.0, NULL, NULL, &bUnknown))
             return;
-        
-        CUserCmd *cmd = pPlayer->GetCurrentCommand();
-        if (!cmd)
-            return;
 
-        cmd->buttons |= IN_ATTACK2;
+        pCmd->buttons |= IN_ATTACK2;
     }
 
-    CUserCmd *pCmd = pPlayer->GetCurrentCommand();
     if (z_boomer_force_bile.GetBool() && (pCmd && (pCmd->buttons & IN_ATTACK))
         && !pPlayer->m_bIsInCoolDown)
     {

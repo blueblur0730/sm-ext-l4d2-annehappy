@@ -69,9 +69,9 @@ public:
 	virtual void OnTimerEnd(ITimer *pTimer, void *pData);
 };
 
-class CBoomerEntityListner {
+class CBoomerCmdListner {
 public:
-    void OnPostThink(CBaseEntity *pPlayer);
+    void OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd);
 };
 
 static bool secondCheck(CBaseEntity *pPlayer, CBaseEntity *pTarget);

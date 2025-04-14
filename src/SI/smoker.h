@@ -37,9 +37,9 @@ public:
     bool m_bLeftBehind;
 };
 
-class CSmokerEntityListner {
+class CSmokerCmdListner {
 public:
-    void OnPostThink(CBaseEntity *pEntity);
+    void OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd);
 };
 
 static CTerrorPlayer *SmokerTargetChoose(int method, CTerrorPlayer *pSmoker, CTerrorPlayer *pSpecificTarget = NULL);

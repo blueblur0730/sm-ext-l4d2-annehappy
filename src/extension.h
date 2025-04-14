@@ -48,6 +48,8 @@
 #include "engine/IEngineTrace.h"
 #include "engine/IStaticPropMgr.h"
 #include "CDetour/detours.h"
+#include "vtable_hook_helper.h"
+#include "usercmd.h"
 
 #define GAMEDATA_FILE "l4d2_annehappy.gamedata"
 
@@ -58,39 +60,36 @@ class ZombieManager;
  * @brief Sample implementation of the SDK Extension.
  * Note: Uncomment one of the pre-defined virtual functions in order to use it.
  */
-class CAnneHappy : public SDKExtension, public IConCommandBaseAccessor
+class CAnneHappy : public SDKExtension, public IConCommandBaseAccessor, public IClientListener
 {
 public:
-	/**
-	 * @brief This is called after the initial loading sequence has been processed.
-	 *
-	 * @param error		Error message buffer.
-	 * @param maxlen	Size of error message buffer.
-	 * @param late		Whether or not the module was loaded after map load.
-	 * @return			True to succeed loading, false to fail.
-	 */
-	virtual bool SDK_OnLoad(char *error, size_t maxlen, bool late) override;
+	virtual bool SDK_OnLoad(char *error, size_t maxlen, bool late);
 	
-	/**
-	 * @brief This is called right before the extension is unloaded.
-	 */
-	virtual void SDK_OnUnload() override;
+	virtual void SDK_OnUnload();
 
-	virtual void SDK_OnAllLoaded() override;
+	virtual void SDK_OnAllLoaded();
 
-	virtual bool SDK_OnMetamodLoad(ISmmAPI* ismm, char* error, size_t maxlen, bool late) override;
+	virtual bool SDK_OnMetamodLoad(ISmmAPI* ismm, char* error, size_t maxlen, bool late);
 
-	virtual bool RegisterConCommandBase(ConCommandBase* command) override;
+	virtual bool RegisterConCommandBase(ConCommandBase* command);
+
+	virtual void OnClientPutInServer(int client);
+
+	void PlayerRunCmdHook(int client);
+
+	void PlayerRunCmd(CUserCmd *ucmd, IMoveHelper *moveHelper);
 
 protected:
 	bool LoadSDKToolsData(IGameConfig *pGameData, char* error, size_t maxlen);
-	bool LoadSDKHooksData(IGameConfig *pGameData, char* error, size_t maxlen);
 	bool LoadGameData(IGameConfig *pGameData, char* error, size_t maxlen);
 	bool FindSendProps(IGameConfig *pGameData, char* error, size_t maxlen);
 	bool AddEventListner();
 	void RemoveEventListner();
 	void DestroyCalls(ICallWrapper *pCall);
 	void DestroyDetours(CDetour *pDetour);
+
+private:
+	std::vector<CVTableHook *> g_hookList;
 };
 
 // convar interface.

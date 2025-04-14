@@ -34,10 +34,10 @@
 #include "SI/boomer.h"
 #include "SI/smoker.h"
 #include <sourcehook.h>
-#include "vtable_hook_helper.h"
 #include <vector>
 #include "dt_send.h"
 #include "utils.h"
+#include "compat_wrappers.h"
 //#include "KeyValues.h"
 
 /**
@@ -48,6 +48,7 @@
 CAnneHappy g_TemplateExtention;		/**< Global singleton for extension's main interface */
 SMEXT_LINK(&g_TemplateExtention);
 
+SH_DECL_MANUALHOOK2_void(PlayerRunCmdHook, 0, 0, 0, CUserCmd *, IMoveHelper *);
 
 ICvar* icvar = NULL;
 IServerGameEnts *gameents= NULL;
@@ -65,15 +66,16 @@ ZombieManager *g_pZombieManager = NULL;
 CBoomerEventListner g_BoomerEventListner;
 CSmokerEventListner g_SmokerEventListner;
 
-CTerrorEntityListner g_EntityListener;
-CBoomerEntityListner *g_BoomerEntityListner = NULL;
-CSmokerEntityListner *g_SmokerEntityListner = NULL;
+//CTerrorEntityListner g_EntityListener;
+//CBoomerEntityListner *g_BoomerEntityListner = NULL;
+//CSmokerEntityListner *g_SmokerEntityListner = NULL;
 
-SH_DECL_MANUALHOOK0_void(PostThink, 0, 0, 0);
+CBoomerCmdListner *g_BoomerCmdListner = NULL;
+CSmokerCmdListner *g_SmokerCmdListner = NULL;
 
+int g_iOff_PlayerRunCmd = 0;
 int CBaseEntity::vtblindex_CBaseEntity_GetVelocity = 0;
 int CBaseEntity::vtblindex_CBaseEntity_Teleport = 0;
-int CBaseEntity::vtblindex_CBaseEntity_PostThink = 0;
 int CBaseEntity::vtblindex_CBaseEntity_GetEyeAngle = 0;
 int CTerrorPlayer::vtblindex_CTerrorPlayer_GetLastKnownArea = 0;
 
@@ -114,8 +116,6 @@ Fn_IsVisibleToPlayer pFnIsVisibleToPlayer = NULL;
 CDetour *CTerrorPlayer::DTR_OnVomitedUpon = NULL;
 CDetour *BossZombiePlayerBot::DTR_ChooseVictim = NULL;
 
-std::vector<CVTableHook *> g_hookList;
-
 // so yeah the detours like to take the lead.
 DETOUR_DECL_MEMBER2(DTRHandler_CTerrorPlayer_OnVomitedUpon, void, CBasePlayer *, pAttacker, bool, bIsExplodedByBoomer)
 {
@@ -145,7 +145,7 @@ DETOUR_DECL_MEMBER3(DTRHandler_BossZombiePlayerBot_ChooseVictim, CTerrorPlayer *
 bool CAnneHappy::SDK_OnLoad(char* error, size_t maxlen, bool late) 
 {
 	sharesys->AddDependency(myself, "bintools.ext", true, true);
-	sharesys->AddDependency(myself, "sdkhooks.ext", true, true);
+	//sharesys->AddDependency(myself, "sdkhooks.ext", true, true);
 
 	IGameConfig *pGameData = nullptr;
 	if (!gameconfs->LoadGameConfigFile("sdktools.games", &pGameData, error, maxlen))
@@ -156,17 +156,6 @@ bool CAnneHappy::SDK_OnLoad(char* error, size_t maxlen, bool late)
 	else
 	{
 		if (!LoadSDKToolsData(pGameData, error, maxlen))
-			return false;
-	}
-
-	if (!gameconfs->LoadGameConfigFile("sdkhooks.games", &pGameData, error, maxlen))
-	{
-		ke::SafeStrcpy(error, maxlen, "Extension failed to load gamedata file: 'sdkhooks.games'");
-		return false;
-	}
-	else
-	{
-		if (!LoadSDKHooksData(pGameData, error, maxlen))
 			return false;
 	}
 
@@ -214,7 +203,7 @@ bool CAnneHappy::SDK_OnLoad(char* error, size_t maxlen, bool late)
 void CAnneHappy::SDK_OnAllLoaded()
 {
 	SM_GET_LATE_IFACE(BINTOOLS, bintools);
-	SM_GET_LATE_IFACE(SDKHOOKS, sdkhooks);
+	//SM_GET_LATE_IFACE(SDKHOOKS, sdkhooks);
 
 	if (!bintools || !sdkhooks)
 	{
@@ -342,8 +331,7 @@ void CAnneHappy::SDK_OnAllLoaded()
 		return;
 	}
 
-	SH_MANUALHOOK_RECONFIGURE(PostThink, CBaseEntity::vtblindex_CBaseEntity_PostThink, 0, 0);
-	sdkhooks->AddEntityListener(&g_EntityListener);
+	//sdkhooks->AddEntityListener(&g_EntityListener);
 
 	CTerrorPlayer::DTR_OnVomitedUpon->EnableDetour();
 	BossZombiePlayerBot::DTR_ChooseVictim->EnableDetour();
@@ -354,17 +342,24 @@ void CAnneHappy::SDK_OnUnload()
 	for (auto it = g_hookList.begin(); it != g_hookList.end(); ++it)
 	{
 		delete *it;
-		g_hookList.erase(it);
 	}
 
+	g_hookList.clear();
+
 	RemoveEventListner();
-	sdkhooks->RemoveEntityListener(&g_EntityListener);
+	//sdkhooks->RemoveEntityListener(&g_EntityListener);
 
-	if (g_BoomerEntityListner)
-		delete g_BoomerEntityListner;
+	//if (g_BoomerEntityListner)
+		//delete g_BoomerEntityListner;
 
-	if (g_SmokerEntityListner)
-		delete g_SmokerEntityListner;
+	//if (g_SmokerEntityListner)
+		//delete g_SmokerEntityListner;
+
+	if (g_BoomerCmdListner)
+		delete g_BoomerCmdListner;
+
+	if (g_SmokerCmdListner)
+		delete g_SmokerCmdListner;
 
 	DestroyCalls(CTraceFilterSimpleExt::pCallCTraceFilterSimple);
 	DestroyCalls(CTraceFilterSimpleExt::pCallCTraceFilterSimple2);
@@ -414,6 +409,7 @@ bool CAnneHappy::LoadSDKToolsData(IGameConfig *pGameData, char* error, size_t ma
 		int& pOffset;
 		char const *filename;
 	} s_offsets[] = {
+		{"PlayerRunCmd", g_iOff_PlayerRunCmd, "sdktools.games"},
 		{"GetVelocity", CBaseEntity::vtblindex_CBaseEntity_GetVelocity, "sdktools.games"},
 		{"Teleport", CBaseEntity::vtblindex_CBaseEntity_Teleport, "sdktools.games"},
 		{"EyeAngles", CBaseEntity::vtblindex_CBaseEntity_GetEyeAngle, "sdktools.games"},
@@ -428,28 +424,7 @@ bool CAnneHappy::LoadSDKToolsData(IGameConfig *pGameData, char* error, size_t ma
 		}
 	}
 
-	return true;
-}
-
-bool CAnneHappy::LoadSDKHooksData(IGameConfig *pGameData, char* error, size_t maxlen)
-{
-	static const struct {
-		char const* name;
-		int& pOffset;
-		char const *filename;
-	} s_offsets[] = {
-		{"PostThink", CBaseEntity::vtblindex_CBaseEntity_PostThink, "sdkhooks.games"},
-	};
-
-	for (auto &offset : s_offsets)
-	{
-		if (!pGameData->GetOffset(offset.name, &offset.pOffset))
-		{
-			ke::SafeSprintf(error, maxlen, "Could not find offset for \"%s\" in \"%s\"", offset.name, offset.filename);
-			return false;
-		}
-	}
-
+	SH_MANUALHOOK_RECONFIGURE(PlayerRunCmdHook, g_iOff_PlayerRunCmd, 0, 0);
 	return true;
 }
 
@@ -591,6 +566,109 @@ bool CAnneHappy::FindSendProps(IGameConfig *pGameData, char* error, size_t maxle
 	return true;
 }
 
+void CAnneHappy::OnClientPutInServer(int client)
+{
+	PlayerRunCmdHook(client);
+}
+
+void CAnneHappy::PlayerRunCmdHook(int client)
+{
+	edict_t *pEdict = PEntityOfEntIndex(client);
+	if (!pEdict)
+	{
+		return;
+	}
+
+	IServerUnknown *pUnknown = pEdict->GetUnknown();
+	if (!pUnknown)
+	{
+		return;
+	}
+
+	CBaseEntity *pEntity = pUnknown->GetBaseEntity();
+	if (!pEntity)
+	{
+		return;
+	}
+
+	CVTableHook hook(pEntity);
+	for (size_t i = 0; i < g_hookList.size(); ++i)
+	{
+		if (hook == g_hookList[i])
+		{
+			return;
+		}
+	}
+
+	int hookid = SH_ADD_MANUALVPHOOK(PlayerRunCmdHook, pEntity, SH_MEMBER(this, &CAnneHappy::PlayerRunCmd), false);
+
+	hook.SetHookID(hookid);
+	g_hookList.push_back(new CVTableHook(hook));
+}
+
+void CAnneHappy::PlayerRunCmd(CUserCmd *ucmd, IMoveHelper *moveHelper)
+{
+	if (!ucmd)
+	{
+		RETURN_META(MRES_IGNORED);
+	}
+
+	CBaseEntity *pEntity = META_IFACEPTR(CBaseEntity);
+
+	if (!pEntity)
+	{
+		RETURN_META(MRES_IGNORED);
+	}
+
+	edict_t *pEdict = gameents->BaseEntityToEdict(pEntity);
+
+	if (!pEdict)
+	{
+		RETURN_META(MRES_IGNORED);
+	}
+
+	int client = IndexOfEdict(pEdict);
+
+	if (client < 1 || client > gpGlobals->maxClients)
+	{
+		RETURN_META(MRES_IGNORED);
+	}
+
+	CTerrorPlayer *pPlayer = (CTerrorPlayer *)pEntity;
+	if (!pPlayer->IsFakeClient() || !pPlayer->IsInfected())
+	{
+		RETURN_META(MRES_IGNORED);
+	}
+
+	switch (pPlayer->GetClass())
+	{
+		case ZC_BOOMER:
+		{
+			if (!g_BoomerCmdListner)
+			{
+				g_BoomerCmdListner = new CBoomerCmdListner();
+			}
+
+			g_BoomerCmdListner->OnPlayerRunCmd(pPlayer, ucmd);
+			break;
+		}
+
+		case ZC_SMOKER:
+		{
+			if (!g_SmokerCmdListner)
+			{
+				g_SmokerCmdListner = new CSmokerCmdListner();
+			}
+
+			g_SmokerCmdListner->OnPlayerRunCmd(pPlayer, ucmd);
+			break;
+		}
+	}
+
+	RETURN_META(MRES_IGNORED);
+}
+
+/*
 void CTerrorEntityListner::OnEntityCreated(CBaseEntity* pEntity, const char *classname)
 {
 	if (!pEntity)
@@ -604,7 +682,7 @@ void CTerrorEntityListner::OnEntityCreated(CBaseEntity* pEntity, const char *cla
 		return;
 
 	CVTableHook *vhook = new CVTableHook(pEntity);
-	int hookid = SH_ADD_MANUALVPHOOK(PostThink, pEntity, SH_MEMBER(&g_EntityListener, &CTerrorEntityListner::OnPostThink), false);
+
 	vhook->SetHookID(hookid);
 	g_hookList.push_back(vhook);
 }
@@ -673,7 +751,7 @@ void CTerrorEntityListner::OnPostThink()
 
 	RETURN_META(MRES_IGNORED);
 }
-
+*/
 void CAnneHappy::DestroyCalls(ICallWrapper *pCall)
 {
 	if (pCall)
