@@ -1,7 +1,7 @@
 #include "utils.h"
 #include "extension.h"
 
-CBasePlayer* _UTIL_PlayerByIndex(int playerIndex)
+CBasePlayer* UTIL_PlayerByIndexExt(int playerIndex)
 {
 	if (playerIndex > 0 && playerIndex <= playerhelpers->GetMaxClients()) 
 	{
@@ -13,11 +13,11 @@ CBasePlayer* _UTIL_PlayerByIndex(int playerIndex)
 	return NULL;
 }
 
-CBasePlayer* _UTIL_PlayerByUserId(int userID)
+CBasePlayer* UTIL_PlayerByUserIdExt(int userID)
 {
 	for (int i = 1; i <= gpGlobals->maxClients; i++ )
 	{
-		CBasePlayer *pPlayer = UTIL_PlayerByIndex(i);
+		CBasePlayer *pPlayer = UTIL_PlayerByIndexExt(i);
 
 		if (!pPlayer)
 			continue;
@@ -44,7 +44,7 @@ CBasePlayer* UTIL_GetClosetSurvivor(CBasePlayer* pPlayer, CBasePlayer* pIgnorePl
     std::vector<utils_t> aTargetList;
     for (int i = 1; i <= gpGlobals->maxClients; i++)
     {
-        CTerrorPlayer *pIterPlayer = (CTerrorPlayer *)UTIL_PlayerByIndex(i);
+        CTerrorPlayer *pIterPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(i);
         if (!pIterPlayer)
             continue;
 
@@ -82,7 +82,7 @@ CBasePlayer* UTIL_GetClosetSurvivor(CBasePlayer* pPlayer, CBasePlayer* pIgnorePl
 
     int closetIndex = aTargetList[0].index;
     aTargetList.clear();
-    return UTIL_PlayerByIndex(closetIndex);
+    return UTIL_PlayerByIndexExt(closetIndex);
 }
 
 Vector UTIL_MakeVectorFromPoints(Vector src1, Vector src2)
@@ -223,7 +223,7 @@ bool WillHitWallOrFall(CBasePlayer *pPlayer, Vector vec)
     trace_t tr2;
     UTIL_TraceHull(vecDownHullRayStartPos, vecDownHullRayEndPos, vecMins, vecMaxs, MASK_NPCSOLID_BRUSHONLY, NULL, COLLISION_GROUP_NONE, &tr2, TR_EntityFilter);
 
-    if (tr2.DidHit())
+    if (tr2.DidHit() && tr2.m_pEnt)
     {
         Vector vecDownHullRayHitPos = tr2.endpos;
         if (FloatAbs(vecDownHullRayStartPos.z - vecDownHullRayHitPos.z) > FALL_DETECT_HEIGHT)
@@ -231,11 +231,11 @@ bool WillHitWallOrFall(CBasePlayer *pPlayer, Vector vec)
             return false;
         }
 
-        int index = tr2.GetEntityIndex();
+        int index = tr2.m_pEnt->entindex();
         if (index <= 0 || index > gpGlobals->maxClients)
             return false;
 
-        CBaseEntity *pEntity = (CBaseEntity *)_UTIL_PlayerByIndex(index);
+        CBaseEntity *pEntity = (CBaseEntity *)UTIL_PlayerByIndexExt(index);
         if (!pEntity)
             return false;
 
@@ -347,7 +347,7 @@ float CalculateTeamDistance(CTerrorPlayer *pIgnorePlayer)
     float flTeamDistance = 0.0f;
     for (int i = 1; i <= gpGlobals->maxClients; i++)
     {
-        CTerrorSmokerVictim *pPlayer = (CTerrorSmokerVictim *)_UTIL_PlayerByIndex(i);
+        CTerrorSmokerVictim *pPlayer = (CTerrorSmokerVictim *)UTIL_PlayerByIndexExt(i);
         if (!pPlayer)
             continue;
 

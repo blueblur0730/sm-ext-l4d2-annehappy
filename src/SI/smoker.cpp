@@ -29,7 +29,7 @@ void CSmokerEventListner::FireGameEvent(IGameEvent *event)
     {
         for (int i = 1; i <= gpGlobals->maxClients; i++)
         {
-            CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndex(i);
+            CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(i);
             if (!pPlayer)
                 continue;
 
@@ -42,10 +42,15 @@ void CSmokerEventListner::FireGameEvent(IGameEvent *event)
     }
 }
 
+int CSmokerEventListner::GetEventDebugID()
+{
+    return 0;
+}
+
 SourceMod::ResultType CSmokerTimerEvent::OnTimer(ITimer *pTimer, void *pData)
 {
     int client = (int)(intptr_t)pData;
-    CSmoker *pSmoker = (CSmoker *)UTIL_PlayerByIndex(client);
+    CSmoker *pSmoker = (CSmoker *)UTIL_PlayerByIndexExt(client);
     if (!pSmoker)
         return Pl_Stop;
 
@@ -201,7 +206,7 @@ CTerrorPlayer* BossZombiePlayerBot::OnSmokerChooseVictim(CTerrorPlayer *pLastVic
                     
                     for (int i = 1; i < gpGlobals->maxClients; i++)
                     {
-                        CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndex(i);
+                        CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(i);
                         if (!pPlayer)
                             continue;
 
@@ -280,7 +285,7 @@ static CTerrorPlayer *SmokerTargetChoose(int method, CTerrorPlayer *pSmoker, CTe
         {
             for (int i = 1; i < gpGlobals->maxClients; i++)
             {
-                CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndex(i);
+                CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(i);
                 if (!pPlayer)
                     continue;
 
@@ -307,7 +312,7 @@ static CTerrorPlayer *SmokerTargetChoose(int method, CTerrorPlayer *pSmoker, CTe
         {
             for (int i = 1; i < gpGlobals->maxClients; i++)
             {
-                CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndex(i);
+                CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(i);
                 if (!pPlayer)
                     continue;
 
@@ -360,7 +365,7 @@ static CTerrorPlayer *SmokerTargetChoose(int method, CTerrorPlayer *pSmoker, CTe
         {
             for (int i = 1; i < gpGlobals->maxClients; i++)
             {
-                CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndex(i);
+                CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(i);
                 if (!pPlayer)
                     continue;
 
@@ -390,7 +395,7 @@ static int TeamMeleeCheck()
     int iTeamMeleeCount = 0;
     for (int i = 1; i < gpGlobals->maxClients; i++)
     {
-        CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndex(i);
+        CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(i);
         if (!pPlayer)
             continue;
 

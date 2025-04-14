@@ -32,9 +32,14 @@ void CBoomerEventListner::FireGameEvent(IGameEvent *event)
         OnRoundStart(event);
 }
 
+int CBoomerEventListner::GetEventDebugID(void)
+{
+    return 0;
+}
+
 void CBoomerEventListner::OnPlayerSpawned(IGameEvent *event)
 {
-    CBoomer *pBoomer = (CBoomer *)UTIL_PlayerByUserId(event->GetInt("userid"));
+    CBoomer *pBoomer = (CBoomer *)UTIL_PlayerByUserIdExt(event->GetInt("userid"));
     if (!pBoomer || !pBoomer->IsBoomer())
         return;
 
@@ -47,7 +52,7 @@ void CBoomerEventListner::OnPlayerSpawned(IGameEvent *event)
 
 void CBoomerEventListner::OnPlayerShoved(IGameEvent *event)
 {
-    CBoomer *pPlayer = (CBoomer *)UTIL_PlayerByUserId(event->GetInt("userid"));
+    CBoomer *pPlayer = (CBoomer *)UTIL_PlayerByUserIdExt(event->GetInt("userid"));
 
     int index = pPlayer->entindex();
     if (index <= 0 || index > gpGlobals->maxClients)
@@ -62,11 +67,11 @@ void CBoomerEventListner::OnPlayerShoved(IGameEvent *event)
 
 void CBoomerEventListner::OnPlayerNowIt(IGameEvent *event)
 {
-    CBoomer *pAttacker = (CBoomer *)UTIL_PlayerByUserId(event->GetInt("attacker"));
+    CBoomer *pAttacker = (CBoomer *)UTIL_PlayerByUserIdExt(event->GetInt("attacker"));
     if (!pAttacker || !pAttacker->IsBoomer())
         return;
 
-    CTerrorBoomerVictim *pVictim = (CTerrorBoomerVictim *)UTIL_PlayerByUserId(event->GetInt("userid"));
+    CTerrorBoomerVictim *pVictim = (CTerrorBoomerVictim *)UTIL_PlayerByUserIdExt(event->GetInt("userid"));
 
     int index = pVictim->entindex();
     if (index <= 0 || index > gpGlobals->maxClients)
@@ -84,7 +89,7 @@ void CBoomerEventListner::OnRoundStart(IGameEvent *event)
 {
     for (int i = 1; i <= gpGlobals->maxClients; i++)
     {
-        CTerrorBoomerVictim *pPlayer = (CTerrorBoomerVictim *)UTIL_PlayerByIndex(i);
+        CTerrorBoomerVictim *pPlayer = (CTerrorBoomerVictim *)UTIL_PlayerByIndexExt(i);
         if (!pPlayer)
             continue;
 
@@ -100,7 +105,7 @@ SourceMod::ResultType CBoomerTimerEvent::OnTimer(ITimer *pTimer, void *pData)
         if (client <= 0 || client > gpGlobals->maxClients)
             return Pl_Stop;
 
-        CBoomer *pBoomer = (CBoomer *)UTIL_PlayerByIndex(client);
+        CBoomer *pBoomer = (CBoomer *)UTIL_PlayerByIndexExt(client);
         if (!pBoomer->IsBoomer() || pBoomer->IsDead())
             return Pl_Stop;
 
@@ -116,7 +121,7 @@ SourceMod::ResultType CBoomerTimerEvent::OnTimer(ITimer *pTimer, void *pData)
         if (client <= 0 || client > gpGlobals->maxClients)
             return Pl_Stop;
 
-        CBoomer *pBoomer = (CBoomer *)UTIL_PlayerByIndex(client);
+        CBoomer *pBoomer = (CBoomer *)UTIL_PlayerByIndexExt(client);
         if (!pBoomer->IsBoomer() || pBoomer->IsDead())
             return Pl_Stop;
 
@@ -130,7 +135,7 @@ SourceMod::ResultType CBoomerTimerEvent::OnTimer(ITimer *pTimer, void *pData)
         if (client <= 0 || client > gpGlobals->maxClients)
             return Pl_Stop;
 
-        CTerrorBoomerVictim *pVictim = (CTerrorBoomerVictim *)UTIL_PlayerByIndex(client);
+        CTerrorBoomerVictim *pVictim = (CTerrorBoomerVictim *)UTIL_PlayerByIndexExt(client);
         pVictim->m_bBiled = false;
         pVictim->m_iSecondCheckFrame = 0;
     }
@@ -342,7 +347,7 @@ void CBoomerEntityListner::OnPostThink(CBaseEntity *pEntity)
         pPlayer->m_bIsInCoolDown = true;
         for (int i = 1; i <= gpGlobals->maxClients; i++)
         {
-            CBaseEntity *pEntity = (CBaseEntity *)UTIL_PlayerByIndex(i);
+            CBaseEntity *pEntity = (CBaseEntity *)UTIL_PlayerByIndexExt(i);
             if (!pEntity)
                 continue;
 
@@ -358,7 +363,7 @@ void CBoomerEntityListner::OnPostThink(CBaseEntity *pEntity)
             trace_t tr;
             ray.Init(vecSelfEyePos, vecEyePos);
             UTIL_TraceRay(ray, MASK_VISIBLE, NULL, COLLISION_GROUP_NONE, &tr, TR_VomitClientFilter, (void *)((uint8_t *)pPlayer->entindex()));
-            if (!tr.DidHit() && tr.GetEntityIndex() == pTerrorPlayer->entindex())
+            if (!tr.DidHit() && (tr.m_pEnt && (tr.m_pEnt->entindex() == pTerrorPlayer->entindex())))
             {
                 pTerrorPlayer->OnVomitedUpon(pPlayer, false);
                 ((CTerrorBoomerVictim *)pTerrorPlayer)->m_bBiled = true;
@@ -401,7 +406,7 @@ CTerrorPlayer* BossZombiePlayerBot::OnBoomerChooseVictim(CTerrorPlayer *pLastVic
     Vector vecEyePos = this->GetEyeOrigin();
     for (int i = 1; i <= gpGlobals->maxClients; i++)
     {
-        CTerrorPlayer *pTerrorPlayer = (CTerrorPlayer *)UTIL_PlayerByIndex(i);
+        CTerrorPlayer *pTerrorPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(i);
         if (!pTerrorPlayer)
             continue;
 
@@ -417,7 +422,7 @@ CTerrorPlayer* BossZombiePlayerBot::OnBoomerChooseVictim(CTerrorPlayer *pLastVic
                 trace_t tr;
                 ray.Init(vecEyePos, vecTargetEyePos);
                 UTIL_TraceRay(ray, MASK_VISIBLE, NULL, COLLISION_GROUP_NONE, &tr, TR_VomitClientFilter, (void *)((uint8_t *)this->entindex()));
-                if (!tr.DidHit() && tr.GetEntityIndex() == pTerrorPlayer->entindex())
+                if (!tr.DidHit() && (tr.m_pEnt && (tr.m_pEnt->entindex() == pTerrorPlayer->entindex())))
                 {
                     return pTerrorPlayer;
                 }
@@ -450,7 +455,7 @@ void CTerrorPlayer::DTRCallBack_OnVomitedUpon(CBasePlayer *pAttacker, bool bIsEx
     Vector vecEyePos = pPlayer->GetEyeOrigin();
     for (int i = 1; i <= gpGlobals->maxClients; i++)
     {
-        CTerrorBoomerVictim *pTerrorPlayer = (CTerrorBoomerVictim *)UTIL_PlayerByIndex(i);
+        CTerrorBoomerVictim *pTerrorPlayer = (CTerrorBoomerVictim *)UTIL_PlayerByIndexExt(i);
         if (!pTerrorPlayer)
             continue;
 
@@ -466,7 +471,7 @@ void CTerrorPlayer::DTRCallBack_OnVomitedUpon(CBasePlayer *pAttacker, bool bIsEx
         ray.Init(vecEyePos, vecTargetEyePos);
         UTIL_TraceRay(ray, MASK_VISIBLE, NULL, COLLISION_GROUP_NONE, &tr, TR_VomitClientFilter, (void *)((uint8_t *)pPlayer->entindex()));
 
-        if (!tr.DidHit() && tr.GetEntityIndex() == pTerrorPlayer->entindex())
+        if (!tr.DidHit() && (tr.m_pEnt && (tr.m_pEnt->entindex() == pTerrorPlayer->entindex())))
         {
             vec_t flAngle = GetSelfTargetAngle(pPlayer, pTerrorPlayer);
             targetInfo_t targetInfo;
@@ -510,7 +515,7 @@ static bool secondCheck(CBaseEntity *pPlayer, CBaseEntity *pTarget)
     ray.Init(vecSelfEyePos, vecTargetEyePos);
     UTIL_TraceRay(ray, MASK_VISIBLE, NULL, COLLISION_GROUP_NONE, &tr, TR_VomitClientFilter, (void *)((uint8_t *)pTarget->entindex()));
     
-    if (!tr.DidHit() || tr.GetEntityIndex() == pTarget->entindex())
+    if (!tr.DidHit() || (tr.m_pEnt && (tr.m_pEnt->entindex() == pTarget->entindex())))
         return true;
 
     return false;

@@ -74,6 +74,7 @@ SH_DECL_MANUALHOOK0_void(PostThink, 0, 0, 0);
 int CBaseEntity::vtblindex_CBaseEntity_Teleport = 0;
 int CBaseEntity::vtblindex_CBaseEntity_PostThink = 0;
 int CBaseEntity::vtblindex_CBaseEntity_GetEyeAngle = 0;
+int CTerrorPlayer::vtblindex_CTerrorPlayer_GetLastKnownArea = 0;
 
 ICallWrapper *CTraceFilterSimpleExt::pCallCTraceFilterSimple = NULL;
 ICallWrapper *CTraceFilterSimpleExt::pCallCTraceFilterSimple2 = NULL;
@@ -82,6 +83,7 @@ ICallWrapper *CBaseEntity::pCallGetEyeAngle = NULL;
 ICallWrapper *CTerrorPlayer::pCallOnVomitedUpon = NULL;
 ICallWrapper *CTerrorPlayer::pCallGetSpecialInfectedDominatingMe = NULL;
 ICallWrapper *CTerrorPlayer::pCallIsStaggering = NULL;
+ICallWrapper *CTerrorPlayer::pCallGetLastKnownArea = NULL;
 ICallWrapper *ZombieManager::pCallGetRandomPZSpawnPosition = NULL;
 
 int CBaseEntity::m_iOff_m_vecVelocity = 0;
@@ -91,6 +93,13 @@ int CTerrorPlayer::m_iOff_m_zombieClass = 0;
 int CTerrorPlayer::m_iOff_m_customAbility = 0;
 int CTerrorPlayer::m_iOff_m_hasVisibleThreats = 0;
 int CTerrorPlayer::m_iOff_m_isIncapacitated = 0;
+int CTerrorPlayer::m_iOff_m_tongueVictim = 0;
+int CTerrorPlayer::m_iOff_m_hGroundEntity = 0;
+int CTerrorPlayer::m_iOff_m_hActiveWeapon = 0;
+int TerrorNavMesh::m_iOff_m_fMapMaxFlowDistance = 0;
+int CNavArea::m_iOff_m_flow = 0;
+int CBaseCombatWeapon::m_iOff_m_bInReload = 0;
+int CEnvPhysicsBlocker::m_iOff_m_nBlockType = 0;
 
 void *CTraceFilterSimpleExt::pFnCTraceFilterSimple = NULL;
 void *CTerrorPlayer::pFnOnVomitedUpon = NULL;

@@ -18,7 +18,7 @@ extern ConVar z_smoker_instant_shoot_range_cofficient;
 class CSmokerEventListner : public IGameEventListener2 {
 public:
     virtual void FireGameEvent(IGameEvent *event);
-    virtual int	 GetEventDebugID( void );
+    virtual int GetEventDebugID(void);
 };
 
 class CSmokerTimerEvent : public ITimedEvent {

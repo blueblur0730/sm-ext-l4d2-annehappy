@@ -25,7 +25,7 @@ extern ConVar z_boomer_predict_pos;
 class CBoomerEventListner : public IGameEventListener2 {
 public:
     virtual void FireGameEvent(IGameEvent *event);
-    virtual int	 GetEventDebugID( void );
+    virtual int GetEventDebugID(void);
     void OnPlayerSpawned(IGameEvent *event);
     void OnPlayerShoved(IGameEvent *event);
     void OnPlayerNowIt(IGameEvent *event);

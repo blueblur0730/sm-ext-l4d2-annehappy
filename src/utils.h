@@ -31,9 +31,9 @@ struct utils_t {
     int index;
 };
 
-CBasePlayer* UTIL_PlayerByIndex(int playerIndex);
+CBasePlayer* UTIL_PlayerByIndexExt(int playerIndex);
 
-CBasePlayer* UTIL_PlayerByUserId(int userID);
+CBasePlayer* UTIL_PlayerByUserIdExt(int userID);
 
 CBasePlayer* UTIL_GetClosetSurvivor(CBasePlayer* pPlayer, CBasePlayer* pIgnorePlayer = NULL, bool bCheckIncapp = false, bool bCheckDominated = false);
 
