@@ -44,7 +44,7 @@ void CSmokerEventListner::FireGameEvent(IGameEvent *event)
 
 int CSmokerEventListner::GetEventDebugID()
 {
-    return 0;
+    return EVENT_DEBUG_ID_INIT;
 }
 
 SourceMod::ResultType CSmokerTimerEvent::OnTimer(ITimer *pTimer, void *pData)

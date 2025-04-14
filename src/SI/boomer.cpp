@@ -34,7 +34,7 @@ void CBoomerEventListner::FireGameEvent(IGameEvent *event)
 
 int CBoomerEventListner::GetEventDebugID(void)
 {
-    return 0;
+    return EVENT_DEBUG_ID_INIT;
 }
 
 void CBoomerEventListner::OnPlayerSpawned(IGameEvent *event)

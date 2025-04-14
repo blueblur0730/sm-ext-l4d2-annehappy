@@ -369,6 +369,7 @@ void CAnneHappy::SDK_OnUnload()
 		g_hookList.erase(it);
 	}
 
+	RemoveEventListner();
 	sdkhooks->RemoveEntityListener(&g_EntityListener);
 
 	if (g_BoomerEntityListner)
