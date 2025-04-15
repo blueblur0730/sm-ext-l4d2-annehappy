@@ -4,6 +4,7 @@
 #pragma once
 
 #include <vector>
+#include <unordered_map>
 
 #include "convar.h"
 #include "wrappers.h"
@@ -26,7 +27,6 @@ class CBoomerEventListner : public IGameEventListener2 {
 public:
     virtual void FireGameEvent(IGameEvent *event);
     virtual int GetEventDebugID(void);
-    void OnPlayerSpawned(IGameEvent *event);
     void OnPlayerShoved(IGameEvent *event);
     void OnPlayerNowIt(IGameEvent *event);
     void OnRoundStart(IGameEvent *event);
@@ -37,14 +37,34 @@ struct targetInfo_t {
     CTerrorPlayer *pPlayer;
 };
 
-class CBoomer : public CTerrorPlayer {
-public:
+struct boomerInfo_t {
     bool m_bCanBile;
     bool m_bIsInCoolDown;
     bool m_bBiling;
     std::vector<targetInfo_t> m_aTargetInfo;
     int m_nBileFrame[2];
+
+    void Init() {
+        m_bCanBile = false;
+        m_bIsInCoolDown = false;
+        m_aTargetInfo.clear();
+        m_nBileFrame[0] = m_nBileFrame[1] = 0;
+    }
 };
+
+extern std::unordered_map<CTerrorPlayer *, boomerInfo_t> g_MapBoomerInfo;
+
+struct boomerVictimInfo_t {
+    bool m_bBiled;
+    int m_iSecondCheckFrame;
+
+    void Init() {
+        m_bBiled = false;
+        m_iSecondCheckFrame = 0;
+    }
+};
+
+extern std::unordered_map<CTerrorPlayer *, boomerVictimInfo_t> g_MapBoomerVictimInfo;
 
 class CVomit : public CBaseAbility {
 public:
@@ -55,12 +75,6 @@ public:
 	{
 		return *(bool*)((byte*)(this) + CVomit::m_iOff_m_isSpraying);
 	}
-};
-
-class CTerrorBoomerVictim : public CTerrorPlayer {
-public:
-    bool m_bBiled;
-    int m_iSecondCheckFrame;
 };
 
 class CBoomerTimerEvent : public ITimedEvent {

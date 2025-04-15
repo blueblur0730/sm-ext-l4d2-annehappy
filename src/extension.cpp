@@ -45,8 +45,8 @@
  * @brief Implement extension code here.
  */
 
-CAnneHappy g_TemplateExtention;		/**< Global singleton for extension's main interface */
-SMEXT_LINK(&g_TemplateExtention);
+CAnneHappy g_AnneHappy;		/**< Global singleton for extension's main interface */
+SMEXT_LINK(&g_AnneHappy);
 
 SH_DECL_MANUALHOOK2_void(PlayerRunCmdHook, 0, 0, 0, CUserCmd *, IMoveHelper *);
 
@@ -65,10 +65,6 @@ ZombieManager *g_pZombieManager = NULL;
 
 CBoomerEventListner g_BoomerEventListner;
 CSmokerEventListner g_SmokerEventListner;
-
-//CTerrorEntityListner g_EntityListener;
-//CBoomerEntityListner *g_BoomerEntityListner = NULL;
-//CSmokerEntityListner *g_SmokerEntityListner = NULL;
 
 CBoomerCmdListner *g_BoomerCmdListner = NULL;
 CSmokerCmdListner *g_SmokerCmdListner = NULL;
@@ -349,12 +345,6 @@ void CAnneHappy::SDK_OnUnload()
 	RemoveEventListner();
 	//sdkhooks->RemoveEntityListener(&g_EntityListener);
 
-	//if (g_BoomerEntityListner)
-		//delete g_BoomerEntityListner;
-
-	//if (g_SmokerEntityListner)
-		//delete g_SmokerEntityListner;
-
 	if (g_BoomerCmdListner)
 		delete g_BoomerCmdListner;
 
@@ -489,7 +479,6 @@ bool CAnneHappy::LoadGameData(IGameConfig *pGameData, char* error, size_t maxlen
 bool CAnneHappy::AddEventListner()
 {
 	const char *sBoomerEventName[] = {
-		"player_spawn",
 		"player_shoved",
 		"player_now_it",
 		"round_start"
@@ -510,6 +499,20 @@ bool CAnneHappy::AddEventListner()
 		return false;
 	}
 
+	const char *sGlobalEventName[] = {
+		"player_spawn",
+		"player_death"
+	};	
+
+	for (int i = 0; i < sizeof(sGlobalEventName); i++)
+	{
+		if (!gameevents->AddListener(&g_AnneHappy, sGlobalEventName[i], true))
+		{
+			smutils->LogError(myself, "Extension failed to add event listner: '%s' for ai_boomer.", sGlobalEventName[i]);
+			return false;
+		}
+	}
+
 	return true;
 }
 
@@ -517,6 +520,7 @@ void CAnneHappy::RemoveEventListner()
 {
 	gameevents->RemoveListener(&g_BoomerEventListner);
 	gameevents->RemoveListener(&g_SmokerEventListner);
+	gameevents->RemoveListener(&g_AnneHappy);
 }
 
 bool CAnneHappy::FindSendProps(IGameConfig *pGameData, char* error, size_t maxlen)
@@ -604,6 +608,96 @@ void CAnneHappy::PlayerRunCmdHook(int client)
 
 	hook.SetHookID(hookid);
 	g_hookList.push_back(new CVTableHook(hook));
+}
+
+void CAnneHappy::FireGameEvent(IGameEvent *event)
+{
+	const char *name = event->GetName();
+	if (strcmp(name, "player_death") == 0)
+	{
+		CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByUserIdExt(event->GetInt("userid"));
+		if (!pPlayer || !pPlayer->IsInGame())
+			return;
+		
+		if (pPlayer->IsSurvivor())
+		{
+			if (g_MapBoomerVictimInfo.contains(pPlayer))
+			{
+				g_MapBoomerVictimInfo[pPlayer].Init();
+				g_MapBoomerVictimInfo.erase(pPlayer);
+			}
+		}
+		else if (pPlayer->IsInfected())
+		{
+			switch (pPlayer->GetClass())
+			{
+				case ZC_BOOMER:
+				{
+					if (g_MapBoomerInfo.contains(pPlayer))
+					{
+						g_MapBoomerInfo[pPlayer].Init();
+						g_MapBoomerInfo.erase(pPlayer);
+					}
+				}
+
+				case ZC_SMOKER:
+				{
+					if (g_MapSmokerInfo.contains(pPlayer))
+					{
+						g_MapSmokerInfo.erase(pPlayer);
+					}	
+				}
+			}
+		}
+	}
+	else if (strcmp(name, "player_spawn") == 0)
+	{
+		CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByUserIdExt(event->GetInt("userid"));
+		if (!pPlayer || !pPlayer->IsInGame())
+			return;
+
+		if (pPlayer->IsSurvivor())
+		{
+			if (pPlayer->IsSurvivor())
+			{
+				boomerVictimInfo_t info;
+				info.Init();
+				g_MapBoomerVictimInfo[pPlayer] = info;
+
+				smokerVictimInfo_t info2;
+				g_MapSmokerVictimInfo[pPlayer] = info2;
+			}
+		}
+		else if (pPlayer->IsInfected())
+		{
+			switch (pPlayer->GetClass())
+			{
+				case ZC_BOOMER:
+				{
+					if (g_MapBoomerInfo.contains(pPlayer))
+					{
+						boomerInfo_t info;
+						info.Init();
+						g_MapBoomerInfo[pPlayer] = info;
+					}
+				}
+
+				case ZC_SMOKER:
+				{
+					if (g_MapSmokerInfo.contains(pPlayer))
+					{
+						smokerInfo_t info;
+						g_MapSmokerInfo[pPlayer] = info;
+					}
+				}
+			}
+		}
+	}
+}
+
+int CAnneHappy::GetEventDebugID()
+{
+	return EVENT_DEBUG_ID_INIT;
 }
 
 void CAnneHappy::PlayerRunCmd(CUserCmd *ucmd, IMoveHelper *moveHelper)

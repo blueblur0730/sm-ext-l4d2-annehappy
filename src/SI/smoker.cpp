@@ -6,6 +6,9 @@ CSmokerTimerEvent g_SmokerTimerEvent;
 static ITimer *g_hTimerCoolDown = NULL;
 static int g_iValidSurvivor = 0;
 
+std::unordered_map<CTerrorPlayer *, smokerInfo_t> g_MapSmokerInfo;
+std::unordered_map<CTerrorPlayer *, smokerVictimInfo_t> g_MapSmokerVictimInfo;
+
 ConVar z_smoker_bhop("z_smoker_bhop", "1", FCVAR_NOTIFY | FCVAR_CHEAT, "Enable bhop for smoker", true, 0.0f, true, 1.0f);
 ConVar z_smoker_bhop_speed("z_smoker_bhop_speed", "90.0", FCVAR_NOTIFY | FCVAR_CHEAT, "Bhop speed for smoker", true, 0.0f, false, 0.0f);
 ConVar z_smoker_target_rules("z_smoker_target_rules", "1", FCVAR_NOTIFY | FCVAR_CHEAT,
@@ -36,8 +39,14 @@ void CSmokerEventListner::FireGameEvent(IGameEvent *event)
             if (!pPlayer->IsInGame())
                 continue;
 
-            ((CSmoker *)pPlayer)->m_bCanTongue = true;
-            ((CTerrorSmokerVictim *)pPlayer)->m_bLeftBehind = false;
+            if (pPlayer->IsSurvivor() && g_MapSmokerVictimInfo.contains(pPlayer))
+            {
+                g_MapSmokerVictimInfo[pPlayer].m_bLeftBehind = false;
+            }
+            else if (pPlayer->IsSmoker() && g_MapSmokerInfo.contains(pPlayer))
+            {
+                g_MapSmokerInfo[pPlayer].m_bCanTongue = true;
+            }
         }
     }
 }
@@ -50,11 +59,13 @@ int CSmokerEventListner::GetEventDebugID()
 SourceMod::ResultType CSmokerTimerEvent::OnTimer(ITimer *pTimer, void *pData)
 {
     int client = (int)(intptr_t)pData;
-    CSmoker *pSmoker = (CSmoker *)UTIL_PlayerByIndexExt(client);
-    if (!pSmoker)
+    CTerrorPlayer *pSmoker = (CTerrorPlayer *)UTIL_PlayerByIndexExt(client);
+    if (!pSmoker || !pSmoker->IsInGame() || !pSmoker->IsSmoker())
         return Pl_Stop;
 
-    pSmoker->m_bCanTongue = true;
+    if (g_MapSmokerInfo.contains(pSmoker))
+        g_MapSmokerInfo[pSmoker].m_bCanTongue = true;
+
     return Pl_Continue;
 }
 
@@ -65,8 +76,14 @@ void CSmokerTimerEvent::OnTimerEnd(ITimer *pTimer, void *pData)
 
 void CSmokerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
 {
-    CSmoker *pSmoker = (CSmoker *)pEntity;
+    CTerrorPlayer *pSmoker = reinterpret_cast<CTerrorPlayer *>(pEntity);
     if (!pSmoker || !pSmoker->IsSmoker() || pSmoker->IsDead())
+        return;
+
+    if (!pCmd)
+        return;
+
+    if (!g_MapSmokerInfo.contains(pSmoker))
         return;
 
     if (pSmoker->IsStaggering())
@@ -76,18 +93,15 @@ void CSmokerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
     if (!pTarget || !pTarget->IsInGame() || !pTarget->IsSurvivor() ||pTarget->IsDead())
     {
         // aimming target is invalid, check if it is tonguing someone.
-        CTerrorSmokerVictim *pVictim = (CTerrorSmokerVictim *)pSmoker->GetTongueVictim();
+        CTerrorPlayer *pVictim = pSmoker->GetTongueVictim();
         if (pVictim && pVictim->IsInGame() && !pVictim->IsDead() && pVictim->IsSurvivor())   
         {
-            pSmoker->m_bCanTongue = false;
+            g_MapSmokerInfo[pSmoker].m_bCanTongue = false;
             g_hTimerCoolDown = timersys->CreateTimer(&g_SmokerTimerEvent, g_pCVar->FindVar("tongue_hit_delay")->GetFloat(), (void *)(intptr_t)(pSmoker->entindex()), 0);
         }
 
         return;
     }
-
-    if (!pCmd)
-        return;
 
     Vector vecSelfPos = pSmoker->GetAbsOrigin();
     Vector vecTargetPos = pTarget->GetAbsOrigin();
@@ -141,11 +155,11 @@ void CSmokerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
             pCmd->buttons |= IN_ATTACK2;
             return;
         }
-        else if (flDistance < g_pCVar->FindVar("tongue_range")->GetFloat() * z_smoker_instant_shoot_range_cofficient.GetFloat() && pSmoker->m_bCanTongue)
+        else if (flDistance < g_pCVar->FindVar("tongue_range")->GetFloat() * z_smoker_instant_shoot_range_cofficient.GetFloat() && g_MapSmokerInfo[pSmoker].m_bCanTongue)
         {
             pCmd->buttons |= IN_ATTACK;
             pCmd->buttons |= IN_ATTACK2;
-            pSmoker->m_bCanTongue = false;
+            g_MapSmokerInfo[pSmoker].m_bCanTongue = false;
             g_hTimerCoolDown = timersys->CreateTimer(&g_SmokerTimerEvent, g_pCVar->FindVar("tongue_miss_delay")->GetFloat(), (void *)(intptr_t)(pSmoker->entindex()), 0);
             return;
         }
@@ -321,17 +335,20 @@ static CTerrorPlayer *SmokerTargetChoose(int method, CTerrorPlayer *pSmoker, CTe
                 if (pSpecificTarget && pPlayer == pSpecificTarget)
                     continue;
 
+                if (!g_MapSmokerVictimInfo.contains(pPlayer))
+                    continue;
+
                 if (UTIL_IsLeftBehind(pPlayer))
                 {
                     Vector vecTargetPos;
                     g_pZombieManager->GetRandomPZSpawnPosition(ZC_SMOKER, 5, pSmoker, &vecTargetPos);
                     pSmoker->Teleport(&vecTargetPos, NULL, NULL);
-                    ((CTerrorSmokerVictim *)pPlayer)->m_bLeftBehind = true;
+                    g_MapSmokerVictimInfo[pPlayer].m_bLeftBehind = true;
                     return pPlayer;
                 }
                 else
                 {
-                    ((CTerrorSmokerVictim *)pPlayer)->m_bLeftBehind = false;
+                    g_MapSmokerVictimInfo[pPlayer].m_bLeftBehind = false;
                 }
 
                 float flTeamDistance = CalculateTeamDistance(pPlayer);
@@ -352,11 +369,11 @@ static CTerrorPlayer *SmokerTargetChoose(int method, CTerrorPlayer *pSmoker, CTe
                     }
                     else
                     {
-                        ((CTerrorSmokerVictim *)pPlayer)->m_bLeftBehind = false;
+                        g_MapSmokerVictimInfo[pPlayer].m_bLeftBehind = false;
                     }
                 }
 
-                ((CTerrorSmokerVictim *)pPlayer)->m_bLeftBehind = false;
+                g_MapSmokerVictimInfo[pPlayer].m_bLeftBehind = false;
             }
         }
 

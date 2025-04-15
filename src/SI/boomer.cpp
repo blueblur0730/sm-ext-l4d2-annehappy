@@ -8,6 +8,9 @@ static ITimer *g_hResetBileTimer = NULL;
 static ITimer *g_hResetAbilityTimer = NULL;
 static ITimer *g_hResetBiledStateTimer = NULL;
 
+std::unordered_map<CTerrorPlayer *, boomerInfo_t> g_MapBoomerInfo;
+std::unordered_map<CTerrorPlayer *, boomerVictimInfo_t> g_MapBoomerVictimInfo;
+
 ConVar z_boomer_bhop("z_boomer_bhop", "1", FCVAR_NOTIFY | FCVAR_CHEAT, "Enable boomer bhop.", true, 0.0f, true, 1.0f);
 ConVar z_boomer_bhop_speed("z_boomer_bhop_speed", "150.0", FCVAR_NOTIFY | FCVAR_CHEAT, "Boomer bhop speed.", true, 0.0f, false, 0.0f);
 ConVar z_boomer_vision_up_on_vomit("z_boomer_vision_up_on_vomit", "1", FCVAR_NOTIFY | FCVAR_CHEAT, "Boomer vision will turn up when vomitting.", true, 0.0f, true, 1.0f);
@@ -22,14 +25,18 @@ ConVar z_boomer_predict_pos("z_boomer_predict_pos", "1", FCVAR_NOTIFY | FCVAR_CH
 void CBoomerEventListner::FireGameEvent(IGameEvent *event)
 {
     const char *name = event->GetName();
-    if (!strcmp(name, "player_spawn"))
-        OnPlayerSpawned(event);
-    else if (!strcmp(name, "player_shoved"))
+    if (!strcmp(name, "player_shoved"))
+    {
         OnPlayerShoved(event);
+    }
     else if (!strcmp(name, "player_now_it"))
+    {
         OnPlayerNowIt(event);
+    }
     else if (!strcmp(name, "round_start"))
+    {
         OnRoundStart(event);
+    }
 }
 
 int CBoomerEventListner::GetEventDebugID(void)
@@ -37,22 +44,9 @@ int CBoomerEventListner::GetEventDebugID(void)
     return EVENT_DEBUG_ID_INIT;
 }
 
-void CBoomerEventListner::OnPlayerSpawned(IGameEvent *event)
-{
-    CBoomer *pBoomer = (CBoomer *)UTIL_PlayerByUserIdExt(event->GetInt("userid"));
-    if (!pBoomer || !pBoomer->IsBoomer())
-        return;
-
-    pBoomer->m_bCanBile = true;
-    pBoomer->m_bIsInCoolDown = false;
-    pBoomer->m_nBileFrame[0] = 0;
-    pBoomer->m_nBileFrame[1] = 0;
-    pBoomer->m_aTargetInfo.clear();
-}
-
 void CBoomerEventListner::OnPlayerShoved(IGameEvent *event)
 {
-    CBoomer *pPlayer = (CBoomer *)UTIL_PlayerByUserIdExt(event->GetInt("userid"));
+    CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByUserIdExt(event->GetInt("userid"));
 
     int index = pPlayer->entindex();
     if (index <= 0 || index > gpGlobals->maxClients)
@@ -61,23 +55,31 @@ void CBoomerEventListner::OnPlayerShoved(IGameEvent *event)
     if (!pPlayer->IsBoomer())
         return;
 
-    pPlayer->m_bCanBile = false;
+    if (!g_MapBoomerInfo.contains(pPlayer))
+        return;
+
+    g_MapBoomerInfo[pPlayer].m_bCanBile = false;
     g_hResetBileTimer = timersys->CreateTimer(&g_BoomerTimerEvent, 1.5f, (void *)(intptr_t)index, 0);
 }
 
 void CBoomerEventListner::OnPlayerNowIt(IGameEvent *event)
 {
-    CBoomer *pAttacker = (CBoomer *)UTIL_PlayerByUserIdExt(event->GetInt("attacker"));
+    CTerrorPlayer *pAttacker = (CTerrorPlayer *)UTIL_PlayerByUserIdExt(event->GetInt("attacker"));
     if (!pAttacker || !pAttacker->IsBoomer())
         return;
 
-    CTerrorBoomerVictim *pVictim = (CTerrorBoomerVictim *)UTIL_PlayerByUserIdExt(event->GetInt("userid"));
+    CTerrorPlayer *pVictim = (CTerrorPlayer *)UTIL_PlayerByUserIdExt(event->GetInt("userid"));
+    if (!pAttacker)
+        return;
 
     int index = pVictim->entindex();
     if (index <= 0 || index > gpGlobals->maxClients)
         return;
 
-    pVictim->m_bBiled = true;
+    if (!g_MapBoomerVictimInfo.contains(pVictim))
+        return;
+
+    g_MapBoomerVictimInfo[pVictim].m_bBiled = true;
 
     // FindVar actually can be replaced by ConVarRef, like: 
     // static ConVarRef sb_vomit_blind_time("sb_vomit_blind_time");
@@ -89,11 +91,14 @@ void CBoomerEventListner::OnRoundStart(IGameEvent *event)
 {
     for (int i = 1; i <= gpGlobals->maxClients; i++)
     {
-        CTerrorBoomerVictim *pPlayer = (CTerrorBoomerVictim *)UTIL_PlayerByIndexExt(i);
-        if (!pPlayer)
+        CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(i);
+        if (!pPlayer || !pPlayer->IsInGame() || !pPlayer->IsSurvivor())
             continue;
 
-        pPlayer->m_iSecondCheckFrame = 0;
+        if (!g_MapBoomerVictimInfo.contains(pPlayer))
+            continue;
+
+        g_MapBoomerVictimInfo[pPlayer].m_iSecondCheckFrame = 0;
     }
 }
 
@@ -105,12 +110,16 @@ SourceMod::ResultType CBoomerTimerEvent::OnTimer(ITimer *pTimer, void *pData)
         if (client <= 0 || client > gpGlobals->maxClients)
             return Pl_Stop;
 
-        CBoomer *pBoomer = (CBoomer *)UTIL_PlayerByIndexExt(client);
-        if (!pBoomer->IsBoomer() || pBoomer->IsDead())
+        CTerrorPlayer *pBoomer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(client);
+        if (!pBoomer->IsInGame() || !pBoomer->IsBoomer() || pBoomer->IsDead())
             return Pl_Stop;
 
-        pBoomer->m_bCanBile = false;
-        pBoomer->m_bIsInCoolDown = true;
+        if (!g_MapBoomerInfo.contains(pBoomer))
+            return Pl_Stop;
+
+        g_MapBoomerInfo[pBoomer].m_bCanBile = false;
+        g_MapBoomerInfo[pBoomer].m_bIsInCoolDown = true;
+
         g_hResetAbilityTimer = timersys->CreateTimer(&g_BoomerTimerEvent, g_pCVar->FindVar("z_vomit_interval")->GetFloat(), (void *)(intptr_t)client, 0);
         return Pl_Continue;
     }
@@ -121,12 +130,15 @@ SourceMod::ResultType CBoomerTimerEvent::OnTimer(ITimer *pTimer, void *pData)
         if (client <= 0 || client > gpGlobals->maxClients)
             return Pl_Stop;
 
-        CBoomer *pBoomer = (CBoomer *)UTIL_PlayerByIndexExt(client);
-        if (!pBoomer->IsBoomer() || pBoomer->IsDead())
+        CTerrorPlayer *pBoomer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(client);
+        if (!pBoomer->IsInGame() || !pBoomer->IsBoomer() || pBoomer->IsDead())
+            return Pl_Stop;
+    
+        if (!g_MapBoomerInfo.contains(pBoomer))
             return Pl_Stop;
 
-        pBoomer->m_bCanBile = true;
-        pBoomer->m_bIsInCoolDown = false;
+        g_MapBoomerInfo[pBoomer].m_bCanBile = true;
+        g_MapBoomerInfo[pBoomer].m_bIsInCoolDown = false;
     }
 
     if (pTimer == g_hResetBiledStateTimer)
@@ -135,9 +147,15 @@ SourceMod::ResultType CBoomerTimerEvent::OnTimer(ITimer *pTimer, void *pData)
         if (client <= 0 || client > gpGlobals->maxClients)
             return Pl_Stop;
 
-        CTerrorBoomerVictim *pVictim = (CTerrorBoomerVictim *)UTIL_PlayerByIndexExt(client);
-        pVictim->m_bBiled = false;
-        pVictim->m_iSecondCheckFrame = 0;
+        CTerrorPlayer *pVictim = (CTerrorPlayer *)UTIL_PlayerByIndexExt(client);
+        if (!pVictim || !pVictim->IsInGame() || !pVictim->IsSurvivor())
+            return Pl_Stop;
+
+        if (!g_MapBoomerVictimInfo.contains(pVictim))
+            return Pl_Stop;
+
+        g_MapBoomerVictimInfo[pVictim].m_bBiled = false;
+        g_MapBoomerVictimInfo[pVictim].m_iSecondCheckFrame = 0;
     }
 
     return Pl_Stop;
@@ -150,35 +168,30 @@ void CBoomerTimerEvent::OnTimerEnd(ITimer *pTimer, void *pData)
 
 void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
 {
-    CBoomer *pPlayer = (CBoomer *)pEntity;
-    if (!pPlayer || !pPlayer->IsBoomer() || pPlayer->IsDead())
+    CTerrorPlayer *pPlayer = reinterpret_cast<CTerrorPlayer *>(pEntity);
+    if (!pPlayer || !pPlayer->IsInGame() || !pPlayer->IsBoomer() || pPlayer->IsDead())
+        return;
+
+    if (!g_MapBoomerInfo.contains(pPlayer))
         return;
 
     CTerrorPlayer *pTarget = (CTerrorPlayer *)UTIL_GetClosetSurvivor(pPlayer);
     if (!pTarget)
         return;
 
-    CVomit *pAbility = (CVomit *)pPlayer->GetAbility();
+    if (!g_MapBoomerVictimInfo.contains(pTarget))
+        return;
+
+    CVomit *pAbility = reinterpret_cast<CVomit *>(pPlayer->GetAbility());
     if (!pAbility)
         return;
 
-    IPlayerInfo *pInfo = pPlayer->GetPlayerInfo();
-    IPlayerInfo *pTargetInfo = pTarget->GetPlayerInfo();
-    if (!pInfo || !pTargetInfo)
-        return;
-
-    Vector vecSelfPos = pInfo->GetAbsOrigin();
-    Vector vecTargetPos = pTargetInfo->GetAbsOrigin();
-
-    IGamePlayer *pGamePlaer = pPlayer->GetGamePlayer();
-    if (!pGamePlaer)
-        return;
-
-    Vector vecSelfEyePos;
-    serverClients->ClientEarPosition(pGamePlaer->GetEdict(), &vecSelfEyePos);
+    Vector vecSelfPos = pPlayer->GetAbsOrigin();
+    Vector vecTargetPos = pPlayer->GetAbsOrigin();
+    Vector vecSelfEyePos = pPlayer->GetEyeOrigin();
 
     vec_t flTargetDist = vecSelfPos.DistTo(vecTargetPos);
-    if (pPlayer->HasVisibleThreats() && !pPlayer->m_bIsInCoolDown && pPlayer->m_aTargetInfo.size() < 1)
+    if (pPlayer->HasVisibleThreats() && !g_MapBoomerInfo[pPlayer].m_bIsInCoolDown && g_MapBoomerInfo[pPlayer].m_aTargetInfo.size() < 1)
     {
         if (flTargetDist <= g_pCVar->FindVar("z_vomit_range")->GetFloat())
         {
@@ -199,40 +212,39 @@ void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
 
             pPlayer->Teleport(NULL, &vecAngles, NULL);
 
-            CTerrorBoomerVictim *pVictim = (CTerrorBoomerVictim *)pTarget;
             if (z_boomer_degree_force_bile.GetInt() > 0 && UTIL_IsInAimOffset(pPlayer, pTarget, z_boomer_degree_force_bile.GetFloat()) &&
-                !pVictim->m_bBiled && pAbility->IsSpraying())
+                !g_MapBoomerVictimInfo[pTarget].m_bBiled && pAbility->IsSpraying())
             {
-                if (pVictim->m_iSecondCheckFrame < z_boomer_spin_interval.GetInt() && !pVictim->m_bBiled)
+                if (g_MapBoomerVictimInfo[pTarget].m_iSecondCheckFrame < z_boomer_spin_interval.GetInt() && !g_MapBoomerVictimInfo[pTarget].m_bBiled)
                 {
-                    pVictim->m_iSecondCheckFrame++;
+                    g_MapBoomerVictimInfo[pTarget].m_iSecondCheckFrame++;
                 }
-                else if (!pVictim->m_bBiled && secondCheck(pPlayer, pTarget))
+                else if (!g_MapBoomerVictimInfo[pTarget].m_bBiled && secondCheck(pPlayer, pTarget))
                 {
                     pTarget->OnVomitedUpon(pPlayer, false);
-                    pVictim->m_bBiled = true;
-                    pVictim->m_iSecondCheckFrame = 0;
+                    g_MapBoomerVictimInfo[pTarget].m_bBiled = true;
+                    g_MapBoomerVictimInfo[pTarget].m_iSecondCheckFrame = 0;
                 }
             }
         }
     }
 
-    if (pPlayer->m_aTargetInfo.size() >= 1 && !pPlayer->m_bIsInCoolDown && z_boomer_vision_spin_on_vomit.GetBool())
+    if (g_MapBoomerInfo[pPlayer].m_aTargetInfo.size() >= 1 && !g_MapBoomerInfo[pPlayer].m_bIsInCoolDown && z_boomer_vision_spin_on_vomit.GetBool())
     {
-        if (pPlayer->m_nBileFrame[0] < pPlayer->m_aTargetInfo.size())
+        if (g_MapBoomerInfo[pPlayer].m_nBileFrame[0] < g_MapBoomerInfo[pPlayer].m_aTargetInfo.size())
         {
-            targetInfo_t targetInfo = pPlayer->m_aTargetInfo[pPlayer->m_nBileFrame[0]];
+            targetInfo_t targetInfo = g_MapBoomerInfo[pPlayer].m_aTargetInfo[g_MapBoomerInfo[pPlayer].m_nBileFrame[0]];
             CTerrorPlayer *pVictim = targetInfo.pPlayer;
             if (!pVictim || pVictim->IsDead() || !pVictim->IsInGame())
                 return;
 
-            vec_t flSpinAngle = targetInfo.flAngle;
-            IPlayerInfo *pVictimInfo = pVictim->GetPlayerInfo();
-            if (!pVictimInfo)
+            if (!g_MapBoomerVictimInfo.contains(pVictim))
                 return;
+            
+            vec_t flSpinAngle = targetInfo.flAngle;
 
             QAngle vecAngles;
-            Vector vecVictimPos = pVictimInfo->GetAbsOrigin();
+            Vector vecVictimPos = pVictim->GetAbsOrigin();
             vec_t flHeight = vecSelfPos.z - vecVictimPos.z;
             UTIL_ComputeAimAngles(pPlayer, pVictim, &vecAngles, AimEye);
 
@@ -254,50 +266,49 @@ void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
             (int)(flSpinAngle / TURN_ANGLE_DIVIDE) :
             z_boomer_spin_interval.GetInt();
 
-            CTerrorBoomerVictim *pVictim2 = (CTerrorBoomerVictim *)pVictim;
             if (z_boomer_degree_force_bile.GetBool() && z_boomer_predict_pos.GetBool() && targetFrame == 0)
             {
                 pVictim->OnVomitedUpon(pPlayer, false);
-                pVictim2->m_bBiled = true;
-                pVictim2->m_iSecondCheckFrame = 0;
-                pPlayer->m_nBileFrame[0] += 1;
+                g_MapBoomerVictimInfo[pVictim].m_bBiled = true;
+                g_MapBoomerVictimInfo[pVictim].m_iSecondCheckFrame = 0;
+                g_MapBoomerInfo[pPlayer].m_nBileFrame[0] += 1;
                 return;
             }
 
-            if (pPlayer->m_nBileFrame[1] < targetFrame)
+            if (g_MapBoomerInfo[pPlayer].m_nBileFrame[1] < targetFrame)
             {
                 if (z_boomer_degree_force_bile.GetBool())
                 {
-                    if (pVictim2->m_iSecondCheckFrame < targetFrame && !pVictim2->m_bBiled)
+                    if (g_MapBoomerVictimInfo[pVictim].m_iSecondCheckFrame < targetFrame && !g_MapBoomerVictimInfo[pVictim].m_bBiled)
                     {
-                        pVictim2->m_iSecondCheckFrame++;
+                        g_MapBoomerVictimInfo[pVictim].m_iSecondCheckFrame++;
                     }
-                    else if (!pVictim2->m_bBiled && secondCheck(pPlayer, pVictim))
+                    else if (!g_MapBoomerVictimInfo[pVictim].m_bBiled && secondCheck(pPlayer, pVictim))
                     {
                         pVictim->OnVomitedUpon(pPlayer, false);
-                        pVictim2->m_bBiled = true;
-                        pVictim2->m_iSecondCheckFrame = 0;
-                        pPlayer->m_nBileFrame[1] = targetFrame;
+                        g_MapBoomerVictimInfo[pVictim].m_bBiled = true;
+                        g_MapBoomerVictimInfo[pVictim].m_iSecondCheckFrame = 0;
+                        g_MapBoomerInfo[pPlayer].m_nBileFrame[1] = targetFrame;
                     }
-                    else if (pVictim2->m_bBiled)
+                    else if (g_MapBoomerVictimInfo[pVictim].m_bBiled)
                     {
-                        pPlayer->m_nBileFrame[1] = pVictim2->m_iSecondCheckFrame = 0;
-                        pPlayer->m_nBileFrame[0] += 1;
+                        g_MapBoomerInfo[pPlayer].m_nBileFrame[1] = g_MapBoomerVictimInfo[pVictim].m_iSecondCheckFrame = 0;
+                        g_MapBoomerInfo[pPlayer].m_nBileFrame[0] += 1;
                         return;
                     }
                 }
 
-                pPlayer->m_nBileFrame[0] += 1;
+                g_MapBoomerInfo[pPlayer].m_nBileFrame[0] += 1;
             }
-            else if (pPlayer->m_nBileFrame[0] >= pPlayer->m_aTargetInfo.size())
+            else if (g_MapBoomerInfo[pPlayer].m_nBileFrame[0] >= g_MapBoomerInfo[pPlayer].m_aTargetInfo.size())
             {
-                pPlayer->m_aTargetInfo.clear();
-                pPlayer->m_nBileFrame[0] = pPlayer->m_nBileFrame[1] = 0;
+                g_MapBoomerInfo[pPlayer].m_aTargetInfo.clear();
+                g_MapBoomerInfo[pPlayer].m_nBileFrame[0] = g_MapBoomerInfo[pPlayer].m_nBileFrame[1] = 0;
             }
             else
             {
-                pPlayer->m_nBileFrame[0] += 1;
-                pPlayer->m_nBileFrame[1] = 0;
+                g_MapBoomerInfo[pPlayer].m_nBileFrame[0] += 1;
+                g_MapBoomerInfo[pPlayer].m_nBileFrame[1] = 0;
             }
         }
     }
@@ -308,18 +319,18 @@ void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
     int flags = pPlayer->GetFlags();
     if ((flags & FL_ONGROUND) && pPlayer->HasVisibleThreats()
         && (flTargetDist <= (int)(0.8 * g_pCVar->FindVar("z_vomit_range")->GetFloat()))
-        && !pPlayer->m_bIsInCoolDown && pPlayer->m_bCanBile)
+        && !g_MapBoomerInfo[pPlayer].m_bIsInCoolDown && g_MapBoomerInfo[pPlayer].m_bCanBile)
     {
         pCmd->buttons |= IN_ATTACK;
         pCmd->buttons |= IN_FORWARD;
 
-        if (pPlayer->m_bCanBile)
+        if (g_MapBoomerInfo[pPlayer].m_bCanBile)
         {
             int index = pPlayer->entindex();
             g_hResetBileTimer = timersys->CreateTimer(&g_BoomerTimerEvent, (g_pCVar->FindVar("z_vomit_duration"))->GetFloat(), (void *)(intptr_t)index, 0);
         }
 
-        pPlayer->m_bCanBile = false;
+        g_MapBoomerInfo[pPlayer].m_bCanBile = false;
     }
 
     if ((pTarget->IsIncapped() || pTarget->GetSpecialInfectedDominatingMe()) && flTargetDist <= 80.0)
@@ -336,17 +347,20 @@ void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
     }
 
     if (z_boomer_force_bile.GetBool() && (pCmd && (pCmd->buttons & IN_ATTACK))
-        && !pPlayer->m_bIsInCoolDown)
+        && !g_MapBoomerInfo[pPlayer].m_bIsInCoolDown)
     {
-        pPlayer->m_bIsInCoolDown = true;
+        g_MapBoomerInfo[pPlayer].m_bIsInCoolDown = true;
         for (int i = 1; i <= gpGlobals->maxClients; i++)
         {
-            CBaseEntity *pEntity = (CBaseEntity *)UTIL_PlayerByIndexExt(i);
-            if (!pEntity)
+            CBaseEntity *pEnt = (CBaseEntity *)UTIL_PlayerByIndexExt(i);
+            if (!pEnt)
                 continue;
 
-            CTerrorPlayer *pTerrorPlayer = (CTerrorPlayer *)pEntity;
+            CTerrorPlayer *pTerrorPlayer = (CTerrorPlayer *)pEnt;
             if (!pTerrorPlayer || !pTerrorPlayer->IsInGame() || !pTerrorPlayer->IsSurvivor() || pPlayer->IsDead())
+                continue;
+
+            if (!g_MapBoomerVictimInfo.contains(pTerrorPlayer))
                 continue;
 
             Vector vecEyePos = pTerrorPlayer->GetEyeOrigin();
@@ -360,7 +374,7 @@ void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
             if (!tr.DidHit() && (tr.m_pEnt && (tr.m_pEnt->entindex() == pTerrorPlayer->entindex())))
             {
                 pTerrorPlayer->OnVomitedUpon(pPlayer, false);
-                ((CTerrorBoomerVictim *)pTerrorPlayer)->m_bBiled = true;
+                g_MapBoomerVictimInfo[pTerrorPlayer].m_bBiled = true;
             }
         }
 
@@ -430,30 +444,36 @@ CTerrorPlayer* BossZombiePlayerBot::OnBoomerChooseVictim(CTerrorPlayer *pLastVic
 
 void CTerrorPlayer::DTRCallBack_OnVomitedUpon(CBasePlayer *pAttacker, bool bIsExplodedByBoomer)
 {
-    CTerrorBoomerVictim *pBoomerVictim = (CTerrorBoomerVictim *)this;
+    CTerrorPlayer *pBoomerVictim = (CTerrorPlayer *)this;
     if (!pBoomerVictim)
         return;
 
-    pBoomerVictim->m_bBiled = true;
-
-    CBoomer *pPlayer = (CBoomer *)pAttacker;
-    if (!pPlayer)
+    if (!g_MapBoomerVictimInfo.contains(pBoomerVictim))
         return;
 
-    if (!pPlayer->IsBoomer())
+    g_MapBoomerVictimInfo[pBoomerVictim].m_bBiled = true;
+
+    CTerrorPlayer *pPlayer = (CTerrorPlayer *)pAttacker;
+    if (!pPlayer || !pPlayer->IsBoomer())
         return;
 
-    if (pPlayer->m_aTargetInfo.size() > 1)
+    if (g_MapBoomerInfo.contains(pPlayer))
+        return;
+
+    if (g_MapBoomerInfo[pPlayer].m_aTargetInfo.size() > 1)
         return;
 
     Vector vecEyePos = pPlayer->GetEyeOrigin();
     for (int i = 1; i <= gpGlobals->maxClients; i++)
     {
-        CTerrorBoomerVictim *pTerrorPlayer = (CTerrorBoomerVictim *)UTIL_PlayerByIndexExt(i);
+        CTerrorPlayer *pTerrorPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(i);
         if (!pTerrorPlayer)
             continue;
 
-        if (!pTerrorPlayer->IsInGame() || !pTerrorPlayer->IsSurvivor() || pTerrorPlayer->IsDead() || pTerrorPlayer->m_bBiled)
+        if (!g_MapBoomerVictimInfo.contains(pTerrorPlayer))
+            continue;
+
+        if (!pTerrorPlayer->IsInGame() || !pTerrorPlayer->IsSurvivor() || pTerrorPlayer->IsDead() || g_MapBoomerVictimInfo[pTerrorPlayer].m_bBiled)
             continue;
 
         Vector vecTargetEyePos = pTerrorPlayer->GetEyeOrigin();
@@ -471,13 +491,13 @@ void CTerrorPlayer::DTRCallBack_OnVomitedUpon(CBasePlayer *pAttacker, bool bIsEx
             targetInfo_t targetInfo;
             targetInfo.pPlayer = pTerrorPlayer;
             targetInfo.flAngle = flAngle;
-            pPlayer->m_aTargetInfo.push_back(targetInfo);
+            g_MapBoomerInfo[pPlayer].m_aTargetInfo.push_back(targetInfo);
         }
     }
 
-    if (pPlayer->m_aTargetInfo.size() > 1)
+    if (g_MapBoomerInfo[pPlayer].m_aTargetInfo.size() > 1)
     {
-        std::sort(pPlayer->m_aTargetInfo.begin(), pPlayer->m_aTargetInfo.end(), 
+        std::sort(g_MapBoomerInfo[pPlayer].m_aTargetInfo.begin(), g_MapBoomerInfo[pPlayer].m_aTargetInfo.end(), 
             [](const targetInfo_t &a, const targetInfo_t &b) {
                 return a.flAngle < b.flAngle;
             }
@@ -496,10 +516,13 @@ static bool secondCheck(CBaseEntity *pPlayer, CBaseEntity *pTarget)
     serverClients->ClientEarPosition(pGamePlayer->GetEdict(), &vecSelfEyePos);
     serverClients->ClientEarPosition(pGameTarget->GetEdict(), &vecTargetEyePos);
 
+    if (!g_MapBoomerVictimInfo.contains((CTerrorPlayer *)pTarget))
+        return false;
+
     vec_t flDistance = vecSelfEyePos.DistTo(vecTargetEyePos);
     if (flDistance <= g_pCVar->FindVar("z_vomit_range")->GetFloat() || 
         UTIL_IsInAimOffset((CBasePlayer *)pPlayer, (CBasePlayer *)pTarget, z_boomer_degree_force_bile.GetFloat()) ||
-        ((CTerrorBoomerVictim *)pTarget)->m_bBiled)
+        g_MapBoomerVictimInfo[((CTerrorPlayer *)pTarget)].m_bBiled)
     {
         return false;
     }
@@ -526,11 +549,11 @@ static bool TR_VomitClientFilter(IHandleEntity* pHandleEntity, int contentsMask,
         return false;
 
     CBaseEntity *pEntity = gameents->EdictToBaseEntity(pEdict);
-    if (!pEntity)
+    if (!pEntity || !g_MapBoomerVictimInfo.contains(((CTerrorPlayer *)pEntity)))
         return false;
 
     int index = gamehelpers->EntityToBCompatRef(pEntity);
-    if (index > 0 && index <= gpGlobals->maxClients && ((CTerrorBoomerVictim *)pEntity)->m_bBiled)
+    if (index > 0 && index <= gpGlobals->maxClients && g_MapBoomerVictimInfo[((CTerrorPlayer *)pEntity)].m_bBiled)
         return false;
 
     return index != *(uint8_t *)data;

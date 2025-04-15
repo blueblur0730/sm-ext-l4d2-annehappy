@@ -1,6 +1,8 @@
 #ifndef _SMOKER_H_INCLUDED_
 #define _SMOKER_H_INCLUDED_
 
+#include <unordered_map>
+
 #include "convar.h"
 #include "wrappers.h"
 
@@ -27,15 +29,26 @@ public:
     virtual void OnTimerEnd(ITimer *pTimer, void *pData);
 };
 
-class CSmoker : public CTerrorPlayer {
-public:
+struct smokerInfo_t {
     bool m_bCanTongue;
+
+    void Init() {
+        m_bCanTongue = false;
+    }
 };
 
-class CTerrorSmokerVictim : public CTerrorPlayer {
-public:
+// m_bCanTongue
+extern std::unordered_map<CTerrorPlayer *, smokerInfo_t> g_MapSmokerInfo;
+
+struct smokerVictimInfo_t {
     bool m_bLeftBehind;
+
+    void Init() {
+        m_bLeftBehind = false;
+    }
 };
+
+extern std::unordered_map<CTerrorPlayer *, smokerVictimInfo_t> g_MapSmokerVictimInfo;
 
 class CSmokerCmdListner {
 public:

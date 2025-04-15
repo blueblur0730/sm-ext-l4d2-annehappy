@@ -347,7 +347,7 @@ float CalculateTeamDistance(CTerrorPlayer *pIgnorePlayer)
     float flTeamDistance = 0.0f;
     for (int i = 1; i <= gpGlobals->maxClients; i++)
     {
-        CTerrorSmokerVictim *pPlayer = (CTerrorSmokerVictim *)UTIL_PlayerByIndexExt(i);
+        CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(i);
         if (!pPlayer)
             continue;
 
