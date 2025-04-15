@@ -58,6 +58,10 @@ void CBoomerEventListner::OnPlayerShoved(IGameEvent *event)
     if (!g_MapBoomerInfo.contains(pPlayer))
         return;
 
+#ifdef _DEBUG
+    rootconsole->ConsolePrint("### CBoomerEventListner::OnPlayerShoved");
+#endif
+
     g_MapBoomerInfo[pPlayer].m_bCanBile = false;
     g_hResetBileTimer = timersys->CreateTimer(&g_BoomerTimerEvent, 1.5f, (void *)(intptr_t)index, 0);
 }
@@ -79,6 +83,10 @@ void CBoomerEventListner::OnPlayerNowIt(IGameEvent *event)
     if (!g_MapBoomerVictimInfo.contains(pVictim))
         return;
 
+#ifdef _DEBUG
+    rootconsole->ConsolePrint("### CBoomerEventListner::OnPlayerNowIt");
+#endif
+
     g_MapBoomerVictimInfo[pVictim].m_bBiled = true;
 
     // FindVar actually can be replaced by ConVarRef, like: 
@@ -89,6 +97,10 @@ void CBoomerEventListner::OnPlayerNowIt(IGameEvent *event)
 
 void CBoomerEventListner::OnRoundStart(IGameEvent *event)
 {
+#ifdef _DEBUG
+    rootconsole->ConsolePrint("### CBoomerEventListner::OnRoundStart");
+#endif
+
     for (int i = 1; i <= gpGlobals->maxClients; i++)
     {
         CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(i);
@@ -117,6 +129,9 @@ SourceMod::ResultType CBoomerTimerEvent::OnTimer(ITimer *pTimer, void *pData)
         if (!g_MapBoomerInfo.contains(pBoomer))
             return Pl_Stop;
 
+#ifdef _DEBUG
+    rootconsole->ConsolePrint("### CBoomerTimerEvent::OnTimer, g_hResetBileTimer");
+#endif
         g_MapBoomerInfo[pBoomer].m_bCanBile = false;
         g_MapBoomerInfo[pBoomer].m_bIsInCoolDown = true;
 
@@ -137,6 +152,9 @@ SourceMod::ResultType CBoomerTimerEvent::OnTimer(ITimer *pTimer, void *pData)
         if (!g_MapBoomerInfo.contains(pBoomer))
             return Pl_Stop;
 
+#ifdef _DEBUG
+    rootconsole->ConsolePrint("### CBoomerTimerEvent::OnTimer, g_hResetAbilityTimer");
+#endif
         g_MapBoomerInfo[pBoomer].m_bCanBile = true;
         g_MapBoomerInfo[pBoomer].m_bIsInCoolDown = false;
     }
@@ -154,6 +172,9 @@ SourceMod::ResultType CBoomerTimerEvent::OnTimer(ITimer *pTimer, void *pData)
         if (!g_MapBoomerVictimInfo.contains(pVictim))
             return Pl_Stop;
 
+#ifdef _DEBUG
+    rootconsole->ConsolePrint("### CBoomerTimerEvent::OnTimer, g_hResetBiledStateTimer");
+#endif
         g_MapBoomerVictimInfo[pVictim].m_bBiled = false;
         g_MapBoomerVictimInfo[pVictim].m_iSecondCheckFrame = 0;
     }
@@ -186,6 +207,9 @@ void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
     if (!pAbility)
         return;
 
+#ifdef _DEBUG
+    rootconsole->ConsolePrint("### CBoomerCmdListner::OnPlayerRunCmd, player: %d, cmdButtons: %d", pEntity->entindex(), pCmd->buttons);
+#endif
     Vector vecSelfPos = pPlayer->GetAbsOrigin();
     Vector vecTargetPos = pPlayer->GetAbsOrigin();
     Vector vecSelfEyePos = pPlayer->GetEyeOrigin();
@@ -406,12 +430,16 @@ void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
     }
 }
 
-CTerrorPlayer* BossZombiePlayerBot::OnBoomerChooseVictim(CTerrorPlayer *pLastVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer)
+CTerrorPlayer* BossZombiePlayerBot::OnBoomerChooseVictim(CTerrorPlayer *pAttacker, CTerrorPlayer *pLastVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer)
 {
-    if (!this->IsBoomer() || this->IsDead())
+    if (!pAttacker->IsBoomer() || pAttacker->IsDead())
         return NULL;
 
-    Vector vecEyePos = this->GetEyeOrigin();
+#ifdef _DEBUG
+        rootconsole->ConsolePrint("### BossZombiePlayerBot::OnBoomerChooseVictim");
+#endif
+
+    Vector vecEyePos = pAttacker->GetEyeOrigin();
     for (int i = 1; i <= gpGlobals->maxClients; i++)
     {
         CTerrorPlayer *pTerrorPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(i);
@@ -429,9 +457,12 @@ CTerrorPlayer* BossZombiePlayerBot::OnBoomerChooseVictim(CTerrorPlayer *pLastVic
                 Ray_t ray;
                 trace_t tr;
                 ray.Init(vecEyePos, vecTargetEyePos);
-                UTIL_TraceRay(ray, MASK_VISIBLE, NULL, COLLISION_GROUP_NONE, &tr, TR_VomitClientFilter, (void *)((uint8_t *)this->entindex()));
+                UTIL_TraceRay(ray, MASK_VISIBLE, NULL, COLLISION_GROUP_NONE, &tr, TR_VomitClientFilter, (void *)((uint8_t *)pAttacker->entindex()));
                 if (!tr.DidHit() && (tr.m_pEnt && (tr.m_pEnt->entindex() == pTerrorPlayer->entindex())))
                 {
+#ifdef _DEBUG
+                    rootconsole->ConsolePrint("### BossZombiePlayerBot::OnBoomerChooseVictim, Found Vuctim: %d", pTerrorPlayer->entindex());
+#endif
                     return pTerrorPlayer;
                 }
             }
@@ -463,6 +494,9 @@ void CTerrorPlayer::DTRCallBack_OnVomitedUpon(CBasePlayer *pAttacker, bool bIsEx
     if (g_MapBoomerInfo[pPlayer].m_aTargetInfo.size() > 1)
         return;
 
+#ifdef _DEBUG
+    rootconsole->ConsolePrint("### CTerrorPlayer::DTRCallBack_OnVomitedUpon");
+#endif
     Vector vecEyePos = pPlayer->GetEyeOrigin();
     for (int i = 1; i <= gpGlobals->maxClients; i++)
     {

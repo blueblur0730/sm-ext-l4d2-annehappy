@@ -166,12 +166,12 @@ void CSmokerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
     }
 }
 
-CTerrorPlayer* BossZombiePlayerBot::OnSmokerChooseVictim(CTerrorPlayer *pLastVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer)
+CTerrorPlayer* BossZombiePlayerBot::OnSmokerChooseVictim(CTerrorPlayer *pAttacker, CTerrorPlayer *pLastVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer)
 {
-    if (!this->IsSmoker() || this->IsDead())
+    if (!pAttacker->IsSmoker() || pAttacker->IsDead())
         return NULL;
 
-    if (this->GetTongueVictim())
+    if (pAttacker->GetTongueVictim())
         return NULL;
 
     if (!pLastVictim || !pLastVictim->IsInGame())
@@ -181,7 +181,7 @@ CTerrorPlayer* BossZombiePlayerBot::OnSmokerChooseVictim(CTerrorPlayer *pLastVic
     {
         if (pLastVictim->IsIncapped() || pLastVictim->GetSpecialInfectedDominatingMe())
         {
-            CTerrorPlayer *pNewTarget = SmokerTargetChoose(z_smoker_target_rules.GetInt(), this, pLastVictim);
+            CTerrorPlayer *pNewTarget = SmokerTargetChoose(z_smoker_target_rules.GetInt(), pAttacker, pLastVictim);
             if (pNewTarget && pNewTarget->IsInGame() && pNewTarget->IsSurvivor())
             {
                 return pNewTarget;
@@ -194,7 +194,7 @@ CTerrorPlayer* BossZombiePlayerBot::OnSmokerChooseVictim(CTerrorPlayer *pLastVic
         if (g_iValidSurvivor == TeamMeleeCheck())
         {
             g_iValidSurvivor = 0;
-            CTerrorPlayer *pNewTarget = SmokerTargetChoose(z_smoker_target_rules.GetInt(), this);
+            CTerrorPlayer *pNewTarget = SmokerTargetChoose(z_smoker_target_rules.GetInt(), pAttacker);
             if (pNewTarget && pNewTarget->IsInGame() && pNewTarget->IsSurvivor())
             {
                 return pNewTarget;
@@ -213,7 +213,7 @@ CTerrorPlayer* BossZombiePlayerBot::OnSmokerChooseVictim(CTerrorPlayer *pLastVic
                 const char *szClassName = pWeapon->GetClassName();
                 if (!strcmp(szClassName, "weapon_melee") || !strcmp(szClassName, "weapon_chiansaw"))
                 {
-                    CTerrorPlayer *pNewTarget = SmokerTargetChoose(z_smoker_target_rules.GetInt(), this, pLastVictim);
+                    CTerrorPlayer *pNewTarget = SmokerTargetChoose(z_smoker_target_rules.GetInt(), pAttacker, pLastVictim);
                     if (!pNewTarget || !pNewTarget->IsInGame() || !pNewTarget->IsSurvivor())
                         return NULL;
                     
@@ -226,14 +226,14 @@ CTerrorPlayer* BossZombiePlayerBot::OnSmokerChooseVictim(CTerrorPlayer *pLastVic
                         if (!pPlayer->IsInGame() || !pPlayer->IsSurvivor() || pPlayer == pLastVictim)
                             continue;
 
-                        Vector vecSelfEyePos = this->GetEyeOrigin();
+                        Vector vecSelfEyePos = pAttacker->GetEyeOrigin();
                         Vector vecTargetEyePos = pPlayer->GetEyeOrigin();
 
                         Ray_t ray;
                         ray.Init(vecSelfEyePos, vecTargetEyePos);
 
                         trace_t tr;
-                        UTIL_TraceRay(ray, MASK_SHOT | CONTENTS_MONSTERCLIP | CONTENTS_GRATE, NULL, COLLISION_GROUP_NONE, &tr, TR_RayFilterBySmoker, (void *)(intptr_t)(this->entindex()));
+                        UTIL_TraceRay(ray, MASK_SHOT | CONTENTS_MONSTERCLIP | CONTENTS_GRATE, NULL, COLLISION_GROUP_NONE, &tr, TR_RayFilterBySmoker, (void *)(intptr_t)(pAttacker->entindex()));
 
                         if (!tr.DidHit() && vecSelfEyePos.DistTo(vecTargetEyePos) < 600.0f)
                             return pNewTarget;

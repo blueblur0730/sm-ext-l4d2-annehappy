@@ -60,7 +60,7 @@
 
 /** Enable interfaces you want to use here by uncommenting lines */
 //#define SMEXT_ENABLE_FORWARDSYS
-#define SMEXT_ENABLE_HANDLESYS
+//#define SMEXT_ENABLE_HANDLESYS
 #define SMEXT_ENABLE_PLAYERHELPERS
 //#define SMEXT_ENABLE_DBMANAGER
 #define SMEXT_ENABLE_GAMECONF
@@ -76,6 +76,11 @@
 //#define SMEXT_ENABLE_TEXTPARSERS
 //#define SMEXT_ENABLE_USERMSGS
 //#define SMEXT_ENABLE_TRANSLATOR
-//#define SMEXT_ENABLE_ROOTCONSOLEMENU
+
+#ifdef _DEBUG
+// Root console interface. for debugging.
+	#define SMEXT_ENABLE_ROOTCONSOLEMENU
+#endif
+
 
 #endif // _INCLUDE_SOURCEMOD_EXTENSION_CONFIG_H_

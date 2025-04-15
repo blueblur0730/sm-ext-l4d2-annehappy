@@ -371,19 +371,19 @@ protected:
 };
 */
 
-class BossZombiePlayerBot : public CTerrorPlayer {
+class BossZombiePlayerBot /*: public CTerrorPlayer*/ {
 public:
 	static void *pFnChooseVictim;
 	static CDetour *DTR_ChooseVictim;
 
 public:
-	CTerrorPlayer *OnBoomerChooseVictim(CTerrorPlayer *pLastVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer);
-	CTerrorPlayer *OnSmokerChooseVictim(CTerrorPlayer *pLastVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer);
-	CTerrorPlayer *OnJockeyChooseVictim(CTerrorPlayer *pLastVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer);
-	CTerrorPlayer *OnHunterChooseVictim(CTerrorPlayer *pLastVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer);
-	CTerrorPlayer *OnSpitterChooseVictim(CTerrorPlayer *pLastVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer);
-	CTerrorPlayer *OnChargerChooseVictim(CTerrorPlayer *pLastVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer);
-	CTerrorPlayer *OnTankChooseVictim(CTerrorPlayer *pLastVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer);
+	CTerrorPlayer *OnBoomerChooseVictim(CTerrorPlayer *pAttacker, CTerrorPlayer *pLastVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer);
+	CTerrorPlayer *OnSmokerChooseVictim(CTerrorPlayer *pAttacker, CTerrorPlayer *pLastVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer);
+	CTerrorPlayer *OnJockeyChooseVictim(CTerrorPlayer *pAttacker, CTerrorPlayer *pLastVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer);
+	CTerrorPlayer *OnHunterChooseVictim(CTerrorPlayer *pAttacker, CTerrorPlayer *pLastVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer);
+	CTerrorPlayer *OnSpitterChooseVictim(CTerrorPlayer *pAttacker, CTerrorPlayer *pLastVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer);
+	CTerrorPlayer *OnChargerChooseVictim(CTerrorPlayer *pAttacker, CTerrorPlayer *pLastVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer);
+	CTerrorPlayer *OnTankChooseVictim(CTerrorPlayer *pAttacker, CTerrorPlayer *pLastVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer);
 };
 
 #endif // _WRAPPERS_H_INCLUDED

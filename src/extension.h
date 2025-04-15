@@ -60,7 +60,7 @@ class ZombieManager;
  * @brief Sample implementation of the SDK Extension.
  * Note: Uncomment one of the pre-defined virtual functions in order to use it.
  */
-class CAnneHappy : public SDKExtension, public IConCommandBaseAccessor, public IClientListener, public IGameEventListener2
+class CAnneHappy : public SDKExtension, public IConCommandBaseAccessor, public IClientListener
 {
 public:
 	virtual bool SDK_OnLoad(char *error, size_t maxlen, bool late);
@@ -75,9 +75,7 @@ public:
 
 	virtual void OnClientPutInServer(int client);
 
-	virtual void FireGameEvent(IGameEvent *event);
-
-	virtual int GetEventDebugID(void);
+	virtual void OnClientDisconnecting(int client);
 
 protected:
 	void PlayerRunCmdHook(int client);
@@ -115,7 +113,7 @@ extern IGameEventManager2 *gameevents;
 extern CGlobalVars *gpGlobals;
 
 // sdk hooks interface.
-extern ISDKHooks *sdkhooks;
+//extern ISDKHooks *sdkhooks;
 
 // server game clients interface.
 extern IServerGameClients *serverClients;
