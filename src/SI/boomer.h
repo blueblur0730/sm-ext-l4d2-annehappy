@@ -52,7 +52,7 @@ struct boomerInfo_t {
     }
 };
 
-extern std::unordered_map<CTerrorPlayer *, boomerInfo_t> g_MapBoomerInfo;
+extern std::unordered_map<int, boomerInfo_t> g_MapBoomerInfo;
 
 struct boomerVictimInfo_t {
     bool m_bBiled;
@@ -64,7 +64,7 @@ struct boomerVictimInfo_t {
     }
 };
 
-extern std::unordered_map<CTerrorPlayer *, boomerVictimInfo_t> g_MapBoomerVictimInfo;
+extern std::unordered_map<int, boomerVictimInfo_t> g_MapBoomerVictimInfo;
 
 class CVomit : public CBaseAbility {
 public:

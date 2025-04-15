@@ -228,12 +228,12 @@ void CTerrorPlayer::OnVomitedUpon(CBasePlayer *pAttacker, bool bIsExplodedByBoom
 CTerrorPlayer *CTerrorPlayer::GetSpecialInfectedDominatingMe()
 {
     struct {
-        CTerrorPlayer *pVictim;
+        CBaseEntity *pVictim;
     } stake {this};
 
     void *ret;
     pCallGetSpecialInfectedDominatingMe->Execute(&stake, &ret);
-    return (CTerrorPlayer *)ret;
+    return reinterpret_cast<CTerrorPlayer *>(ret);
 }
 
 bool CTerrorPlayer::IsStaggering()
@@ -244,6 +244,13 @@ bool CTerrorPlayer::IsStaggering()
 
     void *ret;
     pCallIsStaggering->Execute(&stake, &ret);
+    
+    if (!ret)
+    {
+        smutils->LogError(myself, "CTerrorPlayer::IsStaggering: ret is NULL!");
+        return false;
+    }
+
     return *(bool *)((byte *)ret);
 }
 
@@ -255,7 +262,7 @@ CNavArea *CTerrorPlayer::GetLastKnownArea()
 
     void *ret;
     pCallGetLastKnownArea->Execute(&stake, &ret);
-    return (CNavArea *)ret;
+    return reinterpret_cast<CNavArea *>(ret);
 }
 
 bool ZombieManager::GetRandomPZSpawnPosition(ZombieClassType type, int attampts, CTerrorPlayer *pPlayer, Vector *pOutPos)

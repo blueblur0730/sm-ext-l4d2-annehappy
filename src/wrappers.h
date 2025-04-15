@@ -68,7 +68,7 @@ public:
 	CTraceFilterSimpleExt(const IHandleEntity *passedict = NULL, Collision_Group_t collisionGroup = COLLISION_GROUP_NONE, ShouldHitFunc_t pExtraShouldHitFunc = NULL);
 	CTraceFilterSimpleExt(const IHandleEntity *passedict = NULL, Collision_Group_t collisionGroup = COLLISION_GROUP_NONE, ShouldHitFunc2_t pExtraShouldHitFunc = NULL, void *data = NULL);
 
-	virtual bool ShouldHitEntity(IHandleEntity *pHandleEntity, int contentsMask) override;
+	virtual bool ShouldHitEntity(IHandleEntity *pHandleEntity, int contentsMask);
 
 private:
 	TraceType_t m_TraceType;
@@ -118,12 +118,12 @@ public:
 public:
 	inline edict_t* edict()
 	{
-		return gameents->BaseEntityToEdict((CBaseEntity *)this);
+		return gameents->BaseEntityToEdict(this);
 	}
 
 	inline int entindex()
 	{
-		return gamehelpers->EntityToBCompatRef((CBaseEntity *)this);
+		return gamehelpers->EntityToBCompatRef(this);
 	}
 
 	inline const char *GetClassName()

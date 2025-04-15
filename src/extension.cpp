@@ -130,11 +130,30 @@ DETOUR_DECL_MEMBER3(DTRHandler_BossZombiePlayerBot_ChooseVictim, CTerrorPlayer *
 	switch (_this->GetClass())
 	{
 		case ZC_BOOMER:
+		{
 			pPlayer = g_BossZombiePlayerBot.OnBoomerChooseVictim(_this, pLastVictim, targetScanFlags, pIgnorePlayer);
-		
+			break;
+		}
+
 		case ZC_SMOKER:
+		{
 			pPlayer = g_BossZombiePlayerBot.OnSmokerChooseVictim(_this, pLastVictim, targetScanFlags, pIgnorePlayer);
+			break;
+		}
 	}
+
+#ifdef _DEBUG
+/*
+	if (pPlayer)
+	{
+		rootconsole->ConsolePrint("### BossZombiePlayerBot::OnChooseVictim, Found Victim: %d", pPlayer->entindex());
+	}
+	else
+	{
+		rootconsole->ConsolePrint("### BossZombiePlayerBot::OnChooseVictim, No Victim Found, pPlayer: %d", pPlayer);
+	}
+*/
+#endif
 
 	return pPlayer == NULL ?
 	DETOUR_MEMBER_CALL(DTRHandler_BossZombiePlayerBot_ChooseVictim)(pLastVictim, targetScanFlags, pIgnorePlayer) : 
@@ -250,7 +269,7 @@ void CAnneHappy::SDK_OnAllLoaded()
 	}
 
 	PassInfo ret[] = {
-		{PassType_Basic, PASSFLAG_BYVAL, sizeof(bool), NULL, 0},
+		{PassType_Basic, PASSFLAG_BYVAL, sizeof(CTerrorPlayer *), NULL, 0},
 	};
 
 	CTerrorPlayer::pCallGetSpecialInfectedDominatingMe = bintools->CreateCall(CTerrorPlayer::pFnGetSpecialInfectedDominatingMe, CallConv_ThisCall, &ret[0], NULL, 0);
@@ -564,6 +583,10 @@ void CAnneHappy::OnClientPutInServer(int client)
 	rootconsole->ConsolePrint("### CAnneHappy::OnClientPutInServer: %d", client);
 #endif
 
+	int index = pPlayer->entindex();
+	if (index < 1 || index > gpGlobals->maxClients)
+		return;
+
 	PlayerRunCmdHook(client);
 
 	if (pPlayer->IsSurvivor())
@@ -572,10 +595,10 @@ void CAnneHappy::OnClientPutInServer(int client)
 		{
 			boomerVictimInfo_t info;
 			info.Init();
-			g_MapBoomerVictimInfo[pPlayer] = info;
+			g_MapBoomerVictimInfo[index] = info;
 
 			smokerVictimInfo_t info2;
-			g_MapSmokerVictimInfo[pPlayer] = info2;
+			g_MapSmokerVictimInfo[index] = info2;
 		}
 	}
 	else if (pPlayer->IsInfected())
@@ -586,12 +609,12 @@ void CAnneHappy::OnClientPutInServer(int client)
 			{
 				boomerInfo_t info;
 				info.Init();
-				g_MapBoomerInfo[pPlayer] = info;
+				g_MapBoomerInfo[index] = info;
 			}
 			case ZC_SMOKER:
 			{
 				smokerInfo_t info;
-				g_MapSmokerInfo[pPlayer] = info;
+				g_MapSmokerInfo[index] = info;
 			}
 		}
 	}
@@ -607,12 +630,16 @@ void CAnneHappy::OnClientDisconnecting(int client)
 	rootconsole->ConsolePrint("### CAnneHappy::OnClientDisconnecting, client: %d", client);
 #endif
 
+	int index = pPlayer->entindex();
+	if (index < 1 || index > gpGlobals->maxClients)
+		return;
+
 	if (pPlayer->IsSurvivor())
 	{
-		if (g_MapBoomerVictimInfo.contains(pPlayer))
+		if (g_MapBoomerVictimInfo.contains(index))
 		{
-			g_MapBoomerVictimInfo[pPlayer].Init();
-			g_MapBoomerVictimInfo.erase(pPlayer);
+			g_MapBoomerVictimInfo[index].Init();
+			g_MapBoomerVictimInfo.erase(index);
 		}
 	}
 	else if (pPlayer->IsInfected())
@@ -621,18 +648,18 @@ void CAnneHappy::OnClientDisconnecting(int client)
 		{
 			case ZC_BOOMER:
 			{
-				if (g_MapBoomerInfo.contains(pPlayer))
+				if (g_MapBoomerInfo.contains(index))
 				{
-					g_MapBoomerInfo[pPlayer].Init();
-					g_MapBoomerInfo.erase(pPlayer);
+					g_MapBoomerInfo[index].Init();
+					g_MapBoomerInfo.erase(index);
 				}
 			}
 
 			case ZC_SMOKER:
 			{
-				if (g_MapSmokerInfo.contains(pPlayer))
+				if (g_MapSmokerInfo.contains(index))
 				{
-					g_MapSmokerInfo.erase(pPlayer);
+					g_MapSmokerInfo.erase(index);
 				}	
 			}
 		}

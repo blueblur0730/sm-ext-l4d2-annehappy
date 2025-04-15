@@ -168,10 +168,6 @@ bool TR_EntityFilter(IHandleEntity *ignore, int contentsMask)
     if (!pEntity)
         return false;
 
-    int index = pEntity->entindex();
-    if (index > 0 && index <= gpGlobals->maxClients)
-        return false;
-
     const char *classname = pEntity->GetClassName();
     
     if (V_strcmp(classname, "infected") == 0

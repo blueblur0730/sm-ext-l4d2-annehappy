@@ -38,7 +38,7 @@ struct smokerInfo_t {
 };
 
 // m_bCanTongue
-extern std::unordered_map<CTerrorPlayer *, smokerInfo_t> g_MapSmokerInfo;
+extern std::unordered_map<int, smokerInfo_t> g_MapSmokerInfo;
 
 struct smokerVictimInfo_t {
     bool m_bLeftBehind;
@@ -48,7 +48,7 @@ struct smokerVictimInfo_t {
     }
 };
 
-extern std::unordered_map<CTerrorPlayer *, smokerVictimInfo_t> g_MapSmokerVictimInfo;
+extern std::unordered_map<int, smokerVictimInfo_t> g_MapSmokerVictimInfo;
 
 class CSmokerCmdListner {
 public:
