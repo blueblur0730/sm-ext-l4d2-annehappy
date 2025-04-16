@@ -204,12 +204,12 @@ CBaseEntity *CTerrorPlayer::GetGroundEntity()
 
 CBaseEntity *CTerrorPlayer::OffsetEHandleToEntity(int iOff) {
     edict_t* pEdict = gamehelpers->GetHandleEntity(*(CBaseHandle*)((byte*)(this) + iOff));
-    if (pEdict == NULL) 
+    if (!pEdict) 
         return NULL;
 
     // Make sure it's a player
-    if (engine->GetPlayerUserId(pEdict) == -1) 
-        return NULL;
+    //if (engine->GetPlayerUserId(pEdict) == -1) 
+        //return NULL;
 
     return gameents->EdictToBaseEntity(pEdict);
 }

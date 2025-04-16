@@ -587,8 +587,6 @@ void CAnneHappy::OnClientPutInServer(int client)
 	if (index < 1 || index > gpGlobals->maxClients)
 		return;
 
-	PlayerRunCmdHook(client);
-
 	if (pPlayer->IsSurvivor())
 	{
 		if (pPlayer->IsSurvivor())
@@ -618,6 +616,8 @@ void CAnneHappy::OnClientPutInServer(int client)
 			}
 		}
 	}
+
+	PlayerRunCmdHook(client);
 }
 
 void CAnneHappy::OnClientDisconnecting(int client)

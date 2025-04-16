@@ -222,14 +222,6 @@ void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
         g_MapBoomerVictimInfo[targetIndex] = victimInfo;
     }
 
-    CVomit *pAbility = reinterpret_cast<CVomit *>(pPlayer->GetAbility());
-    if (!pAbility)
-        return;
-
-#ifdef _DEBUG
-    rootconsole->ConsolePrint("### CBoomerCmdListner::OnPlayerRunCmd, player: %d, cmdButtons: %d", pEntity->entindex(), pCmd->buttons);
-#endif
-
     Vector vecSelfPos = pPlayer->GetAbsOrigin();
     Vector vecTargetPos = pPlayer->GetAbsOrigin();
     Vector vecSelfEyePos = pPlayer->GetEyeOrigin();
@@ -253,11 +245,14 @@ void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
                     vecAngles.x -= (flTargetDist / (PLAYER_HEIGHT * 1.5));
                 }
             }
-
+#ifdef _DEBUG
+            rootconsole->ConsolePrint("### CBoomerCmdListner::OnPlayerRunCmd, Giving boomer a new angle");
+#endif
             pPlayer->Teleport(NULL, &vecAngles, NULL);
 
+            CVomit *pAbility = reinterpret_cast<CVomit *>(pPlayer->GetAbility());
             if (z_boomer_degree_force_bile.GetInt() > 0 && UTIL_IsInAimOffset(pPlayer, pTarget, z_boomer_degree_force_bile.GetFloat()) &&
-                !g_MapBoomerVictimInfo[targetIndex].m_bBiled && pAbility->IsSpraying())
+                !g_MapBoomerVictimInfo[targetIndex].m_bBiled && (pAbility && pAbility->IsSpraying()))
             {
                 if (g_MapBoomerVictimInfo[targetIndex].m_iSecondCheckFrame < z_boomer_spin_interval.GetInt() && !g_MapBoomerVictimInfo[targetIndex].m_bBiled)
                 {
