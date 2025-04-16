@@ -142,19 +142,6 @@ DETOUR_DECL_MEMBER3(DTRHandler_BossZombiePlayerBot_ChooseVictim, CTerrorPlayer *
 		}
 	}
 
-#ifdef _DEBUG
-/*
-	if (pPlayer)
-	{
-		rootconsole->ConsolePrint("### BossZombiePlayerBot::OnChooseVictim, Found Victim: %d", pPlayer->entindex());
-	}
-	else
-	{
-		rootconsole->ConsolePrint("### BossZombiePlayerBot::OnChooseVictim, No Victim Found, pPlayer: %d", pPlayer);
-	}
-*/
-#endif
-
 	return pPlayer == NULL ?
 	DETOUR_MEMBER_CALL(DTRHandler_BossZombiePlayerBot_ChooseVictim)(pLastVictim, targetScanFlags, pIgnorePlayer) : 
 	DETOUR_MEMBER_CALL(DTRHandler_BossZombiePlayerBot_ChooseVictim)(pPlayer, targetScanFlags, pIgnorePlayer);
@@ -350,8 +337,6 @@ void CAnneHappy::SDK_OnAllLoaded()
 		return;
 	}
 
-	//sdkhooks->AddEntityListener(&g_EntityListener);
-
 	CTerrorPlayer::DTR_OnVomitedUpon->EnableDetour();
 	BossZombiePlayerBot::DTR_ChooseVictim->EnableDetour();
 }
@@ -366,7 +351,6 @@ void CAnneHappy::SDK_OnUnload()
 	g_hookList.clear();
 
 	RemoveEventListner();
-	//sdkhooks->RemoveEntityListener(&g_EntityListener);
 
 	DestroyCalls(CTraceFilterSimpleExt::pCallCTraceFilterSimple);
 	DestroyCalls(CTraceFilterSimpleExt::pCallCTraceFilterSimple2);
@@ -497,6 +481,7 @@ bool CAnneHappy::LoadGameData(IGameConfig *pGameData, char* error, size_t maxlen
 bool CAnneHappy::AddEventListner()
 {
 	const char *sBoomerEventName[] = {
+		"player_spawn",
 		"player_shoved",
 		"player_now_it",
 		"round_start"
@@ -557,19 +542,6 @@ bool CAnneHappy::FindSendProps(IGameConfig *pGameData, char* error, size_t maxle
 		prop.pOffset = info.actual_offset;
 	}
 
-/*
-	for (auto &prop : s_props)
-	{
-		SendProp *sendprop = pGameData->GetSendProp(prop.propName);
-		if (!sendprop)
-		{
-			ke::SafeSprintf(error, maxlen, "Extension failed to find send props: '%s'", prop.propName);
-			return false;
-		}
-
-		prop.pOffset = sendprop->GetOffset();
-	}
-*/
 	return true;
 }
 
@@ -583,20 +555,16 @@ void CAnneHappy::OnClientPutInServer(int client)
 	rootconsole->ConsolePrint("### CAnneHappy::OnClientPutInServer: %d", client);
 #endif
 
-	int index = pPlayer->entindex();
-	if (index < 1 || index > gpGlobals->maxClients)
-		return;
-
 	if (pPlayer->IsSurvivor())
 	{
 		if (pPlayer->IsSurvivor())
 		{
 			boomerVictimInfo_t info;
 			info.Init();
-			g_MapBoomerVictimInfo[index] = info;
+			g_MapBoomerVictimInfo[client] = info;
 
 			smokerVictimInfo_t info2;
-			g_MapSmokerVictimInfo[index] = info2;
+			g_MapSmokerVictimInfo[client] = info2;
 		}
 	}
 	else if (pPlayer->IsInfected())
@@ -607,12 +575,12 @@ void CAnneHappy::OnClientPutInServer(int client)
 			{
 				boomerInfo_t info;
 				info.Init();
-				g_MapBoomerInfo[index] = info;
+				g_MapBoomerInfo[client] = info;
 			}
 			case ZC_SMOKER:
 			{
 				smokerInfo_t info;
-				g_MapSmokerInfo[index] = info;
+				g_MapSmokerInfo[client] = info;
 			}
 		}
 	}
@@ -630,16 +598,12 @@ void CAnneHappy::OnClientDisconnecting(int client)
 	rootconsole->ConsolePrint("### CAnneHappy::OnClientDisconnecting, client: %d", client);
 #endif
 
-	int index = pPlayer->entindex();
-	if (index < 1 || index > gpGlobals->maxClients)
-		return;
-
 	if (pPlayer->IsSurvivor())
 	{
-		if (g_MapBoomerVictimInfo.contains(index))
+		if (g_MapBoomerVictimInfo.contains(client))
 		{
-			g_MapBoomerVictimInfo[index].Init();
-			g_MapBoomerVictimInfo.erase(index);
+			g_MapBoomerVictimInfo[client].Init();
+			g_MapBoomerVictimInfo.erase(client);
 		}
 	}
 	else if (pPlayer->IsInfected())
@@ -648,18 +612,18 @@ void CAnneHappy::OnClientDisconnecting(int client)
 		{
 			case ZC_BOOMER:
 			{
-				if (g_MapBoomerInfo.contains(index))
+				if (g_MapBoomerInfo.contains(client))
 				{
-					g_MapBoomerInfo[index].Init();
-					g_MapBoomerInfo.erase(index);
+					g_MapBoomerInfo[client].Init();
+					g_MapBoomerInfo.erase(client);
 				}
 			}
 
 			case ZC_SMOKER:
 			{
-				if (g_MapSmokerInfo.contains(index))
+				if (g_MapSmokerInfo.contains(client))
 				{
-					g_MapSmokerInfo.erase(index);
+					g_MapSmokerInfo.erase(client);
 				}	
 			}
 		}
@@ -668,10 +632,6 @@ void CAnneHappy::OnClientDisconnecting(int client)
 
 void CAnneHappy::PlayerRunCmdHook(int client)
 {
-#ifdef _DEBUG
-	//rootconsole->ConsolePrint("### CAnneHappy::PlayerRunCmdHook: %d", client);
-#endif
-
 	CBasePlayer *pPlayer = (CBasePlayer *)UTIL_PlayerByIndexExt(client);
 	if (!pPlayer)
 		return;
@@ -687,10 +647,6 @@ void CAnneHappy::PlayerRunCmdHook(int client)
 	CBaseEntity *pEntity = pUnknown->GetBaseEntity();
 	if (!pEntity)
 		return;
-	
-#ifdef _DEBUG
-	//rootconsole->ConsolePrint("### CAnneHappy::PlayerRunCmdHook: Found valid entity.");
-#endif
 
 	CVTableHook hook(pEntity);
 	for (size_t i = 0; i < g_hookList.size(); ++i)
@@ -750,90 +706,6 @@ void CAnneHappy::PlayerRunCmd(CUserCmd *ucmd, IMoveHelper *moveHelper)
 	RETURN_META(MRES_IGNORED);
 }
 
-/*
-void CTerrorEntityListner::OnEntityCreated(CBaseEntity* pEntity, const char *classname)
-{
-	if (!pEntity)
-		return;
-
-	CTerrorPlayer *pPlayer = (CTerrorPlayer *)pEntity;
-	if (pPlayer->IsBot())
-		return;
-
-	if (!pPlayer->IsInfected())
-		return;
-
-	CVTableHook *vhook = new CVTableHook(pEntity);
-
-	vhook->SetHookID(hookid);
-	g_hookList.push_back(vhook);
-}
-
-void CTerrorEntityListner::OnEntityDestroyed(CBaseEntity* pEntity)
-{
-	if (!pEntity)
-		return;
-
-	CTerrorPlayer *pPlayer = (CTerrorPlayer *)pEntity;
-	if (!pPlayer->IsInGame() || pPlayer->IsBot())
-		return;
-
-	if (!pPlayer->IsInfected())
-		return;
-
-	for (auto it = g_hookList.begin(); it != g_hookList.end(); ++it)
-	{
-		if ((CBaseEntity *)(*it)->GetVTablePtr() == pEntity)
-		{
-			delete *it;
-			g_hookList.erase(it);
-			break;
-		}
-	}
-}
-
-void CTerrorEntityListner::OnPostThink()
-{
-	CBaseEntity *pEntity = META_IFACEPTR(CBaseEntity);
-
-	if (!pEntity)
-		return;
-
-	CTerrorPlayer *pPlayer = (CTerrorPlayer *)pEntity;
-	if (!pPlayer->IsInGame() || pPlayer->IsBot())
-		return;
-
-	if (!pPlayer->IsInfected())
-		return;
-
-	switch (pPlayer->GetClass())
-	{
-		case ZC_BOOMER:
-		{
-			if (!g_BoomerEntityListner)
-			{
-				g_BoomerEntityListner = new CBoomerEntityListner();
-			}
-
-			g_BoomerEntityListner->OnPostThink(pEntity);
-			break;
-		}
-
-		case ZC_SMOKER:
-		{
-			if (!g_SmokerEntityListner)
-			{
-				g_SmokerEntityListner = new CSmokerEntityListner();
-			}
-
-			g_SmokerEntityListner->OnPostThink(pEntity);
-			break;
-		}
-	}
-
-	RETURN_META(MRES_IGNORED);
-}
-*/
 void CAnneHappy::DestroyCalls(ICallWrapper *pCall)
 {
 	if (pCall)

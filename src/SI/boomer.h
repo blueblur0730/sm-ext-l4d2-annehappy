@@ -27,9 +27,6 @@ class CBoomerEventListner : public IGameEventListener2 {
 public:
     virtual void FireGameEvent(IGameEvent *event);
     virtual int GetEventDebugID(void);
-    void OnPlayerShoved(IGameEvent *event);
-    void OnPlayerNowIt(IGameEvent *event);
-    void OnRoundStart(IGameEvent *event);
 };
 
 struct targetInfo_t {
