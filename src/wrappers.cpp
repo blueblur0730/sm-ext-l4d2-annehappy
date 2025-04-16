@@ -68,7 +68,7 @@ bool CTraceFilterSimpleExt::ShouldHitEntity(IHandleEntity *pHandleEntity, int co
 
 	return true;
 }
-
+/*
 void CBaseEntity::GetVelocity(Vector *velocity, AngularImpulse *vAngVelocity)
 {
     unsigned char params[sizeof(void *) * 4];
@@ -82,27 +82,7 @@ void CBaseEntity::GetVelocity(Vector *velocity, AngularImpulse *vAngVelocity)
     
     pCallTeleport->Execute(params, NULL);
 }
-
-CBaseEntity *CBaseEntity::GetOwnerEntity()
-{
-    sm_datatable_info_t offset_data_info;
-    datamap_t *offsetMap = gamehelpers->GetDataMap((CBaseEntity *)this);
-    if (!gamehelpers->FindDataMapInfo(offsetMap, "m_hOwnerEntity", &offset_data_info))
-        return NULL;
-    
-    CBaseHandle *hndl = (CBaseHandle *)((byte *)(this) + offset_data_info.actual_offset);
-    return gamehelpers->ReferenceToEntity(hndl->GetEntryIndex());
-}
-
-MoveType_t CBaseEntity::GetMoveType()
-{
-    sm_datatable_info_t offset_data_info;
-    datamap_t *offsetMap = gamehelpers->GetDataMap((CBaseEntity *)this);
-    if (!gamehelpers->FindDataMapInfo(offsetMap, "m_MoveType", &offset_data_info))
-        return MOVETYPE_NONE;
-
-    return (MoveType_t)*(char*)((byte *)(this) + offset_data_info.actual_offset);
-}
+*/
 
 void CBaseEntity::Teleport(Vector *newPosition, QAngle *newAngles, Vector *newVelocity)
 {
@@ -126,29 +106,6 @@ void CBaseEntity::GetEyeAngles(QAngle *pRetAngle)
 
     *(CBaseEntity **)vptr = (CBaseEntity *)this;
     pCallGetEyeAngle->Execute(params, &pRetAngle);
-}
-
-int CBasePlayer::GetButton()
-{
-    sm_datatable_info_t pDataTable;
-    if (!gamehelpers->FindDataMapInfo(gamehelpers->GetDataMap((CBaseEntity *)this), "m_nButtons", &pDataTable))
-        return -1;
-
-    return *(int*)((byte*)(this) + pDataTable.actual_offset);
-}
-
-// Thanks to Forgetest from his l4d_lagcomp_skeet.
-CUserCmd *CBasePlayer::GetCurrentCommand()
-{
-    sm_datatable_info_t pDataTable;
-    if (!gamehelpers->FindDataMapInfo(gamehelpers->GetDataMap((CBaseEntity *)this), "m_hViewModel", &pDataTable))
-        return NULL;
-
-    int offset = pDataTable.actual_offset 
-                + 4 * 2 /* CHandle<CBaseViewModel> * MAX_VIEWMODELS */
-                + 88 /* sizeof(m_LastCmd) */;
-
-    return (CUserCmd *)((byte*)(this) + offset);
 }
 
 IPlayerInfo *CTerrorPlayer::GetPlayerInfo()

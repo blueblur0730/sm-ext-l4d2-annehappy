@@ -106,8 +106,8 @@ private:
 
 class CBaseEntity : public IServerEntity {
 public:
-	static int vtblindex_CBaseEntity_GetVelocity;
-	static ICallWrapper *pCallGetVelocity;
+	//static int vtblindex_CBaseEntity_GetVelocity;
+	//static ICallWrapper *pCallGetVelocity;
 
 	static int vtblindex_CBaseEntity_Teleport;
 	static ICallWrapper *pCallTeleport;
@@ -116,6 +116,16 @@ public:
 	static ICallWrapper *pCallGetEyeAngle;
 
 public:
+	inline int GetDataOffset(const char *name)
+	{
+		sm_datatable_info_t offset_data_info;
+		datamap_t *offsetMap = gamehelpers->GetDataMap((CBaseEntity *)this);
+		if (!gamehelpers->FindDataMapInfo(offsetMap, "name", &offset_data_info))
+			return -1;
+
+		return offset_data_info.actual_offset;
+	}
+
 	inline edict_t* edict()
 	{
 		return gameents->BaseEntityToEdict(this);
@@ -131,11 +141,22 @@ public:
 		return edict()->GetClassName();
 	}
 
-	void GetVelocity(Vector *velocity, AngularImpulse *vAngVelocity);
+	//void GetVelocity(Vector *velocity, AngularImpulse *vAngVelocity);
 
-	CBaseEntity *GetOwnerEntity();
+	inline Vector GetVelocity()
+	{
+		return *(Vector*)((byte*)(this) + GetDataOffset("m_vecAbsVelocity"));
+	}
 
-	MoveType_t GetMoveType();
+	inline CBaseEntity *GetOwnerEntity()
+	{
+		return gamehelpers->ReferenceToEntity(((CBaseHandle *)((byte *)(this) + GetDataOffset("m_hOwnerEntity")))->GetEntryIndex());
+	}
+
+	inline MoveType_t GetMoveType()
+	{
+		return *(MoveType_t*)((byte*)(this) + GetDataOffset("m_MoveType"));
+	}
 
 	void Teleport(Vector *newPosition, QAngle *newAngles, Vector *newVelocity);
 
@@ -182,9 +203,19 @@ public:
 		return (GetFlags() & FL_FAKECLIENT) != 0;
 	}
 
-	int GetButton();
+	inline int GetButton()
+	{
+		return *(int*)((byte*)(this) + GetDataOffset("m_nButtons"));
+	}
 
-	CUserCmd *GetCurrentCommand();
+	// Thanks to Forgetest from his l4d_lagcomp_skeet.
+	inline CUserCmd *GetCurrentCommand() 
+	{
+		return *(CUserCmd **)((byte *)(this) + 
+				(GetDataOffset("m_hViewModel") 
+				+ 4 * 2 /* CHandle<CBaseViewModel> * MAX_VIEWMODELS */
+				+ 88 /* sizeof(m_LastCmd) */));
+	}
 };
 
 class CTerrorPlayer : public CBasePlayer {

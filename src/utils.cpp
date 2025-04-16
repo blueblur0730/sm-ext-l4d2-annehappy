@@ -246,9 +246,9 @@ bool WillHitWallOrFall(CBasePlayer *pPlayer, Vector vec)
 
 bool ClientPush(CBasePlayer *pPlayer, Vector vec)
 {
-    Vector vecVelocity;
-    pPlayer->GetVelocity(&vecVelocity, NULL);
+    Vector vecVelocity = pPlayer->GetVelocity();
     vecVelocity += vec;
+    
     if (WillHitWallOrFall(pPlayer, vecVelocity))
     {
         if (vecVelocity.Length() <= 250.0f)

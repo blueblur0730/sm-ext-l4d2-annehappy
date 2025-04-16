@@ -430,11 +430,7 @@ void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
 
         g_MapBoomerInfo[playerIndex].m_bCanBile = false;
     }
-#ifdef _DEBUG
-    rootconsole->ConsolePrint("### CBoomerCmdListner::OnPlayerRunCmd, Target: %d, %d, %d, %d.", targetIndex, 
-        pTarget->IsIncapped(), pTarget->GetSpecialInfectedDominatingMe(), 
-        flTargetDist <= 80.0);
-#endif
+
     // 目标是被控或者倒地的生还，距离小于 150 且高度小于 PLAYER_HEIGHT 且可视，则令其右键攻击
     if ((pTarget->IsIncapped() || pTarget->GetSpecialInfectedDominatingMe()) && flTargetDist <= 80.0)
     {
@@ -448,11 +444,7 @@ void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
 
         pCmd->buttons |= IN_ATTACK2;
     }
-#ifdef _DEBUG
-    rootconsole->ConsolePrint("### CBoomerCmdListner::OnPlayerRunCmd, Target: %d, %d, %d, %d", targetIndex, 
-        z_boomer_force_bile.GetBool(), (pCmd->buttons & IN_ATTACK), 
-        g_MapBoomerInfo[playerIndex].m_bIsInCoolDown);
-#endif
+
     // 强行被喷
     if (z_boomer_force_bile.GetBool() && (pCmd->buttons & IN_ATTACK)
         && !g_MapBoomerInfo[playerIndex].m_bIsInCoolDown)
@@ -496,8 +488,7 @@ void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
         g_hResetAbilityTimer = timersys->CreateTimer(&g_BoomerTimerEvent, g_pCVar->FindVar("z_vomit_interval")->GetFloat(), (void *)(intptr_t)pPlayer->entindex(), 0);
     }
 
-    Vector vecVelocity;
-    pPlayer->GetVelocity(&vecVelocity, NULL);
+    Vector vecVelocity = pPlayer->GetVelocity();
     vec_t flCurSpeed = (vec_t)FastSqrt(vecVelocity.x * vecVelocity.x + vecVelocity.y * vecVelocity.y);
 
     // 连跳

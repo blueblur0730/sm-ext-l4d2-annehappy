@@ -71,14 +71,14 @@ CBoomerCmdListner g_BoomerCmdListner;
 CSmokerCmdListner g_SmokerCmdListner;
 
 int g_iOff_PlayerRunCmd = 0;
-int CBaseEntity::vtblindex_CBaseEntity_GetVelocity = 0;
+//int CBaseEntity::vtblindex_CBaseEntity_GetVelocity = 0;
 int CBaseEntity::vtblindex_CBaseEntity_Teleport = 0;
 int CBaseEntity::vtblindex_CBaseEntity_GetEyeAngle = 0;
 int CTerrorPlayer::vtblindex_CTerrorPlayer_GetLastKnownArea = 0;
 
 ICallWrapper *CTraceFilterSimpleExt::pCallCTraceFilterSimple = NULL;
 ICallWrapper *CTraceFilterSimpleExt::pCallCTraceFilterSimple2 = NULL;
-ICallWrapper *CBaseEntity::pCallGetVelocity = NULL;
+//ICallWrapper *CBaseEntity::pCallGetVelocity = NULL;
 ICallWrapper *CBaseEntity::pCallTeleport = NULL;
 ICallWrapper *CBaseEntity::pCallGetEyeAngle = NULL;
 ICallWrapper *CTerrorPlayer::pCallOnVomitedUpon = NULL;
@@ -223,7 +223,7 @@ void CAnneHappy::SDK_OnAllLoaded()
 		{PassType_Basic, PASSFLAG_BYVAL, sizeof(ShouldHitFunc_t), NULL, 0},
 	};
 
-	CTraceFilterSimpleExt::pCallCTraceFilterSimple = bintools->CreateCall(CTraceFilterSimpleExt::pFnCTraceFilterSimple, CallConv_ThisCall, NULL, &info[0], 3);
+	CTraceFilterSimpleExt::pCallCTraceFilterSimple = bintools->CreateCall(CTraceFilterSimpleExt::pFnCTraceFilterSimple, CallConv_ThisCall, NULL, &info[0], sizeof(info));
 	if (!CTraceFilterSimpleExt::pCallCTraceFilterSimple)
 	{
 		smutils->LogError(myself, "Extension failed to create call: 'CTraceFilterSimpleExt::CTraceFilterSimpleExt'");
@@ -236,7 +236,7 @@ void CAnneHappy::SDK_OnAllLoaded()
 		{PassType_Basic, PASSFLAG_BYVAL, sizeof(ShouldHitFunc2_t), NULL, 0},
 	};
 
-	CTraceFilterSimpleExt::pCallCTraceFilterSimple2 = bintools->CreateCall(CTraceFilterSimpleExt::pFnCTraceFilterSimple, CallConv_ThisCall, NULL, &info1[0], 3);
+	CTraceFilterSimpleExt::pCallCTraceFilterSimple2 = bintools->CreateCall(CTraceFilterSimpleExt::pFnCTraceFilterSimple, CallConv_ThisCall, NULL, &info1[0], sizeof(info1));
 	if (!CTraceFilterSimpleExt::pCallCTraceFilterSimple2)
 	{
 		smutils->LogError(myself, "Extension failed to create call: 'CTraceFilterSimpleExt::CTraceFilterSimpleExt'");
@@ -248,7 +248,7 @@ void CAnneHappy::SDK_OnAllLoaded()
 		{PassType_Basic, PASSFLAG_BYVAL, sizeof(bool), NULL, 0},
 	};
 
-	CTerrorPlayer::pCallOnVomitedUpon = bintools->CreateCall(CTerrorPlayer::pFnOnVomitedUpon, CallConv_ThisCall, NULL, &info2[0], 0);
+	CTerrorPlayer::pCallOnVomitedUpon = bintools->CreateCall(CTerrorPlayer::pFnOnVomitedUpon, CallConv_ThisCall, NULL, &info2[0], sizeof(info2));
 	if (!CTerrorPlayer::pCallOnVomitedUpon)
 	{
 		smutils->LogError(myself, "Extension failed to create call: 'CTerrorPlayer::OnVomitedUpon'");
@@ -267,11 +267,11 @@ void CAnneHappy::SDK_OnAllLoaded()
 	}
 
 	PassInfo info3[3];
-	info[0].flags = info[1].flags = info[2].flags = PASSFLAG_BYVAL;
-	info[0].size = info[1].size = info[2].size = sizeof(void *);
-	info[0].type = info[1].type = info[2].type = PassType_Basic;
+	info3[0].flags = info3[1].flags = info3[2].flags = PASSFLAG_BYVAL;
+	info3[0].size = info3[1].size = info3[2].size = sizeof(void *);
+	info3[0].type = info3[1].type = info3[2].type = PassType_Basic;
 
-	CBaseEntity::pCallTeleport = bintools->CreateVCall(CBaseEntity::vtblindex_CBaseEntity_Teleport, 0, 0, NULL, info3, 3);
+	CBaseEntity::pCallTeleport = bintools->CreateVCall(CBaseEntity::vtblindex_CBaseEntity_Teleport, 0, 0, NULL, &info3[0], sizeof(info3));
 	if (!CBaseEntity::pCallTeleport)
 	{
 		smutils->LogError(myself, "Extension failed to create vcall: 'CBaseEntity::Teleport'");
@@ -279,11 +279,11 @@ void CAnneHappy::SDK_OnAllLoaded()
 	}
 
 	PassInfo info4[1];
-	info1[0].flags = PASSFLAG_BYVAL;
-	info1[0].size = sizeof(void *);
-	info1[0].type = PassType_Basic;
+	info4[0].flags = PASSFLAG_BYVAL;
+	info4[0].size = sizeof(void *);
+	info4[0].type = PassType_Basic;
 	
-	CBaseEntity::pCallGetEyeAngle = bintools->CreateVCall(CBaseEntity::vtblindex_CBaseEntity_GetEyeAngle, 0, 0, info4, NULL, 0);
+	CBaseEntity::pCallGetEyeAngle = bintools->CreateVCall(CBaseEntity::vtblindex_CBaseEntity_GetEyeAngle, 0, 0, NULL, &info4[0], sizeof(info4));
 	if (!CBaseEntity::pCallGetEyeAngle)
 	{
 		smutils->LogError(myself, "Extension failed to create vcall: 'CBaseEntity::GetEyeAngle'");
@@ -291,7 +291,7 @@ void CAnneHappy::SDK_OnAllLoaded()
 	}
 
 	PassInfo ret1[] = {
-		{PassType_Basic, PASSFLAG_BYVAL, sizeof(bool), NULL, 0}
+		{PassType_Basic, PASSFLAG_BYVAL, sizeof(bool *), NULL, 0}
 	};
 
 	CTerrorPlayer::pCallIsStaggering = bintools->CreateCall(CTerrorPlayer::pFnIsStaggering, CallConv_ThisCall, &ret1[0], NULL, 0);
@@ -308,7 +308,7 @@ void CAnneHappy::SDK_OnAllLoaded()
 		{PassType_Basic, PASSFLAG_BYREF, sizeof(Vector *), NULL, 0}
 	};
 
-	ZombieManager::pCallGetRandomPZSpawnPosition = bintools->CreateCall(ZombieManager::pFnGetRandomPZSpawnPosition, CallConv_ThisCall, NULL, &info5[0], 0);
+	ZombieManager::pCallGetRandomPZSpawnPosition = bintools->CreateCall(ZombieManager::pFnGetRandomPZSpawnPosition, CallConv_ThisCall, NULL, &info5[0], sizeof(info5));
 	if (!ZombieManager::pCallGetRandomPZSpawnPosition)
 	{
 		smutils->LogError(myself, "Extension failed to create call: 'ZombieManager::GetRandomPZSpawnPosition'");
@@ -318,7 +318,7 @@ void CAnneHappy::SDK_OnAllLoaded()
 	PassInfo ret2[] = {
 		{PassType_Basic, PASSFLAG_BYVAL, sizeof(void *), NULL, 0},
 	};
-	CTerrorPlayer::pCallGetLastKnownArea = bintools->CreateVCall(CTerrorPlayer::vtblindex_CTerrorPlayer_GetLastKnownArea, 0, 0, NULL, &ret2[0], 0);
+	CTerrorPlayer::pCallGetLastKnownArea = bintools->CreateVCall(CTerrorPlayer::vtblindex_CTerrorPlayer_GetLastKnownArea, 0, 0, &ret2[0], NULL, 0);
 	if (!CTerrorPlayer::pCallGetLastKnownArea)
 	{
 		smutils->LogError(myself, "Extension failed to create vcall: 'CTerrorPlayer::GetLastKnownArea'");
@@ -326,17 +326,17 @@ void CAnneHappy::SDK_OnAllLoaded()
 	}
 
 	PassInfo info6[] = {
-		{PassType_Basic, PASSFLAG_BYREF, sizeof(Vector *), NULL, 0},
-		{PassType_Basic, PASSFLAG_BYREF, sizeof(AngularImpulse *), NULL, 0},
+		{PassType_Basic, PASSFLAG_BYVAL, sizeof(Vector *), NULL, 0},
+		{PassType_Basic, PASSFLAG_BYVAL, sizeof(AngularImpulse *), NULL, 0},
 	};
-
-	CBaseEntity::pCallGetVelocity = bintools->CreateVCall(CBaseEntity::vtblindex_CBaseEntity_GetVelocity, 0, 0, &info6[0], NULL, 0);
+/*
+	CBaseEntity::pCallGetVelocity = bintools->CreateVCall(CBaseEntity::vtblindex_CBaseEntity_GetVelocity, 0, 0, NULL, &info6[0], sizeof(info6));
 	if (!CBaseEntity::pCallGetVelocity)
 	{
 		smutils->LogError(myself, "Extension failed to create vcall: 'CBaseEntity::GetVelocity'");
 		return;
 	}
-
+*/
 	CTerrorPlayer::DTR_OnVomitedUpon->EnableDetour();
 	BossZombiePlayerBot::DTR_ChooseVictim->EnableDetour();
 }
@@ -354,7 +354,7 @@ void CAnneHappy::SDK_OnUnload()
 
 	DestroyCalls(CTraceFilterSimpleExt::pCallCTraceFilterSimple);
 	DestroyCalls(CTraceFilterSimpleExt::pCallCTraceFilterSimple2);
-	DestroyCalls(CBaseEntity::pCallGetVelocity);
+	//DestroyCalls(CBaseEntity::pCallGetVelocity);
 	DestroyCalls(CBaseEntity::pCallTeleport);
 	DestroyCalls(CBaseEntity::pCallGetEyeAngle);
 	DestroyCalls(CTerrorPlayer::pCallGetSpecialInfectedDominatingMe);
@@ -402,7 +402,7 @@ bool CAnneHappy::LoadSDKToolsData(IGameConfig *pGameData, char* error, size_t ma
 		char const *filename;
 	} s_offsets[] = {
 		{"PlayerRunCmd", g_iOff_PlayerRunCmd, "sdktools.games"},
-		{"GetVelocity", CBaseEntity::vtblindex_CBaseEntity_GetVelocity, "sdktools.games"},
+		//{"GetVelocity", CBaseEntity::vtblindex_CBaseEntity_GetVelocity, "sdktools.games"},
 		{"Teleport", CBaseEntity::vtblindex_CBaseEntity_Teleport, "sdktools.games"},
 		{"EyeAngles", CBaseEntity::vtblindex_CBaseEntity_GetEyeAngle, "sdktools.games"},
 	};

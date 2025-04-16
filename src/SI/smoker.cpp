@@ -117,8 +117,7 @@ void CSmokerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
 
     if (z_smoker_bhop.GetBool())
     {
-        Vector vecVelocity;
-        pSmoker->GetVelocity(&vecVelocity, NULL);
+        Vector vecVelocity = pSmoker->GetVelocity();
 
         // vertical velocity is not considered?
         vec_t flSpeed = (vec_t)FastSqrt(vecVelocity.x * vecVelocity.x + vecVelocity.y * vecVelocity.y);
