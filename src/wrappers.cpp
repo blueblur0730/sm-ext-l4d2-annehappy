@@ -1,39 +1,19 @@
 #include "utils.h"
 #include "wrappers.h"
 
-CTraceFilterSimpleExt::CTraceFilterSimpleExt(const IHandleEntity* passedict, Collision_Group_t collisionGroup, ShouldHitFunc_t pExtraShouldHitFunc)
+int CBaseEntity::dataprop_m_vecAbsVelocity = -1;
+int CBaseEntity::dataprop_m_vecAbsOrigin = -1;
+int CBaseEntity::dataprop_m_hOwnerEntity = -1;
+int CBaseEntity::dataprop_m_MoveType = -1;
+int CBaseEntity::dataprop_m_lifeState = -1;
+int CBaseEntity::dataprop_m_iHealth = -1;
+
+CTraceFilterSimpleExt::CTraceFilterSimpleExt(const IHandleEntity* passedict, Collision_Group_t collisionGroup, ShouldHitFunc_t pExtraShouldHitFunc, void* data)
 {
     m_pPassEnt = passedict;
     m_collisionGroup = collisionGroup;
     m_pExtraShouldHitCheckFunction = pExtraShouldHitFunc;
-
-    // Call contrustor to replace vtable on this instance
-    struct {
-        const CTraceFilterSimpleExt* pFilter;
-        const IHandleEntity* passedict;
-        Collision_Group_t collisionGroup;
-        ShouldHitFunc_t pExtraShouldHitFunc;
-    } stack{ this, passedict, collisionGroup, pExtraShouldHitFunc };
-
-    pCallCTraceFilterSimple->Execute(&stack, NULL);
-}
-
-CTraceFilterSimpleExt::CTraceFilterSimpleExt(const IHandleEntity* passedict, Collision_Group_t collisionGroup, ShouldHitFunc2_t pExtraShouldHitFunc, void* data)
-{
-    m_pPassEnt = passedict;
-    m_collisionGroup = collisionGroup;
-    m_pExtraShouldHitCheckFunction2 = pExtraShouldHitFunc;
     m_data = data;
-
-    // Call contrustor to replace vtable on this instance
-    struct {
-        const CTraceFilterSimpleExt* pFilter;
-        const IHandleEntity* passedict;
-        Collision_Group_t collisionGroup;
-        ShouldHitFunc2_t pExtraShouldHitFunc;
-    } stack{ this, passedict, collisionGroup, pExtraShouldHitFunc };
-
-    pCallCTraceFilterSimple2->Execute(&stack, NULL);
 }
 
 bool CTraceFilterSimpleExt::ShouldHitEntity(IHandleEntity *pHandleEntity, int contentsMask)
@@ -58,54 +38,36 @@ bool CTraceFilterSimpleExt::ShouldHitEntity(IHandleEntity *pHandleEntity, int co
 	//if ( pEntity && !g_pGameRules->ShouldCollide( m_collisionGroup, pEntity->GetCollisionGroup() ) )
 		//return false;
 
-	if ( m_pExtraShouldHitCheckFunction &&
-		(! ( m_pExtraShouldHitCheckFunction(pHandleEntity, contentsMask) )))
-		return false;
+	//if ( m_pExtraShouldHitCheckFunction &&
+		//(! ( m_pExtraShouldHitCheckFunction(pHandleEntity, contentsMask) )))
+		//return false;
 
-	if ( m_pExtraShouldHitCheckFunction2 &&
-		(! ( m_pExtraShouldHitCheckFunction2(pHandleEntity, contentsMask, m_data) )))
+	if ( m_pExtraShouldHitCheckFunction &&
+		( !( m_pExtraShouldHitCheckFunction(pHandleEntity, contentsMask, m_data) )))
 		return false;
 
 	return true;
 }
-/*
-void CBaseEntity::GetVelocity(Vector *velocity, AngularImpulse *vAngVelocity)
-{
-    unsigned char params[sizeof(void *) * 4];
-    unsigned char *vptr = params;
 
-    *(CBaseEntity **)vptr = (CBaseEntity *)this;
-    vptr += sizeof(CBaseEntity *);
-    *(Vector **)vptr = velocity;
-    vptr += sizeof(Vector *);
-    *(AngularImpulse **)vptr = vAngVelocity;
-    
-    pCallTeleport->Execute(params, NULL);
-}
-*/
-
-void CBaseEntity::Teleport(Vector *newPosition, QAngle *newAngles, Vector *newVelocity)
+void CBaseEntity::Teleport(const Vector *newPosition, const QAngle *newAngles, const Vector *newVelocity)
 {
-    unsigned char params[sizeof(void *) * 4];
-    unsigned char *vptr = params;
-    *(CBaseEntity **)vptr = (CBaseEntity *)this;
-    vptr += sizeof(CBaseEntity *);
-    *(Vector **)vptr = newPosition;
-    vptr += sizeof(Vector *);
-    *(QAngle **)vptr = newAngles;
-    vptr += sizeof(QAngle *);
-    *(Vector **)vptr = newVelocity;
-    
-    pCallTeleport->Execute(params, NULL);
+    struct {
+        CBaseEntity *pThis;
+        const Vector *newPosition;
+        const QAngle *newAngles;
+        const Vector *newVelocity;
+    } stake {this, newPosition, newAngles, newVelocity};
+
+    pCallTeleport->Execute(&stake, NULL);
 }
 
 void CBaseEntity::GetEyeAngles(QAngle *pRetAngle)
 {
-    unsigned char params[sizeof(void *)];
-    unsigned char *vptr = params;
+    struct {
+        CBaseEntity *pThis;
+    } stake {this};
 
-    *(CBaseEntity **)vptr = (CBaseEntity *)this;
-    pCallGetEyeAngle->Execute(params, &pRetAngle);
+    pCallGetEyeAngle->Execute(&stake, pRetAngle);
 }
 
 IPlayerInfo *CTerrorPlayer::GetPlayerInfo()
@@ -188,7 +150,7 @@ CTerrorPlayer *CTerrorPlayer::GetSpecialInfectedDominatingMe()
         CBaseEntity *pVictim;
     } stake {this};
 
-    void *ret;
+    void *ret = NULL;
     pCallGetSpecialInfectedDominatingMe->Execute(&stake, &ret);
     return reinterpret_cast<CTerrorPlayer *>(ret);
 }
@@ -199,7 +161,7 @@ bool CTerrorPlayer::IsStaggering()
         CTerrorPlayer *pVictim;
     } stake {this};
 
-    void *ret;
+    bool ret = false;
     pCallIsStaggering->Execute(&stake, &ret);
     
     if (!ret)
@@ -208,7 +170,7 @@ bool CTerrorPlayer::IsStaggering()
         return false;
     }
 
-    return *(bool *)((byte *)ret);
+    return ret;
 }
 
 CNavArea *CTerrorPlayer::GetLastKnownArea()
@@ -217,7 +179,7 @@ CNavArea *CTerrorPlayer::GetLastKnownArea()
         CTerrorPlayer *pThis;
     } stake {this};
 
-    void *ret;
+    void *ret = NULL;
     pCallGetLastKnownArea->Execute(&stake, &ret);
     return reinterpret_cast<CNavArea *>(ret);
 }
@@ -232,8 +194,14 @@ bool ZombieManager::GetRandomPZSpawnPosition(ZombieClassType type, int attampts,
         Vector *pOutPos;
     } stake {this, type, attampts, pPlayer, pOutPos};
 
-    void *ret;
+    bool ret = false;
     pCallGetRandomPZSpawnPosition->Execute(&stake, &ret);
 
-    return *(bool *)((byte *)ret);
+    if (!ret)
+    {
+        smutils->LogError(myself, "ZombieManager::GetRandomPZSpawnPosition: ret is NULL!");
+        return false;
+    }
+
+    return ret;
 }

@@ -21,6 +21,10 @@ class CSmokerEventListner : public IGameEventListener2 {
 public:
     virtual void FireGameEvent(IGameEvent *event);
     virtual int GetEventDebugID(void);
+    
+public:
+    void OnClientPutInServer(int client);
+    void OnClientDisconnecting(int client);
 };
 
 class CSmokerTimerEvent : public ITimedEvent {
@@ -37,8 +41,6 @@ struct smokerInfo_t {
     }
 };
 
-// m_bCanTongue
-extern std::unordered_map<int, smokerInfo_t> g_MapSmokerInfo;
 
 struct smokerVictimInfo_t {
     bool m_bLeftBehind;
@@ -47,8 +49,6 @@ struct smokerVictimInfo_t {
         m_bLeftBehind = false;
     }
 };
-
-extern std::unordered_map<int, smokerVictimInfo_t> g_MapSmokerVictimInfo;
 
 class CSmokerCmdListner {
 public:

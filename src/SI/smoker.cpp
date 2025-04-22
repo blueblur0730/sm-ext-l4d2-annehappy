@@ -24,7 +24,6 @@ ConVar z_smoker_left_behind_distance("z_smoker_left_behind_distance", "7.0", FCV
 ConVar z_smoker_left_behind_time("z_smoker_left_behind_time", "5.0", FCVAR_NOTIFY | FCVAR_CHEAT, "The time to wait before choosing a new target.", true, 0.0f, false, 0.0f);
 ConVar z_smoker_instant_shoot_range_cofficient("z_smoker_instant_shoot_range_cofficient", "0.8", FCVAR_NOTIFY | FCVAR_CHEAT, "Smoker will instantly shoot its tongue if the target is in this range (tongue distance * this cofficient).", true, 0.0f, true, 1.0f);
 
-
 void CSmokerEventListner::FireGameEvent(IGameEvent *event)
 {
     const char *name = event->GetName();
@@ -54,6 +53,50 @@ void CSmokerEventListner::FireGameEvent(IGameEvent *event)
 int CSmokerEventListner::GetEventDebugID()
 {
     return EVENT_DEBUG_ID_INIT;
+}
+
+void CSmokerEventListner::OnClientPutInServer(int client)
+{
+    CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(client);
+    if (!pPlayer || !pPlayer->IsInGame())
+        return;
+
+    if (pPlayer->IsSurvivor())
+    {
+        smokerVictimInfo_t info;
+        info.Init();
+        g_MapSmokerVictimInfo[client] = info;
+    }
+    else if (pPlayer->IsSmoker())
+    {
+        smokerInfo_t info;
+        info.Init();
+        g_MapSmokerInfo[client] = info;
+    }
+}
+
+void CSmokerEventListner::OnClientDisconnecting(int client)
+{
+    CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(client);
+    if (!pPlayer || !pPlayer->IsInGame())
+        return;
+
+    if (pPlayer->IsSurvivor())
+    {
+        if (g_MapSmokerVictimInfo.contains(client))
+        {
+            g_MapSmokerVictimInfo[client].Init();
+            g_MapSmokerVictimInfo.erase(client);
+        }
+    }
+    else if (pPlayer->IsSmoker())
+    {
+        if (g_MapSmokerInfo.contains(client))
+        {
+            g_MapSmokerInfo[client].Init();
+            g_MapSmokerInfo.erase(client);
+        }
+    }
 }
 
 SourceMod::ResultType CSmokerTimerEvent::OnTimer(ITimer *pTimer, void *pData)
@@ -98,7 +141,7 @@ void CSmokerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
         return;
 
     CTerrorPlayer *pTarget = (CTerrorPlayer *)UTIL_GetClientAimTarget(pSmoker, true);
-    if (!pTarget || !pTarget->IsInGame() || !pTarget->IsSurvivor() ||pTarget->IsDead())
+    if (!pTarget || !pTarget->IsInGame() || !pTarget->IsSurvivor() || pTarget->IsDead())
     {
         // aimming target is invalid, check if it is tonguing someone.
         CTerrorPlayer *pVictim = pSmoker->GetTongueVictim();

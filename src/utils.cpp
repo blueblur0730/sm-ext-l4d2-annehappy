@@ -94,7 +94,7 @@ Vector UTIL_MakeVectorFromPoints(Vector src1, Vector src2)
     return output;
 }
 
-void UTIL_ComputeAimAngles(CBasePlayer *pPlayer, CBasePlayer *pTarget, QAngle* angles, AimType type)
+void UTIL_ComputeAimAngles(CBasePlayer *pPlayer, CBasePlayer *pTarget, QAngle *angles, AimType type)
 {
     Vector vecTargetPos;
 
@@ -124,6 +124,7 @@ void UTIL_ComputeAimAngles(CBasePlayer *pPlayer, CBasePlayer *pTarget, QAngle* a
 
             vecTargetPos = pInfo->GetAbsOrigin();
             vecTargetPos.z += 45.0;
+            break;
         }
     }
 
@@ -142,12 +143,12 @@ vec_t GetSelfTargetAngle(CBasePlayer *pAttacker, CBasePlayer *pTarget)
     Vector vecResult = UTIL_MakeVectorFromPoints(vecSelfEyePos, vecTargetEyePos);
     VectorNormalize(vecResult);
 
-    QAngle vecAngle;
-    pAttacker->GetEyeAngles(&vecAngle);
-    vecAngle.x = vecAngle.z = 0.0f;
+    QAngle angEye;
+    pAttacker->GetEyeAngles(&angEye);
+    angEye.x = angEye.z = 0.0f;
 
     Vector vecSelfEyeVector;
-    AngleVectors(vecAngle, &vecSelfEyeVector, NULL, NULL);
+    AngleVectors(angEye, &vecSelfEyeVector, NULL, NULL);
     VectorNormalize(vecSelfEyeVector);
 
     return (acos(vecSelfEyeVector.Dot(vecResult)) * 180.0 / M_PI);
@@ -159,7 +160,7 @@ bool UTIL_IsInAimOffset(CBasePlayer *pAttacker, CBasePlayer *pTarget, float offs
     return (angle != 1.0f && angle <= offset);
 }
 
-bool TR_EntityFilter(IHandleEntity *ignore, int contentsMask)
+bool TR_EntityFilter(IHandleEntity *ignore, int contentsMask, void *data)
 {
     if (!ignore)
         return false;
@@ -195,7 +196,7 @@ bool WillHitWallOrFall(CBasePlayer *pPlayer, Vector vec)
     vecResult.z += NAV_MESH_HEIGHT;
 
     trace_t tr;
-    UTIL_TraceHull(vecSelfPos, vecResult, vecMins, vecMaxs, MASK_NPCSOLID_BRUSHONLY, NULL, COLLISION_GROUP_NONE, &tr, TR_EntityFilter);
+    UTIL_TraceHull(vecSelfPos, vecResult, vecMins, vecMaxs, MASK_NPCSOLID_BRUSHONLY, NULL, COLLISION_GROUP_NONE, &tr, TR_EntityFilter, NULL);
 
     bool bHullRayHit = false;
     if (tr.DidHit())
@@ -299,7 +300,7 @@ CBaseEntity *UTIL_GetClientAimTarget(CBaseEntity *pEntity, bool only_players)
 	ray.Init(eye_position, vec_end);
 
 	trace_t tr;
-    UTIL_TraceRay(ray, MASK_SOLID | CONTENTS_DEBRIS | CONTENTS_HITBOX, pEdict->GetIServerEntity(), &tr, COLLISION_GROUP_NONE, NULL);
+    UTIL_TraceRay(ray, MASK_SOLID | CONTENTS_DEBRIS | CONTENTS_HITBOX, pEdict->GetIServerEntity(), COLLISION_GROUP_NONE, &tr, NULL, NULL);
 
     if (tr.fraction == 1.0f || tr.m_pEnt == NULL)
         return NULL;

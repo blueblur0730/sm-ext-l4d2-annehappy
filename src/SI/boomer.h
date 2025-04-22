@@ -27,6 +27,10 @@ class CBoomerEventListner : public IGameEventListener2 {
 public:
     virtual void FireGameEvent(IGameEvent *event);
     virtual int GetEventDebugID(void);
+    
+public:
+    void OnClientPutInServer(int client);
+    void OnClientDisconnecting(int client);
 };
 
 struct targetInfo_t {
@@ -49,8 +53,6 @@ struct boomerInfo_t {
     }
 };
 
-extern std::unordered_map<int, boomerInfo_t> g_MapBoomerInfo;
-
 struct boomerVictimInfo_t {
     bool m_bBiled;
     int m_iSecondCheckFrame;
@@ -60,8 +62,6 @@ struct boomerVictimInfo_t {
         m_iSecondCheckFrame = 0;
     }
 };
-
-extern std::unordered_map<int, boomerVictimInfo_t> g_MapBoomerVictimInfo;
 
 class CVomit : public CBaseAbility {
 public:

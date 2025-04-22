@@ -39,7 +39,7 @@ CBasePlayer* UTIL_GetClosetSurvivor(CBasePlayer* pPlayer, CBasePlayer* pIgnorePl
 
 Vector UTIL_MakeVectorFromPoints(Vector src1, Vector src2);
 
-void UTIL_ComputeAimAngles(CBasePlayer* pPlayer, CBasePlayer* pTarget, QAngle* angles, AimType type = AimEye);
+void UTIL_ComputeAimAngles(CBasePlayer* pPlayer, CBasePlayer* pTarget, QAngle *angles, AimType type = AimEye);
 
 vec_t GetSelfTargetAngle(CBasePlayer* pAttacker, CBasePlayer* pTarget);
 
@@ -110,15 +110,8 @@ inline bool IsVisiableToPlayer(const Vector &vecTargetPos, CBasePlayer *pPlayer,
     return pFnIsVisibleToPlayer(vecTargetPos, pPlayer, team, team_target, flUnknow, pIgnore, pArea, bUnknown);
 }
 
-inline void UTIL_TraceRay( const Ray_t &ray, unsigned int mask, 
-    IHandleEntity *ignore, trace_t *tr, Collision_Group_t collisionGroup, ShouldHitFunc_t pExtraShouldHitCheckFn )
-{
-    CTraceFilterSimpleExt traceFilter(ignore, collisionGroup, pExtraShouldHitCheckFn);
-    enginetrace->TraceRay( ray, mask, &traceFilter, tr );
-}
-
 inline void UTIL_TraceRay(  const Ray_t &ray, unsigned int mask, 
-    IHandleEntity *ignore, Collision_Group_t collisionGroup, trace_t *tr, ShouldHitFunc2_t pExtraShouldHitCheckFn, void *data )
+    IHandleEntity *ignore, Collision_Group_t collisionGroup, trace_t *tr, ShouldHitFunc_t pExtraShouldHitCheckFn= NULL, void *data = NULL )
 {
    CTraceFilterSimpleExt traceFilter(ignore, collisionGroup, pExtraShouldHitCheckFn, data);
    enginetrace->TraceRay( ray, mask, &traceFilter, tr );
@@ -126,11 +119,11 @@ inline void UTIL_TraceRay(  const Ray_t &ray, unsigned int mask,
 
 inline void UTIL_TraceHull( const Vector& vecAbsStart, const Vector& vecAbsEnd, 
     const Vector& hullMin, const Vector& hullMax, unsigned int mask, 
-    IHandleEntity* ignore, Collision_Group_t collisionGroup, trace_t* tr, ShouldHitFunc_t pExtraShouldHitCheckFn)
+    IHandleEntity* ignore, Collision_Group_t collisionGroup, trace_t* tr, ShouldHitFunc_t pExtraShouldHitCheckFn = NULL, void *data = NULL )
 {
    Ray_t ray;
    ray.Init(vecAbsStart, vecAbsEnd, hullMin, hullMax);
-   CTraceFilterSimpleExt traceFilter(ignore, collisionGroup, pExtraShouldHitCheckFn);
+   CTraceFilterSimpleExt traceFilter(ignore, collisionGroup, pExtraShouldHitCheckFn, data);
 
    enginetrace->TraceRay(ray, mask, &traceFilter, tr);
 }

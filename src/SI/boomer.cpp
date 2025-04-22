@@ -21,7 +21,6 @@ ConVar z_boomer_spin_interval("z_boomer_spin_interval", "15", FCVAR_NOTIFY | FCV
 ConVar z_boomer_degree_force_bile("z_boomer_degree_force_bile", "10", FCVAR_NOTIFY | FCVAR_CHEAT, "Boomer will force to vomit to the survivors whoes pos with boomer's eye is on this degree, 0 = disable.", true, 0.0f, false, 0.0f);
 ConVar z_boomer_predict_pos("z_boomer_predict_pos", "1", FCVAR_NOTIFY | FCVAR_CHEAT, "Boomer will predict the frame of the next target's vision according to the target's angle.", true, 0.0f, true, 1.0f);
 
-
 void CBoomerEventListner::FireGameEvent(IGameEvent *event)
 {
     const char *name = event->GetName();
@@ -32,12 +31,12 @@ void CBoomerEventListner::FireGameEvent(IGameEvent *event)
         int index = pPlayer->entindex();
         if (index <= 0 || index > gpGlobals->maxClients)
             return;
-    
+
         if (!pPlayer->IsBoomer())
             return;
 
         if (!g_MapBoomerInfo.contains(index))
-         {
+        {
             boomerInfo_t boomerInfo;
             boomerInfo.Init();
             g_MapBoomerInfo[index] = boomerInfo;
@@ -56,10 +55,10 @@ void CBoomerEventListner::FireGameEvent(IGameEvent *event)
         int index = pPlayer->entindex();
         if (index <= 0 || index > gpGlobals->maxClients)
             return;
-    
+
         if (!pPlayer->IsBoomer())
             return;
-    
+
         if (!g_MapBoomerInfo.contains(index))
         {
             boomerInfo_t boomerInfo;
@@ -77,29 +76,29 @@ void CBoomerEventListner::FireGameEvent(IGameEvent *event)
         CTerrorPlayer *pAttacker = (CTerrorPlayer *)UTIL_PlayerByUserIdExt(event->GetInt("attacker"));
         if (!pAttacker || !pAttacker->IsBoomer())
             return;
-    
+
         CTerrorPlayer *pVictim = (CTerrorPlayer *)UTIL_PlayerByUserIdExt(event->GetInt("userid"));
         if (!pAttacker)
             return;
-    
+
         int index = pVictim->entindex();
         if (index <= 0 || index > gpGlobals->maxClients)
             return;
-    
+
         if (!g_MapBoomerVictimInfo.contains(index))
         {
             boomerVictimInfo_t victimInfo;
             victimInfo.Init();
             g_MapBoomerVictimInfo[index] = victimInfo;
         }
-    
+
 #ifdef _DEBUG
         rootconsole->ConsolePrint("### CBoomerEventListner::FireGameEvent, player_now_it");
 #endif
-    
+
         g_MapBoomerVictimInfo[index].m_bBiled = true;
-    
-        // FindVar actually can be replaced by ConVarRef, like: 
+
+        // FindVar actually can be replaced by ConVarRef, like:
         // static ConVarRef sb_vomit_blind_time("sb_vomit_blind_time");
         // it is all the same, right?
         g_hResetBiledStateTimer = timersys->CreateTimer(&g_BoomerTimerEvent, g_pCVar->FindVar("sb_vomit_blind_time")->GetFloat(), (void *)(intptr_t)index, 0);
@@ -109,20 +108,20 @@ void CBoomerEventListner::FireGameEvent(IGameEvent *event)
 #ifdef _DEBUG
         rootconsole->ConsolePrint("### CBoomerEventListner::FireGameEvent, round_start");
 #endif
-    
+
         for (int i = 1; i <= gpGlobals->maxClients; i++)
         {
             CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(i);
             if (!pPlayer || !pPlayer->IsInGame() || !pPlayer->IsSurvivor())
                 continue;
-    
+
             if (!g_MapBoomerVictimInfo.contains(i))
             {
                 boomerVictimInfo_t victimInfo;
                 victimInfo.Init();
                 g_MapBoomerVictimInfo[i] = victimInfo;
             }
-    
+
             g_MapBoomerVictimInfo[i].m_iSecondCheckFrame = 0;
         }
     }
@@ -131,6 +130,50 @@ void CBoomerEventListner::FireGameEvent(IGameEvent *event)
 int CBoomerEventListner::GetEventDebugID(void)
 {
     return EVENT_DEBUG_ID_INIT;
+}
+
+void CBoomerEventListner::OnClientPutInServer(int client)
+{
+    CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(client);
+    if (!pPlayer || !pPlayer->IsInGame())
+        return;
+
+    if (pPlayer->IsSurvivor())
+    {
+        boomerVictimInfo_t info;
+        info.Init();
+        g_MapBoomerVictimInfo[client] = info;
+    }
+    else if (pPlayer->IsBoomer())
+    {
+        boomerInfo_t info;
+        info.Init();
+        g_MapBoomerInfo[client] = info;
+    }
+}
+
+void CBoomerEventListner::OnClientDisconnecting(int client)
+{
+    CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(client);
+    if (!pPlayer || !pPlayer->IsInGame())
+        return;
+
+    if (pPlayer->IsSurvivor())
+    {
+        if (g_MapBoomerVictimInfo.contains(client))
+        {
+            g_MapBoomerVictimInfo[client].Init();
+            g_MapBoomerVictimInfo.erase(client);
+        }
+    }
+    else if (pPlayer->IsBoomer())
+    {
+        if (g_MapBoomerInfo.contains(client))
+        {
+            g_MapBoomerInfo[client].Init();
+            g_MapBoomerInfo.erase(client);
+        }
+    }
 }
 
 SourceMod::ResultType CBoomerTimerEvent::OnTimer(ITimer *pTimer, void *pData)
@@ -149,7 +192,7 @@ SourceMod::ResultType CBoomerTimerEvent::OnTimer(ITimer *pTimer, void *pData)
             return Pl_Stop;
 
 #ifdef _DEBUG
-    rootconsole->ConsolePrint("### CBoomerTimerEvent::OnTimer, g_hResetBileTimer");
+        rootconsole->ConsolePrint("### CBoomerTimerEvent::OnTimer, g_hResetBileTimer");
 #endif
         g_MapBoomerInfo[client].m_bCanBile = false;
         g_MapBoomerInfo[client].m_bIsInCoolDown = true;
@@ -167,12 +210,12 @@ SourceMod::ResultType CBoomerTimerEvent::OnTimer(ITimer *pTimer, void *pData)
         CTerrorPlayer *pBoomer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(client);
         if (!pBoomer->IsInGame() || !pBoomer->IsBoomer() || pBoomer->IsDead())
             return Pl_Stop;
-    
+
         if (!g_MapBoomerInfo.contains(client))
             return Pl_Stop;
 
 #ifdef _DEBUG
-    rootconsole->ConsolePrint("### CBoomerTimerEvent::OnTimer, g_hResetAbilityTimer");
+        rootconsole->ConsolePrint("### CBoomerTimerEvent::OnTimer, g_hResetAbilityTimer");
 #endif
         g_MapBoomerInfo[client].m_bCanBile = true;
         g_MapBoomerInfo[client].m_bIsInCoolDown = false;
@@ -192,7 +235,7 @@ SourceMod::ResultType CBoomerTimerEvent::OnTimer(ITimer *pTimer, void *pData)
             return Pl_Stop;
 
 #ifdef _DEBUG
-    rootconsole->ConsolePrint("### CBoomerTimerEvent::OnTimer, g_hResetBiledStateTimer");
+        rootconsole->ConsolePrint("### CBoomerTimerEvent::OnTimer, g_hResetBiledStateTimer");
 #endif
         g_MapBoomerVictimInfo[client].m_bBiled = false;
         g_MapBoomerVictimInfo[client].m_iSecondCheckFrame = 0;
@@ -241,33 +284,36 @@ void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
         g_MapBoomerVictimInfo[targetIndex] = victimInfo;
     }
 
+    bool bHasVisibleThreats = pPlayer->HasVisibleThreats();
+
     Vector vecSelfPos = pPlayer->GetAbsOrigin();
-    Vector vecTargetPos = pPlayer->GetAbsOrigin();
+    Vector vecTargetPos = pTarget->GetAbsOrigin();
     Vector vecSelfEyePos = pPlayer->GetEyeOrigin();
 
     vec_t flTargetDist = vecSelfPos.DistTo(vecTargetPos);
-    if (pPlayer->HasVisibleThreats() && !g_MapBoomerInfo[playerIndex].m_bIsInCoolDown && g_MapBoomerInfo[playerIndex].m_aTargetInfo.size() < 1)
+
+    if (bHasVisibleThreats && !g_MapBoomerInfo[playerIndex].m_bIsInCoolDown && g_MapBoomerInfo[playerIndex].m_aTargetInfo.size() < 1)
     {
         if (flTargetDist <= g_pCVar->FindVar("z_vomit_range")->GetFloat())
         {
-            QAngle vecAngles;
-            UTIL_ComputeAimAngles(pPlayer, pTarget, &vecAngles, AimEye);
+            QAngle angAim;
+            UTIL_ComputeAimAngles(pPlayer, pTarget, &angAim, AimEye);
             if (z_boomer_vision_up_on_vomit.GetBool())
             {
                 vec_t flHight = vecSelfPos.z - vecTargetPos.z;
                 if (flHight <= 0.0f)
                 {
-                    vecAngles.x -= (flTargetDist / (PLAYER_HEIGHT * 0.8));
+                    angAim.x -= (flTargetDist / (PLAYER_HEIGHT * 0.8));
                 }
                 else if (flHight > 0.0f)
                 {
-                    vecAngles.x -= (flTargetDist / (PLAYER_HEIGHT * 1.5));
+                    angAim.x -= (flTargetDist / (PLAYER_HEIGHT * 1.5));
                 }
             }
 #ifdef _DEBUG
-            rootconsole->ConsolePrint("### CBoomerCmdListner::OnPlayerRunCmd, Giving boomer a new angle: %.02f %.02f %.02f", vecAngles.x, vecAngles.y, vecAngles.z);
+            //rootconsole->ConsolePrint("### CBoomerCmdListner::OnPlayerRunCmd, First Giving boomer a new angle: %.02f %.02f %.02f", angAim.x, angAim.y, angAim.z);
 #endif
-            pPlayer->Teleport(NULL, &vecAngles, NULL);
+            pPlayer->Teleport(NULL, &angAim, NULL);
 
             /* 判断第一个目标是否需要强行被喷，boomer 能力使用后过一个目标帧数延时再做一次检测，避免生还者立刻躲起来还是被喷到 */
             CVomit *pAbility = reinterpret_cast<CVomit *>(pPlayer->GetAbility());
@@ -281,7 +327,7 @@ void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
                 else if (secondCheck(pPlayer, pTarget))
                 {
 #ifdef _DEBUG
-                    rootconsole->ConsolePrint("### CBoomerCmdListner::OnPlayerRunCmd, Target: %d, force biled.", pTarget->entindex());
+                    rootconsole->ConsolePrint("### CBoomerCmdListner::OnPlayerRunCmd, First check Target: %d, force biled.", pTarget->entindex());
 #endif
                     /* 再次检测距离，可视，角度，都通过就强制被喷 */
                     pTarget->OnVomitedUpon(pPlayer, false);
@@ -317,36 +363,34 @@ void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
                 victimInfo.Init();
                 g_MapBoomerVictimInfo[victimIndex] = victimInfo;
             }
-            
+
             vec_t flSpinAngle = targetInfo.flAngle;
 
-            QAngle vecAngles;
+            QAngle angAim;
             Vector vecVictimPos = pVictim->GetAbsOrigin();
             vec_t flHeight = vecSelfPos.z - vecVictimPos.z;
 
             /* 视野转向 & 上抬 */
-            UTIL_ComputeAimAngles(pPlayer, pVictim, &vecAngles, AimEye);
+            UTIL_ComputeAimAngles(pPlayer, pVictim, &angAim, AimEye);
 
             if (z_boomer_vision_up_on_vomit.GetBool())
             {
                 if (flHeight <= 0.0f)
                 {
-                    vecAngles.x -= (flTargetDist / (PLAYER_HEIGHT * 0.8));
+                    angAim.x -= (flTargetDist / (PLAYER_HEIGHT * 0.8));
                 }
                 else if (flHeight > 0.0f)
                 {
-                    vecAngles.x -= (flTargetDist / (PLAYER_HEIGHT * 1.5));
+                    angAim.x -= (flTargetDist / (PLAYER_HEIGHT * 1.5));
                 }
             }
 #ifdef _DEBUG
-            rootconsole->ConsolePrint("### CBoomerCmdListner::OnPlayerRunCmd, Giving boomer a new angle: %.02f %.02f %.02f", vecAngles.x, vecAngles.y, vecAngles.z);
+            rootconsole->ConsolePrint("### CBoomerCmdListner::OnPlayerRunCmd, Giving boomer a new angle: %.02f %.02f %.02f", angAim.x, angAim.y, angAim.z);
 #endif
-            pPlayer->Teleport(NULL, &vecAngles, NULL);
+            pPlayer->Teleport(NULL, &angAim, NULL);
 
             /* 强制喷吐检测，帧数确认 */
-            int targetFrame = z_boomer_predict_pos.GetBool() ?
-            (int)(flSpinAngle / TURN_ANGLE_DIVIDE) :
-            z_boomer_spin_interval.GetInt();
+            int targetFrame = z_boomer_predict_pos.GetBool() ? (int)(flSpinAngle / TURN_ANGLE_DIVIDE) : z_boomer_spin_interval.GetInt();
 #ifdef _DEBUG
             rootconsole->ConsolePrint("### CBoomerCmdListner::OnPlayerRunCmd, targetFrame: %d", targetFrame);
 #endif
@@ -369,16 +413,15 @@ void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
                     {
 #ifdef _DEBUG
                         rootconsole->ConsolePrint("### CBoomerCmdListner::OnPlayerRunCmd, turnTarget: %d, secondCheck frame: %d, Biled: %d, secondCheck: %d",
-                            victimIndex, g_MapBoomerVictimInfo[victimIndex].m_iSecondCheckFrame, g_MapBoomerVictimInfo[victimIndex].m_bBiled,
-                            secondCheck(pPlayer, pVictim)
-                            );
+                                                  victimIndex, g_MapBoomerVictimInfo[victimIndex].m_iSecondCheckFrame, g_MapBoomerVictimInfo[victimIndex].m_bBiled,
+                                                  secondCheck(pPlayer, pVictim));
 #endif
                         g_MapBoomerVictimInfo[victimIndex].m_iSecondCheckFrame++;
                     }
                     else if (!g_MapBoomerVictimInfo[victimIndex].m_bBiled && secondCheck(pPlayer, pVictim))
                     {
 #ifdef _DEBUG
-                        rootconsole->ConsolePrint("### CBoomerCmdListner::OnPlayerRunCmd, Target: %d, force biled.", pVictim->entindex());
+                        rootconsole->ConsolePrint("### CBoomerCmdListner::OnPlayerRunCmd, Second check Target: %d, force biled.", victimIndex);
 #endif
                         pVictim->OnVomitedUpon(pPlayer, false);
                         g_MapBoomerVictimInfo[victimIndex].m_bBiled = true;
@@ -388,7 +431,7 @@ void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
                     else if (g_MapBoomerVictimInfo[victimIndex].m_bBiled)
                     {
 #ifdef _DEBUG
-                        rootconsole->ConsolePrint("### CBoomerCmdListner::OnPlayerRunCmd, Target: %d biled, find next.", pVictim->entindex());
+                        rootconsole->ConsolePrint("### CBoomerCmdListner::OnPlayerRunCmd, Target: %d biled, find next.", victimIndex);
 #endif
                         g_MapBoomerInfo[playerIndex].m_nBileFrame[1] = g_MapBoomerVictimInfo[victimIndex].m_iSecondCheckFrame = 0;
                         g_MapBoomerInfo[playerIndex].m_nBileFrame[0] += 1;
@@ -415,8 +458,8 @@ void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
 
     // 靠近生还者，立即喷吐
     int flags = pPlayer->GetFlags();
-    if ((flags & FL_ONGROUND) && pPlayer->HasVisibleThreats()
-        && (flTargetDist <= (int)(0.8 * g_pCVar->FindVar("z_vomit_range")->GetFloat()))
+    if ((flags & FL_ONGROUND) && bHasVisibleThreats 
+        && (flTargetDist <= (0.8f * g_pCVar->FindVar("z_vomit_range")->GetFloat())) 
         && !g_MapBoomerInfo[playerIndex].m_bIsInCoolDown && g_MapBoomerInfo[playerIndex].m_bCanBile)
     {
         pCmd->buttons |= IN_ATTACK;
@@ -446,8 +489,7 @@ void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
     }
 
     // 强行被喷
-    if (z_boomer_force_bile.GetBool() && (pCmd->buttons & IN_ATTACK)
-        && !g_MapBoomerInfo[playerIndex].m_bIsInCoolDown)
+    if (z_boomer_force_bile.GetBool() && (pCmd->buttons & IN_ATTACK) && !g_MapBoomerInfo[playerIndex].m_bIsInCoolDown)
     {
         g_MapBoomerInfo[playerIndex].m_bIsInCoolDown = true;
         for (int i = 1; i <= gpGlobals->maxClients; i++)
@@ -460,13 +502,6 @@ void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
             if (!pTerrorPlayer || !pTerrorPlayer->IsInGame() || !pTerrorPlayer->IsSurvivor() || pPlayer->IsDead())
                 continue;
 
-            if (!g_MapBoomerVictimInfo.contains(i))
-            {
-                boomerVictimInfo_t victimInfo;
-                victimInfo.Init();
-                g_MapBoomerVictimInfo[i] = victimInfo;
-            }
-
             Vector vecEyePos = pTerrorPlayer->GetEyeOrigin();
             if (vecSelfEyePos.DistTo(vecEyePos) > g_pCVar->FindVar("z_vomit_range")->GetFloat())
                 continue;
@@ -474,8 +509,8 @@ void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
             Ray_t ray;
             trace_t tr;
             ray.Init(vecSelfEyePos, vecEyePos);
-            UTIL_TraceRay(ray, MASK_VISIBLE, NULL, COLLISION_GROUP_NONE, &tr, TR_VomitClientFilter, (void *)((uint8_t *)pPlayer->entindex()));
-            if (!tr.DidHit() && (tr.m_pEnt && (tr.m_pEnt->entindex() == pTerrorPlayer->entindex())))
+            UTIL_TraceRay(ray, MASK_VISIBLE, NULL, COLLISION_GROUP_NONE, &tr, TR_VomitClientFilter, (void *)((intptr_t)playerIndex));
+            if (!tr.DidHit() || (tr.m_pEnt && (tr.m_pEnt->entindex() == i)))
             {
 #ifdef _DEBUG
                 rootconsole->ConsolePrint("### CBoomerCmdListner::OnPlayerRunCmd, Target: %d, force biled.", i);
@@ -489,12 +524,10 @@ void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
     }
 
     Vector vecVelocity = pPlayer->GetVelocity();
-    vec_t flCurSpeed = (vec_t)FastSqrt(vecVelocity.x * vecVelocity.x + vecVelocity.y * vecVelocity.y);
+    vec_t flCurSpeed = (vec_t)sqrt(vecVelocity.x * vecVelocity.x + vecVelocity.y * vecVelocity.y);
 
     // 连跳
-    if (z_boomer_bhop.GetBool() && pPlayer->HasVisibleThreats() 
-        && (flags & FL_ONGROUND) && (0.5f * g_pCVar->FindVar("z_vomit_range")->GetFloat() < flTargetDist
-        && flTargetDist < 1000.0f) /*&& flCurSpeed > 160.0f*/)
+    if (z_boomer_bhop.GetBool() && bHasVisibleThreats && (flags & FL_ONGROUND) && (0.5f * g_pCVar->FindVar("z_vomit_range")->GetFloat() < flTargetDist && flTargetDist < 1000.0f) && flCurSpeed > 160.0f)
     {
         Vector vecBuffer = UTIL_CaculateVel(vecSelfPos, vecTargetPos, z_boomer_bhop_speed.GetFloat());
         pCmd->buttons |= IN_JUMP;
@@ -514,7 +547,7 @@ void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
     }
 }
 
-CTerrorPlayer* BossZombiePlayerBot::OnBoomerChooseVictim(CTerrorPlayer *pAttacker, CTerrorPlayer *pLastVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer)
+CTerrorPlayer *BossZombiePlayerBot::OnBoomerChooseVictim(CTerrorPlayer *pAttacker, CTerrorPlayer *pLastVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer)
 {
     if (!pAttacker->IsBoomer() || pAttacker->IsDead())
         return NULL;
@@ -537,7 +570,7 @@ CTerrorPlayer* BossZombiePlayerBot::OnBoomerChooseVictim(CTerrorPlayer *pAttacke
                 Ray_t ray;
                 trace_t tr;
                 ray.Init(vecEyePos, vecTargetEyePos);
-                UTIL_TraceRay(ray, MASK_VISIBLE, NULL, COLLISION_GROUP_NONE, &tr, TR_VomitClientFilter, (void *)((uint8_t *)pAttacker->entindex()));
+                UTIL_TraceRay(ray, MASK_VISIBLE, NULL, COLLISION_GROUP_NONE, &tr, TR_VomitClientFilter, (void *)((intptr_t)pAttacker->entindex()));
 
                 if (!tr.DidHit() || (tr.m_pEnt && (tr.m_pEnt->entindex() == i)))
                 {
@@ -611,7 +644,7 @@ void CTerrorPlayer::DTRCallBack_OnVomitedUpon(CBasePlayer *pAttacker, bool bIsEx
         Ray_t ray;
         trace_t tr;
         ray.Init(vecEyePos, vecTargetEyePos);
-        UTIL_TraceRay(ray, MASK_VISIBLE, NULL, COLLISION_GROUP_NONE, &tr, TR_VomitClientFilter, (void *)((uint8_t *)pPlayer->entindex()));
+        UTIL_TraceRay(ray, MASK_VISIBLE, NULL, COLLISION_GROUP_NONE, &tr, TR_VomitClientFilter, (void *)((intptr_t)boomerIndex));
 
         if (!tr.DidHit() || (tr.m_pEnt && (tr.m_pEnt->entindex() == i)))
         {
@@ -625,11 +658,11 @@ void CTerrorPlayer::DTRCallBack_OnVomitedUpon(CBasePlayer *pAttacker, bool bIsEx
 
     if (g_MapBoomerInfo[boomerIndex].m_aTargetInfo.size() > 1)
     {
-        std::sort(g_MapBoomerInfo[boomerIndex].m_aTargetInfo.begin(), g_MapBoomerInfo[boomerIndex].m_aTargetInfo.end(), 
-            [](const targetInfo_t &a, const targetInfo_t &b) {
-                return a.flAngle < b.flAngle;
-            }
-        );
+        std::sort(g_MapBoomerInfo[boomerIndex].m_aTargetInfo.begin(), g_MapBoomerInfo[boomerIndex].m_aTargetInfo.end(),
+                  [](const targetInfo_t &a, const targetInfo_t &b)
+                  {
+                      return a.flAngle < b.flAngle;
+                  });
     }
 }
 
@@ -656,7 +689,7 @@ static bool secondCheck(CBaseEntity *pPlayer, CBaseEntity *pTarget)
     }
 
     vec_t flDistance = vecSelfEyePos.DistTo(vecTargetEyePos);
-    if (flDistance <= g_pCVar->FindVar("z_vomit_range")->GetFloat() || 
+    if (flDistance <= g_pCVar->FindVar("z_vomit_range")->GetFloat() ||
         UTIL_IsInAimOffset((CBasePlayer *)pPlayer, (CBasePlayer *)pTarget, z_boomer_degree_force_bile.GetFloat()) ||
         g_MapBoomerVictimInfo[index].m_bBiled)
     {
@@ -666,66 +699,46 @@ static bool secondCheck(CBaseEntity *pPlayer, CBaseEntity *pTarget)
     Ray_t ray;
     trace_t tr;
     ray.Init(vecSelfEyePos, vecTargetEyePos);
-    UTIL_TraceRay(ray, MASK_VISIBLE, NULL, COLLISION_GROUP_NONE, &tr, TR_VomitClientFilter, (void *)((uint8_t *)pTarget->entindex()));
-    
-    if (!tr.DidHit() || (tr.m_pEnt && (tr.m_pEnt->entindex() == pTarget->entindex())))
+    UTIL_TraceRay(ray, MASK_VISIBLE, NULL, COLLISION_GROUP_NONE, &tr, TR_VomitClientFilter, (void *)((intptr_t)index));
+
+    if (!tr.DidHit() || (tr.m_pEnt && (tr.m_pEnt->entindex() == index)))
         return true;
 
     return false;
 }
 
-static bool TR_VomitClientFilter(IHandleEntity* pHandleEntity, int contentsMask, void *data)
+static bool TR_VomitClientFilter(IHandleEntity *pHandleEntity, int contentsMask, void *data)
 {
     CBaseHandle EHandle = pHandleEntity->GetRefEHandle();
-#ifdef _DEBUG
-    rootconsole->ConsolePrint("### TR_VomitClientFilter: EHandle.IsValid(): %d.", EHandle.IsValid());
-#endif
+
     if (!EHandle.IsValid())
         return false;
 
     edict_t *pEdict = gamehelpers->GetHandleEntity(EHandle);
-#ifdef _DEBUG
-    rootconsole->ConsolePrint("### TR_VomitClientFilter: pEdict: %d.", pEdict);
-#endif
+
     if (!pEdict)
         return false;
 
     CBaseEntity *pEntity = gameents->EdictToBaseEntity(pEdict);
-#ifdef _DEBUG
-    rootconsole->ConsolePrint("### TR_VomitClientFilter: pEntity: %d.", pEntity);
-#endif
+
     if (!pEntity)
         return false;
 
     int index = pEntity->entindex();
-#ifdef _DEBUG
-        rootconsole->ConsolePrint("### TR_VomitClientFilter: index: %d.", index);
-#endif
+
     if (index < 1 || index > gpGlobals->maxClients)
         return false;
 
-#ifdef _DEBUG
-        rootconsole->ConsolePrint("### TR_VomitClientFilter: g_MapBoomerVictimInfo.contains(index): %d.", g_MapBoomerVictimInfo.contains(index));
-#endif
-
-    if (!g_MapBoomerVictimInfo.contains(index))
-    {
-        boomerVictimInfo_t victimInfo;
-        victimInfo.Init();
-        g_MapBoomerVictimInfo[index] = victimInfo;
-    }
-#ifdef _DEBUG
-    rootconsole->ConsolePrint("### TR_VomitClientFilter: g_MapBoomerVictimInfo[index].m_bBiled: %d.", g_MapBoomerVictimInfo[index].m_bBiled);
-#endif
     if (g_MapBoomerVictimInfo[index].m_bBiled)
         return false;
-#ifdef _DEBUG
-    rootconsole->ConsolePrint("### TR_VomitClientFilter: index != *(uint8_t *)data: %d.", index != *(uint8_t *)data);
-#endif
-    return index != *(uint8_t *)data;
+
+    if (!data)
+        return false;
+
+    return index != (int)(intptr_t)data;
 }
 
-static bool DoBhop(CBasePlayer* pPlayer, int buttons, Vector vec)
+static bool DoBhop(CBasePlayer *pPlayer, int buttons, Vector vec)
 {
     if (buttons & IN_FORWARD || buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT)
         return ClientPush(pPlayer, vec);

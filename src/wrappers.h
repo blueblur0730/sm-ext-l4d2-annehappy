@@ -10,6 +10,7 @@
 #include "ISDKHooks.h"
 #include "CDetour/detours.h"
 
+#include "const.h"
 #include "edict.h"
 #include "eiface.h"
 #include "igameevents.h"
@@ -54,28 +55,18 @@ enum ZombieClassType {
 	ZC_TANK = 8,
 };
 
-typedef bool (*ShouldHitFunc_t)(IHandleEntity* pHandleEntity, int contentsMask);
-typedef bool (*ShouldHitFunc2_t)(IHandleEntity* pHandleEntity, int contentsMask, void* data);
+typedef bool (*ShouldHitFunc_t)(IHandleEntity* pHandleEntity, int contentsMask, void* data);
 
 class CTraceFilterSimpleExt : public CTraceFilter
 {
 public:
-	static void* pFnCTraceFilterSimple;
-	static ICallWrapper* pCallCTraceFilterSimple;
-	static ICallWrapper* pCallCTraceFilterSimple2;
-
-public:
-	CTraceFilterSimpleExt(const IHandleEntity *passedict = NULL, Collision_Group_t collisionGroup = COLLISION_GROUP_NONE, ShouldHitFunc_t pExtraShouldHitFunc = NULL);
-	CTraceFilterSimpleExt(const IHandleEntity *passedict = NULL, Collision_Group_t collisionGroup = COLLISION_GROUP_NONE, ShouldHitFunc2_t pExtraShouldHitFunc = NULL, void *data = NULL);
-
+	CTraceFilterSimpleExt(const IHandleEntity *passedict = NULL, Collision_Group_t collisionGroup = COLLISION_GROUP_NONE, ShouldHitFunc_t pExtraShouldHitFunc = NULL, void *data = NULL);
 	virtual bool ShouldHitEntity(IHandleEntity *pHandleEntity, int contentsMask);
 
 private:
-	TraceType_t m_TraceType;
 	const IHandleEntity* m_pPassEnt;
 	int m_collisionGroup;
 	ShouldHitFunc_t m_pExtraShouldHitCheckFunction;
-	ShouldHitFunc2_t m_pExtraShouldHitCheckFunction2;
 	void *m_data;
 };
 
@@ -90,37 +81,27 @@ public:
 	}
 };
 
-/*
-class CBaseTraceFilter : public ITraceFilter {
-public:
-
-	virtual bool ShouldHitEntity(IHandleEntity* pHandleEntity, int contentsMask);
-	void SetTraceType(TraceType_t traceType) {
-		m_TraceType = traceType;
-	}
-
-private:
-	TraceType_t m_TraceType;
-};
-*/
-
 class CBaseEntity : public IServerEntity {
 public:
-	//static int vtblindex_CBaseEntity_GetVelocity;
-	//static ICallWrapper *pCallGetVelocity;
-
 	static int vtblindex_CBaseEntity_Teleport;
 	static ICallWrapper *pCallTeleport;
 
 	static int vtblindex_CBaseEntity_GetEyeAngle;
 	static ICallWrapper *pCallGetEyeAngle;
 
+	static int dataprop_m_vecAbsVelocity;
+	static int dataprop_m_vecAbsOrigin;
+	static int dataprop_m_hOwnerEntity;
+	static int dataprop_m_MoveType;
+	static int dataprop_m_lifeState;
+	static int dataprop_m_iHealth;
+
 public:
 	inline int GetDataOffset(const char *name)
 	{
 		sm_datatable_info_t offset_data_info;
-		datamap_t *offsetMap = gamehelpers->GetDataMap((CBaseEntity *)this);
-		if (!gamehelpers->FindDataMapInfo(offsetMap, "name", &offset_data_info))
+		datamap_t *offsetMap = gamehelpers->GetDataMap(this);
+		if (!offsetMap || !gamehelpers->FindDataMapInfo(offsetMap, name, &offset_data_info))
 			return -1;
 
 		return offset_data_info.actual_offset;
@@ -145,20 +126,60 @@ public:
 
 	inline Vector GetVelocity()
 	{
-		return *(Vector*)((byte*)(this) + GetDataOffset("m_vecAbsVelocity"));
+		if (dataprop_m_vecAbsVelocity == -1)
+			dataprop_m_vecAbsVelocity = GetDataOffset("m_vecAbsVelocity");
+
+		return *(Vector*)((byte*)(this) + dataprop_m_vecAbsVelocity);
+	}
+
+	inline Vector GetAbsOrigin()
+	{
+		
+		if (dataprop_m_vecAbsOrigin == -1)
+			dataprop_m_vecAbsOrigin = GetDataOffset("m_vecAbsOrigin");
+
+		return *(Vector*)((byte*)(this) + dataprop_m_vecAbsOrigin);
 	}
 
 	inline CBaseEntity *GetOwnerEntity()
 	{
-		return gamehelpers->ReferenceToEntity(((CBaseHandle *)((byte *)(this) + GetDataOffset("m_hOwnerEntity")))->GetEntryIndex());
+		if (dataprop_m_hOwnerEntity == -1)
+			dataprop_m_hOwnerEntity = GetDataOffset("m_hOwnerEntity");
+
+		return gamehelpers->ReferenceToEntity(((CBaseHandle *)((byte *)(this) + dataprop_m_hOwnerEntity))->GetEntryIndex());
 	}
 
 	inline MoveType_t GetMoveType()
 	{
-		return *(MoveType_t*)((byte*)(this) + GetDataOffset("m_MoveType"));
+		if (dataprop_m_MoveType == -1)
+			dataprop_m_MoveType = GetDataOffset("m_MoveType");
+
+		return *(MoveType_t*)((byte*)(this) + dataprop_m_MoveType);
 	}
 
-	void Teleport(Vector *newPosition, QAngle *newAngles, Vector *newVelocity);
+	inline char& GetLifeState()
+	{
+		if (dataprop_m_lifeState == -1) 
+			dataprop_m_lifeState = GetDataOffset("m_lifeState");
+
+		return *(char*)((byte*)(this) + dataprop_m_lifeState);
+	}
+
+	// player will be dead but the health will be still 1. why?
+	inline int GetHealth()
+	{
+		if (dataprop_m_iHealth == -1)
+			dataprop_m_iHealth = GetDataOffset("m_iHealth");
+
+		return *(int*)((byte*)(this) + dataprop_m_iHealth);
+	}
+
+	inline bool IsDead()
+	{
+		return GetLifeState() == LIFE_DEAD;
+	}
+
+	void Teleport(const Vector *newPosition, const QAngle *newAngles, const Vector *newVelocity);
 
 	void GetEyeAngles(QAngle *pRetAngle);
 };
@@ -201,20 +222,6 @@ public:
 	inline bool IsBot()
 	{
 		return (GetFlags() & FL_FAKECLIENT) != 0;
-	}
-
-	inline int GetButton()
-	{
-		return *(int*)((byte*)(this) + GetDataOffset("m_nButtons"));
-	}
-
-	// Thanks to Forgetest from his l4d_lagcomp_skeet.
-	inline CUserCmd *GetCurrentCommand() 
-	{
-		return *(CUserCmd **)((byte *)(this) + 
-				(GetDataOffset("m_hViewModel") 
-				+ 4 * 2 /* CHandle<CBaseViewModel> * MAX_VIEWMODELS */
-				+ 88 /* sizeof(m_LastCmd) */));
 	}
 };
 
@@ -259,18 +266,7 @@ public:
 	
 		return GetPlayerInfo()->GetAbsOrigin();
 	}
-
-	// this is fastest and the most simple.
-	// if not, use m_lifeState.
-	inline bool IsDead()
-	{
-		IPlayerInfo *pPlayerInfo = GetPlayerInfo();
-		if (!pPlayerInfo)
-			return false;
 	
-		return GetPlayerInfo()->IsDead();
-	}
-
 	inline Vector GetPlayerMins()
 	{
 		IPlayerInfo *pPlayerInfo = GetPlayerInfo();
@@ -357,7 +353,6 @@ public:
 		return (GetClass() == ZC_SMOKER);
 	}
 	
-
 	CBaseEntity *OffsetEHandleToEntity(int iOff);
 
 	void OnVomitedUpon(CBasePlayer *pAttacker, bool bIsExplodedByBoomer);
