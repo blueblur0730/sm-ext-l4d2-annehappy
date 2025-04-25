@@ -1,5 +1,6 @@
 #include "utils.h"
 #include "extension.h"
+#include "in_buttons.h"
 
 CBasePlayer* UTIL_PlayerByIndexExt(int playerIndex)
 {
@@ -160,28 +161,6 @@ bool UTIL_IsInAimOffset(CBasePlayer *pAttacker, CBasePlayer *pTarget, float offs
     return (angle != 1.0f && angle <= offset);
 }
 
-bool TR_EntityFilter(IHandleEntity *ignore, int contentsMask, void *data)
-{
-    if (!ignore)
-        return false;
-
-    CBaseEntity *pEntity = (CBaseEntity *)EntityFromEntityHandle(ignore);
-    if (!pEntity)
-        return false;
-
-    const char *classname = pEntity->GetClassName();
-    
-    if (V_strcmp(classname, "infected") == 0
-    || V_strcmp(classname, "witch") == 0
-    || V_strcmp(classname, "prop_physics") == 0
-    || V_strcmp(classname, "tank_rock") == 0)
-    {
-        return false;
-    }
-
-    return true;
-}
-
 // false means will, true otherwise.
 bool WillHitWallOrFall(CBasePlayer *pPlayer, Vector vec)
 {
@@ -218,7 +197,7 @@ bool WillHitWallOrFall(CBasePlayer *pPlayer, Vector vec)
     vecDownHullRayEndPos.z -= 100000.0f;
 
     trace_t tr2;
-    UTIL_TraceHull(vecDownHullRayStartPos, vecDownHullRayEndPos, vecMins, vecMaxs, MASK_NPCSOLID_BRUSHONLY, NULL, COLLISION_GROUP_NONE, &tr2, TR_EntityFilter);
+    UTIL_TraceHull(vecDownHullRayStartPos, vecDownHullRayEndPos, vecMins, vecMaxs, MASK_NPCSOLID_BRUSHONLY, NULL, COLLISION_GROUP_NONE, &tr2, TR_EntityFilter, NULL);
 
     if (tr2.DidHit() && tr2.m_pEnt)
     {
@@ -245,11 +224,36 @@ bool WillHitWallOrFall(CBasePlayer *pPlayer, Vector vec)
     return false;
 }
 
+static bool TR_EntityFilter(IHandleEntity *ignore, int contentsMask, void *data)
+{
+    if (!ignore)
+        return false;
+
+    CBaseEntity *pEntity = (CBaseEntity *)EntityFromEntityHandle(ignore);
+    if (!pEntity)
+        return false;
+
+    const char *classname = pEntity->GetClassName();
+    
+    if (V_strcmp(classname, "infected") == 0
+    || V_strcmp(classname, "witch") == 0
+    || V_strcmp(classname, "prop_physics") == 0
+    || V_strcmp(classname, "tank_rock") == 0)
+    {
+        return false;
+    }
+
+    return true;
+}
+
 bool ClientPush(CBasePlayer *pPlayer, Vector vec)
 {
     Vector vecVelocity = pPlayer->GetVelocity();
     vecVelocity += vec;
-    
+#ifdef _DEBUG
+    rootconsole->ConsolePrint("### CBoomerEventListner::OnPlayerRunCmd, WillHitWallOrFall: %d.", WillHitWallOrFall(pPlayer, vecVelocity));
+    rootconsole->ConsolePrint("### CBoomerEventListner::OnPlayerRunCmd, vecVelocity: %.02f, %.02f, %.02f, length: %.02f.", vecVelocity.x, vecVelocity.y, vecVelocity.z, vecVelocity.Length());
+#endif
     if (WillHitWallOrFall(pPlayer, vecVelocity))
     {
         if (vecVelocity.Length() <= 250.0f)
@@ -257,7 +261,9 @@ bool ClientPush(CBasePlayer *pPlayer, Vector vec)
             VectorNormalize(vecVelocity);
             VectorScale(vecVelocity, 251.0f, vecVelocity);
         }
-
+#ifdef _DEBUG
+        rootconsole->ConsolePrint("### CBoomerEventListner::OnPlayerRunCmd, Normalized and scaled vecVelocity: %.02f, %.02f, %.02f.", vecVelocity.x, vecVelocity.y, vecVelocity.z);
+#endif
         pPlayer->Teleport(NULL, NULL, &vecVelocity);
         return true;
     }
@@ -401,4 +407,12 @@ bool PassServerEntityFilter( const IHandleEntity *pTouch, const IHandleEntity *p
 		return false;	
 
 	return true;
+}
+
+bool DoBhop(CBasePlayer *pPlayer, int buttons, Vector vec)
+{
+    if (buttons & IN_FORWARD || buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT)
+        return ClientPush(pPlayer, vec);
+
+    return false;
 }

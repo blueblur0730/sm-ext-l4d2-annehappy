@@ -95,7 +95,10 @@ DETOUR_DECL_MEMBER2(DTRHandler_CTerrorPlayer_OnVomitedUpon, void, CBasePlayer *,
 void CBoomerEventListner::FireGameEvent(IGameEvent *event)
 {
     const char *name = event->GetName();
-    if (!strcmp(name, "player_spawn"))
+    if (!name)
+        return;
+
+    if (V_strcmp(name, "player_spawn") == 0)
     {
         CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByUserIdExt(event->GetInt("userid"));
 
@@ -119,7 +122,7 @@ void CBoomerEventListner::FireGameEvent(IGameEvent *event)
         rootconsole->ConsolePrint("### CBoomerEventListner::FireGameEvent, player_spawn, index: %d", index);
 #endif
     }
-    else if (!strcmp(name, "player_shoved"))
+    else if (V_strcmp(name, "player_shoved") == 0)
     {
         CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByUserIdExt(event->GetInt("userid"));
 
@@ -142,7 +145,7 @@ void CBoomerEventListner::FireGameEvent(IGameEvent *event)
         g_MapBoomerInfo[index].m_bCanBile = false;
         g_hResetBileTimer = timersys->CreateTimer(&g_BoomerTimerEvent, 1.5f, (void *)(intptr_t)index, 0);
     }
-    else if (!strcmp(name, "player_now_it"))
+    else if (V_strcmp(name, "player_now_it") == 0)
     {
         CTerrorPlayer *pAttacker = (CTerrorPlayer *)UTIL_PlayerByUserIdExt(event->GetInt("attacker"));
         if (!pAttacker || !pAttacker->IsBoomer())
@@ -174,7 +177,7 @@ void CBoomerEventListner::FireGameEvent(IGameEvent *event)
         // it is all the same, right?
         g_hResetBiledStateTimer = timersys->CreateTimer(&g_BoomerTimerEvent, g_pCVar->FindVar("sb_vomit_blind_time")->GetFloat(), (void *)(intptr_t)index, 0);
     }
-    else if (!strcmp(name, "round_start"))
+    else if (V_strcmp(name, "round_start") == 0)
     {
 #ifdef _DEBUG
         rootconsole->ConsolePrint("### CBoomerEventListner::FireGameEvent, round_start");
@@ -743,12 +746,4 @@ static bool TR_VomitClientFilter(IHandleEntity *pHandleEntity, int contentsMask,
         return false;
 
     return index != (int)(intptr_t)data;
-}
-
-static bool DoBhop(CBasePlayer *pPlayer, int buttons, Vector vec)
-{
-    if (buttons & IN_FORWARD || buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT)
-        return ClientPush(pPlayer, vec);
-
-    return false;
 }

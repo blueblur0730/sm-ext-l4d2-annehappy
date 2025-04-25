@@ -45,7 +45,7 @@ vec_t GetSelfTargetAngle(CBasePlayer* pAttacker, CBasePlayer* pTarget);
 
 bool UTIL_IsInAimOffset(CBasePlayer* pAttacker, CBasePlayer* pTarget, float offset);
 
-bool TR_EntityFilter(IHandleEntity *ignore, int contentsMask);
+static bool TR_EntityFilter(IHandleEntity *ignore, int contentsMask, void *data);
 
 // false means will, true otherwise.
 bool WillHitWallOrFall(CBasePlayer* pPlayer, Vector vec);
@@ -97,6 +97,8 @@ inline CBaseEntity *EntityFromEntityHandle( IHandleEntity *pHandleEntity )
 }
 
 bool PassServerEntityFilter(const IHandleEntity *pTouch, const IHandleEntity *pPass);
+
+bool DoBhop(CBasePlayer *pPlayer, int buttons, Vector vec);
 
 inline float FloatAbs(float f)
 {

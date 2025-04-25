@@ -322,6 +322,12 @@ void CAnneHappy::SDK_OnUnload()
 	DestroyDetours(CTerrorPlayer::DTR_OnVomitedUpon);
 	DestroyDetours(BossZombiePlayerBot::DTR_ChooseVictim);
 
+	for (int i = 1; i <= gpGlobals->maxClients; i++)
+	{
+		g_BoomerEventListner.OnClientDisconnecting(i);
+		g_SmokerEventListner.OnClientDisconnecting(i);
+	}
+
 	playerhelpers->RemoveClientListener(this);
 	smutils->LogMessage(myself, "Extension has been unloaded.");
 }

@@ -88,6 +88,5 @@ public:
 
 static bool secondCheck(CBaseEntity *pPlayer, CBaseEntity *pTarget);
 static bool TR_VomitClientFilter(IHandleEntity *pHandleEntity, int contentsMask, void *data);
-static bool DoBhop(CBasePlayer *pPlayer, int buttons, Vector vec);
 
 #endif // _BOMMER_H_INCLUDED_

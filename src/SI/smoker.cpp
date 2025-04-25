@@ -27,15 +27,12 @@ ConVar z_smoker_instant_shoot_range_cofficient("z_smoker_instant_shoot_range_cof
 void CSmokerEventListner::FireGameEvent(IGameEvent *event)
 {
     const char *name = event->GetName();
-    if (!strcmp(name, "round_start"))
+    if (name && V_strcmp(name, "round_start") == 0)
     {
         for (int i = 1; i <= gpGlobals->maxClients; i++)
         {
             CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(i);
-            if (!pPlayer)
-                continue;
-
-            if (!pPlayer->IsInGame())
+            if (!pPlayer || !pPlayer->IsInGame())
                 continue;
 
             if (pPlayer->IsSurvivor() && g_MapSmokerVictimInfo.contains(i))
