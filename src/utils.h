@@ -48,7 +48,7 @@ bool UTIL_IsInAimOffset(CBasePlayer* pAttacker, CBasePlayer* pTarget, float offs
 static bool TR_EntityFilter(IHandleEntity *ignore, int contentsMask, void *data);
 
 // false means will, true otherwise.
-bool WillHitWallOrFall(CBasePlayer* pPlayer, Vector vec);
+static bool WillHitWallOrFall(CBasePlayer* pPlayer, Vector vec);
 
 bool ClientPush(CBasePlayer* pPlayer, Vector vec);
 

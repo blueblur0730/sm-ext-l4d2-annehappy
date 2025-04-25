@@ -42,8 +42,7 @@ bool CTraceFilterSimpleExt::ShouldHitEntity(IHandleEntity *pHandleEntity, int co
 		//(! ( m_pExtraShouldHitCheckFunction(pHandleEntity, contentsMask) )))
 		//return false;
 
-	if ( m_pExtraShouldHitCheckFunction &&
-		( !( m_pExtraShouldHitCheckFunction(pHandleEntity, contentsMask, m_data) )))
+	if ( m_pExtraShouldHitCheckFunction && !( m_pExtraShouldHitCheckFunction(pHandleEntity, contentsMask, m_data) ))
 		return false;
 
 	return true;

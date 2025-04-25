@@ -162,7 +162,7 @@ bool UTIL_IsInAimOffset(CBasePlayer *pAttacker, CBasePlayer *pTarget, float offs
 }
 
 // false means will, true otherwise.
-bool WillHitWallOrFall(CBasePlayer *pPlayer, Vector vec)
+static bool WillHitWallOrFall(CBasePlayer *pPlayer, Vector vec)
 {
     CTerrorPlayer *pTerrorPlayer = (CTerrorPlayer *)pPlayer;
     Vector vecSelfPos = pTerrorPlayer->GetAbsOrigin();
@@ -174,6 +174,7 @@ bool WillHitWallOrFall(CBasePlayer *pPlayer, Vector vec)
     vecSelfPos.z += NAV_MESH_HEIGHT;
     vecResult.z += NAV_MESH_HEIGHT;
 
+    // 由自身位置 +NAV_MESH_HEIGHT 高度 向前射出大小为 mins，maxs 的固体，检测前方 NAV_MESH_HEIGHT 距离是否能撞到，撞到则不允许连跳
     trace_t tr;
     UTIL_TraceHull(vecSelfPos, vecResult, vecMins, vecMaxs, MASK_NPCSOLID_BRUSHONLY, NULL, COLLISION_GROUP_NONE, &tr, TR_EntityFilter, NULL);
 
@@ -181,6 +182,9 @@ bool WillHitWallOrFall(CBasePlayer *pPlayer, Vector vec)
     if (tr.DidHit())
     {
         bHullRayHit = true;
+#ifdef _UTILS_DEBUG
+        rootconsole->ConsolePrint("### WillHitWallOrFall, vecSelfPos.DistTo(tr.endpos): %.02f", vecSelfPos.DistTo(tr.endpos));
+#endif
         if (vecSelfPos.DistTo(tr.endpos) <= NAV_MESH_HEIGHT)
             return false;
     }
@@ -188,6 +192,7 @@ bool WillHitWallOrFall(CBasePlayer *pPlayer, Vector vec)
     vecResult.z -= NAV_MESH_HEIGHT;
     Vector vecDownHullRayStartPos;
 
+    // 没有撞到，则说明前方 g_hAttackRange 距离内没有障碍物，接着进行下一帧理论位置向下的检测，检测是否有会对自身造成伤害的位置
     if (!bHullRayHit)
     {
         vecDownHullRayStartPos = vecResult;
@@ -199,23 +204,18 @@ bool WillHitWallOrFall(CBasePlayer *pPlayer, Vector vec)
     trace_t tr2;
     UTIL_TraceHull(vecDownHullRayStartPos, vecDownHullRayEndPos, vecMins, vecMaxs, MASK_NPCSOLID_BRUSHONLY, NULL, COLLISION_GROUP_NONE, &tr2, TR_EntityFilter, NULL);
 
-    if (tr2.DidHit() && tr2.m_pEnt)
+    if (tr2.DidHit() && tr2.m_pEnt && tr2.m_pEnt->edict())
     {
-        Vector vecDownHullRayHitPos = tr2.endpos;
-        if (FloatAbs(vecDownHullRayStartPos.z - vecDownHullRayHitPos.z) > FALL_DETECT_HEIGHT)
+        // 如果向下的射线撞到的位置减去起始位置的高度大于 FALL_DETECT_HEIGHT 则说明会掉下去，返回 false
+#ifdef _UTILS_DEBUG
+        rootconsole->ConsolePrint("### WillHitWallOrFall, FloatAbs(vecDownHullRayStartPos.z - tr2.endpos.z): %.02f", FloatAbs(vecDownHullRayStartPos.z - tr2.endpos.z));
+#endif
+        if (FloatAbs(vecDownHullRayStartPos.z - tr2.endpos.z) > FALL_DETECT_HEIGHT)
         {
             return false;
         }
 
-        int index = tr2.m_pEnt->entindex();
-        if (index <= 0 || index > gpGlobals->maxClients)
-            return false;
-
-        CBaseEntity *pEntity = (CBaseEntity *)UTIL_PlayerByIndexExt(index);
-        if (!pEntity)
-            return false;
-
-        if (V_strcmp(pEntity->GetClassName(), "trigger_hurt") == 0)
+        if (V_strcmp(tr2.m_pEnt->GetClassName(), "trigger_hurt") == 0)
             return false;
 
         return true;
@@ -230,10 +230,16 @@ static bool TR_EntityFilter(IHandleEntity *ignore, int contentsMask, void *data)
         return false;
 
     CBaseEntity *pEntity = (CBaseEntity *)EntityFromEntityHandle(ignore);
-    if (!pEntity)
+    if (!pEntity || !pEntity->edict())
+        return false;
+
+    int index = pEntity->entindex();
+    if (index > 0 && index <= gpGlobals->maxClients)
         return false;
 
     const char *classname = pEntity->GetClassName();
+    if (!classname)
+        return false;
     
     if (V_strcmp(classname, "infected") == 0
     || V_strcmp(classname, "witch") == 0
@@ -250,8 +256,7 @@ bool ClientPush(CBasePlayer *pPlayer, Vector vec)
 {
     Vector vecVelocity = pPlayer->GetVelocity();
     vecVelocity += vec;
-#ifdef _DEBUG
-    rootconsole->ConsolePrint("### CBoomerEventListner::OnPlayerRunCmd, WillHitWallOrFall: %d.", WillHitWallOrFall(pPlayer, vecVelocity));
+#ifdef _UTILS_DEBUG
     rootconsole->ConsolePrint("### CBoomerEventListner::OnPlayerRunCmd, vecVelocity: %.02f, %.02f, %.02f, length: %.02f.", vecVelocity.x, vecVelocity.y, vecVelocity.z, vecVelocity.Length());
 #endif
     if (WillHitWallOrFall(pPlayer, vecVelocity))
@@ -261,7 +266,7 @@ bool ClientPush(CBasePlayer *pPlayer, Vector vec)
             VectorNormalize(vecVelocity);
             VectorScale(vecVelocity, 251.0f, vecVelocity);
         }
-#ifdef _DEBUG
+#ifdef _UTILS_DEBUG
         rootconsole->ConsolePrint("### CBoomerEventListner::OnPlayerRunCmd, Normalized and scaled vecVelocity: %.02f, %.02f, %.02f.", vecVelocity.x, vecVelocity.y, vecVelocity.z);
 #endif
         pPlayer->Teleport(NULL, NULL, &vecVelocity);
