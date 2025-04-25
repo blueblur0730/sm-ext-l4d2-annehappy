@@ -162,12 +162,6 @@ bool CTerrorPlayer::IsStaggering()
 
     bool ret = false;
     pCallIsStaggering->Execute(&stake, &ret);
-    
-    if (!ret)
-    {
-        smutils->LogError(myself, "CTerrorPlayer::IsStaggering: ret is NULL!");
-        return false;
-    }
 
     return ret;
 }

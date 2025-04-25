@@ -596,7 +596,7 @@ void CAnneHappy::PlayerRunCmd(CUserCmd *ucmd, IMoveHelper *moveHelper)
 
 		case ZC_SMOKER:
 		{
-			g_BoomerEventListner.OnPlayerRunCmd(pPlayer, ucmd);
+			g_SmokerEventListner.OnPlayerRunCmd(pPlayer, ucmd);
 			break;
 		}
 	}
