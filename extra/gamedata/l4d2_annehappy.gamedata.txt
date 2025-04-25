@@ -101,16 +101,6 @@
 				/* ? ? ? ? ? ? 53 56 57 8B F1 E8 ? ? ? ? 84 C0 74 ? 8B 06 8B 90 */
 			}
 
-            // from impactfix from shqke.
-			"CTraceFilterSimple::CTraceFilterSimple"
-			{
-				"library"	"server"
-				"linux"		"@_ZN18CTraceFilterSimpleC2EPK13IHandleEntityiPFbPS0_iE"
-				// xref from vtable
-				// 55 8B EC 8B 55 0C 8B C1 8B 4D 08 89 48 04 8B 4D 10 C7 00 ? ? ? ? 89 50 08 89 48 0C 5D
-				"windows"	"\x55\x8B\xEC\x8B\x55\x0C\x8B\xC1\x8B\x4D\x08\x89\x48\x04\x8B\x4D\x10\xC7\x00\x2A\x2A\x2A\x2A\x89\x50\x08\x89\x48\x0C\x5D"
-			}
-
 			/**
 			* CTerrorPlayer::GetSpecialInfectedDominatingMe(CTerrorPlayer *this)
 			*

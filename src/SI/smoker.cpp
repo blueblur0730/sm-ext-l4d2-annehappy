@@ -103,9 +103,7 @@ SourceMod::ResultType CSmokerTimerEvent::OnTimer(ITimer *pTimer, void *pData)
     if (!pSmoker || !pSmoker->IsInGame() || !pSmoker->IsSmoker())
         return Pl_Stop;
 
-    if (g_MapSmokerInfo.contains(client))
-        g_MapSmokerInfo[client].m_bCanTongue = true;
-
+    g_MapSmokerInfo[client].m_bCanTongue = true;
     return Pl_Continue;
 }
 
