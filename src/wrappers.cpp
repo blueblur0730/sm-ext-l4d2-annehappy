@@ -190,11 +190,5 @@ bool ZombieManager::GetRandomPZSpawnPosition(ZombieClassType type, int attampts,
     bool ret = false;
     pCallGetRandomPZSpawnPosition->Execute(&stake, &ret);
 
-    if (!ret)
-    {
-        smutils->LogError(myself, "ZombieManager::GetRandomPZSpawnPosition: ret is NULL!");
-        return false;
-    }
-
     return ret;
 }
