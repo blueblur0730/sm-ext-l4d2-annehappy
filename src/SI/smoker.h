@@ -25,6 +25,9 @@ public:
 public:
     void OnClientPutInServer(int client);
     void OnClientDisconnecting(int client);
+
+public:
+    void OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd);
 };
 
 class CSmokerTimerEvent : public ITimedEvent {
@@ -48,11 +51,6 @@ struct smokerVictimInfo_t {
     void Init() {
         m_bLeftBehind = false;
     }
-};
-
-class CSmokerCmdListner {
-public:
-    void OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd);
 };
 
 static CTerrorPlayer *SmokerTargetChoose(int method, CTerrorPlayer *pSmoker, CTerrorPlayer *pSpecificTarget = NULL);

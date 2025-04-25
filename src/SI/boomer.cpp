@@ -150,6 +150,10 @@ void CBoomerEventListner::OnClientPutInServer(int client)
         info.Init();
         g_MapBoomerInfo[client] = info;
     }
+
+#ifdef _DEBUG
+	rootconsole->ConsolePrint("### CBoomerEventListner::OnClientPutInServer: %d", client);
+#endif
 }
 
 void CBoomerEventListner::OnClientDisconnecting(int client)
@@ -174,6 +178,10 @@ void CBoomerEventListner::OnClientDisconnecting(int client)
             g_MapBoomerInfo.erase(client);
         }
     }
+
+#ifdef _DEBUG
+	rootconsole->ConsolePrint("### CBoomerEventListner::OnClientDisconnecting, client: %d", client);
+#endif
 }
 
 SourceMod::ResultType CBoomerTimerEvent::OnTimer(ITimer *pTimer, void *pData)
@@ -249,7 +257,7 @@ void CBoomerTimerEvent::OnTimerEnd(ITimer *pTimer, void *pData)
     pTimer = nullptr;
 }
 
-void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
+void CBoomerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
 {
     if (!pCmd)
         return;
@@ -262,8 +270,11 @@ void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
     if (playerIndex <= 0 || playerIndex > gpGlobals->maxClients)
         return;
 
-    if (!g_MapBoomerInfo.contains(playerIndex))
+    if (!g_MapBoomerInfo.contains(playerIndex) && pPlayer->IsBoomer())
     {
+#ifdef _DEBUG
+        rootconsole->ConsolePrint("### CBoomerEventListner::OnPlayerRunCmd, Creating new boomerInfo for player: %d", playerIndex);
+#endif 
         boomerInfo_t boomerInfo;
         boomerInfo.Init();
         g_MapBoomerInfo[playerIndex] = boomerInfo;
@@ -277,8 +288,11 @@ void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
     if (targetIndex <= 0 || targetIndex > gpGlobals->maxClients)
         return;
 
-    if (!g_MapBoomerVictimInfo.contains(targetIndex))
+    if (!g_MapBoomerVictimInfo.contains(targetIndex) && pTarget->IsSurvivor())
     {
+#ifdef _DEBUG
+        rootconsole->ConsolePrint("### CBoomerEventListner::OnPlayerRunCmd, Creating new boomerInfo for player: %d", targetIndex);
+#endif 
         boomerVictimInfo_t victimInfo;
         victimInfo.Init();
         g_MapBoomerVictimInfo[targetIndex] = victimInfo;
@@ -311,7 +325,7 @@ void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
                 }
             }
 #ifdef _DEBUG
-            //rootconsole->ConsolePrint("### CBoomerCmdListner::OnPlayerRunCmd, First Giving boomer a new angle: %.02f %.02f %.02f", angAim.x, angAim.y, angAim.z);
+            //rootconsole->ConsolePrint("### CBoomerEventListner::OnPlayerRunCmd, First Giving boomer a new angle: %.02f %.02f %.02f", angAim.x, angAim.y, angAim.z);
 #endif
             pPlayer->Teleport(NULL, &angAim, NULL);
 
@@ -327,7 +341,7 @@ void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
                 else if (secondCheck(pPlayer, pTarget))
                 {
 #ifdef _DEBUG
-                    rootconsole->ConsolePrint("### CBoomerCmdListner::OnPlayerRunCmd, First check Target: %d, force biled.", pTarget->entindex());
+                    rootconsole->ConsolePrint("### CBoomerEventListner::OnPlayerRunCmd, First check Target: %d, force biled.", pTarget->entindex());
 #endif
                     /* 再次检测距离，可视，角度，都通过就强制被喷 */
                     pTarget->OnVomitedUpon(pPlayer, false);
@@ -352,7 +366,7 @@ void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
 
             int victimIndex = pVictim->entindex();
 #ifdef _DEBUG
-            rootconsole->ConsolePrint("### CBoomerCmdListner::OnPlayerRunCmd, Next Target: %d", victimIndex);
+            rootconsole->ConsolePrint("### CBoomerEventListner::OnPlayerRunCmd, Next Target: %d", victimIndex);
 #endif
             if (victimIndex <= 0 || victimIndex > gpGlobals->maxClients)
                 return;
@@ -385,14 +399,14 @@ void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
                 }
             }
 #ifdef _DEBUG
-            rootconsole->ConsolePrint("### CBoomerCmdListner::OnPlayerRunCmd, Giving boomer a new angle: %.02f %.02f %.02f", angAim.x, angAim.y, angAim.z);
+            rootconsole->ConsolePrint("### CBoomerEventListner::OnPlayerRunCmd, Giving boomer a new angle: %.02f %.02f %.02f", angAim.x, angAim.y, angAim.z);
 #endif
             pPlayer->Teleport(NULL, &angAim, NULL);
 
             /* 强制喷吐检测，帧数确认 */
             int targetFrame = z_boomer_predict_pos.GetBool() ? (int)(flSpinAngle / TURN_ANGLE_DIVIDE) : z_boomer_spin_interval.GetInt();
 #ifdef _DEBUG
-            rootconsole->ConsolePrint("### CBoomerCmdListner::OnPlayerRunCmd, targetFrame: %d", targetFrame);
+            rootconsole->ConsolePrint("### CBoomerEventListner::OnPlayerRunCmd, targetFrame: %d", targetFrame);
 #endif
             /* 当前 targetFrame = 0，代表目标就在面前，无需再次检测，直接强制被喷即可 */
             if (z_boomer_degree_force_bile.GetBool() && z_boomer_predict_pos.GetBool() && targetFrame == 0)
@@ -412,7 +426,7 @@ void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
                     if (g_MapBoomerVictimInfo[victimIndex].m_iSecondCheckFrame < targetFrame && !g_MapBoomerVictimInfo[victimIndex].m_bBiled)
                     {
 #ifdef _DEBUG
-                        rootconsole->ConsolePrint("### CBoomerCmdListner::OnPlayerRunCmd, turnTarget: %d, secondCheck frame: %d, Biled: %d, secondCheck: %d",
+                        rootconsole->ConsolePrint("### CBoomerEventListner::OnPlayerRunCmd, turnTarget: %d, secondCheck frame: %d, Biled: %d, secondCheck: %d",
                                                   victimIndex, g_MapBoomerVictimInfo[victimIndex].m_iSecondCheckFrame, g_MapBoomerVictimInfo[victimIndex].m_bBiled,
                                                   secondCheck(pPlayer, pVictim));
 #endif
@@ -421,7 +435,7 @@ void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
                     else if (!g_MapBoomerVictimInfo[victimIndex].m_bBiled && secondCheck(pPlayer, pVictim))
                     {
 #ifdef _DEBUG
-                        rootconsole->ConsolePrint("### CBoomerCmdListner::OnPlayerRunCmd, Second check Target: %d, force biled.", victimIndex);
+                        rootconsole->ConsolePrint("### CBoomerEventListner::OnPlayerRunCmd, Second check Target: %d, force biled.", victimIndex);
 #endif
                         pVictim->OnVomitedUpon(pPlayer, false);
                         g_MapBoomerVictimInfo[victimIndex].m_bBiled = true;
@@ -431,7 +445,7 @@ void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
                     else if (g_MapBoomerVictimInfo[victimIndex].m_bBiled)
                     {
 #ifdef _DEBUG
-                        rootconsole->ConsolePrint("### CBoomerCmdListner::OnPlayerRunCmd, Target: %d biled, find next.", victimIndex);
+                        rootconsole->ConsolePrint("### CBoomerEventListner::OnPlayerRunCmd, Target: %d biled, find next.", victimIndex);
 #endif
                         g_MapBoomerInfo[playerIndex].m_nBileFrame[1] = g_MapBoomerVictimInfo[victimIndex].m_iSecondCheckFrame = 0;
                         g_MapBoomerInfo[playerIndex].m_nBileFrame[0] += 1;
@@ -513,7 +527,7 @@ void CBoomerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
             if (!tr.DidHit() || (tr.m_pEnt && (tr.m_pEnt->entindex() == i)))
             {
 #ifdef _DEBUG
-                rootconsole->ConsolePrint("### CBoomerCmdListner::OnPlayerRunCmd, Target: %d, force biled.", i);
+                rootconsole->ConsolePrint("### CBoomerEventListner::OnPlayerRunCmd, Target: %d, force biled.", i);
 #endif
                 pTerrorPlayer->OnVomitedUpon(pPlayer, false);
                 g_MapBoomerVictimInfo[i].m_bBiled = true;

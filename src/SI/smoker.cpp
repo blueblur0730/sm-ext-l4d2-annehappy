@@ -117,7 +117,7 @@ void CSmokerTimerEvent::OnTimerEnd(ITimer *pTimer, void *pData)
     pTimer = nullptr;
 }
 
-void CSmokerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
+void CSmokerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
 {
     CTerrorPlayer *pSmoker = reinterpret_cast<CTerrorPlayer *>(pEntity);
     if (!pSmoker || !pSmoker->IsSmoker() || pSmoker->IsDead())
@@ -130,7 +130,7 @@ void CSmokerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
     if (smokerIndex <= 0 || smokerIndex > gpGlobals->maxClients)
         return;
 
-    if (!g_MapSmokerInfo.contains(smokerIndex))
+    if (!g_MapSmokerInfo.contains(smokerIndex) && pSmoker->IsSmoker())
     {
         smokerInfo_t info;
         info.Init();
@@ -143,6 +143,13 @@ void CSmokerCmdListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
     CTerrorPlayer *pTarget = (CTerrorPlayer *)UTIL_GetClientAimTarget(pSmoker, true);
     if (!pTarget || !pTarget->IsInGame() || !pTarget->IsSurvivor() || pTarget->IsDead())
     {
+        if (!g_MapSmokerVictimInfo.contains(smokerIndex) && pSmoker->IsSurvivor())
+        {
+            smokerVictimInfo_t info;
+            info.Init();
+            g_MapSmokerVictimInfo[smokerIndex] = info;
+        }
+
         // aimming target is invalid, check if it is tonguing someone.
         CTerrorPlayer *pVictim = pSmoker->GetTongueVictim();
         if (pVictim && pVictim->IsInGame() && !pVictim->IsDead() && pVictim->IsSurvivor())   

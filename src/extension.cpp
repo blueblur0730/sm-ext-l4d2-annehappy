@@ -67,9 +67,6 @@ BossZombiePlayerBot g_BossZombiePlayerBot;
 CBoomerEventListner g_BoomerEventListner;
 CSmokerEventListner g_SmokerEventListner;
 
-CBoomerCmdListner g_BoomerCmdListner;
-CSmokerCmdListner g_SmokerCmdListner;
-
 int g_iOff_PlayerRunCmd = 0;
 int CBaseEntity::vtblindex_CBaseEntity_Teleport = 0;
 int CBaseEntity::vtblindex_CBaseEntity_GetEyeAngle = 0;
@@ -539,8 +536,9 @@ void CAnneHappy::OnClientDisconnecting(int client)
 
 void CAnneHappy::PlayerRunCmdHook(int client)
 {
+	// only listen SIs.
 	CBasePlayer *pPlayer = (CBasePlayer *)UTIL_PlayerByIndexExt(client);
-	if (!pPlayer)
+	if (!pPlayer || ((CTerrorPlayer *)pPlayer)->IsSurvivor())
 		return;
 
 	edict_t *pEdict = pPlayer->edict();
@@ -595,13 +593,13 @@ void CAnneHappy::PlayerRunCmd(CUserCmd *ucmd, IMoveHelper *moveHelper)
 	{
 		case ZC_BOOMER:
 		{
-			g_BoomerCmdListner.OnPlayerRunCmd(pPlayer, ucmd);
+			g_BoomerEventListner.OnPlayerRunCmd(pPlayer, ucmd);
 			break;
 		}
 
 		case ZC_SMOKER:
 		{
-			g_SmokerCmdListner.OnPlayerRunCmd(pPlayer, ucmd);
+			g_BoomerEventListner.OnPlayerRunCmd(pPlayer, ucmd);
 			break;
 		}
 	}

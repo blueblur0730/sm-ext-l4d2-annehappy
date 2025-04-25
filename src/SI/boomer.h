@@ -31,6 +31,9 @@ public:
 public:
     void OnClientPutInServer(int client);
     void OnClientDisconnecting(int client);
+
+public:
+    void OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd);
 };
 
 struct targetInfo_t {
