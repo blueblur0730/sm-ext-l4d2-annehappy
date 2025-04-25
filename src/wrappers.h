@@ -362,8 +362,6 @@ public:
 	bool IsStaggering();
 
 	CNavArea *GetLastKnownArea();
-
-	void DTRCallBack_OnVomitedUpon(CBasePlayer *pAttacker, bool bIsExplodedByBoomer);
 };
 
 class TerrorNavMesh {

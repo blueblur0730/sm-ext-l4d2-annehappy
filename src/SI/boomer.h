@@ -34,6 +34,9 @@ public:
 
 public:
     void OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd);
+
+public:
+    bool CreateDetour(char *error, size_t maxlen);
 };
 
 struct targetInfo_t {
@@ -81,11 +84,6 @@ class CBoomerTimerEvent : public ITimedEvent {
 public:
 	virtual ResultType OnTimer(ITimer *pTimer, void *pData);
 	virtual void OnTimerEnd(ITimer *pTimer, void *pData);
-};
-
-class CBoomerCmdListner {
-public:
-    void OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd);
 };
 
 static bool secondCheck(CBaseEntity *pPlayer, CBaseEntity *pTarget);

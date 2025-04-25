@@ -30,10 +30,10 @@
  */
 
 #include "extension.h"
-#include <compat_wrappers.h>
+#include "compat_wrappers.h"
 #include "SI/boomer.h"
 #include "SI/smoker.h"
-#include <sourcehook.h>
+#include "sourcehook.h"
 #include <vector>
 #include "dt_send.h"
 #include "utils.h"
@@ -108,14 +108,6 @@ CDetour *CTerrorPlayer::DTR_OnVomitedUpon = NULL;
 CDetour *BossZombiePlayerBot::DTR_ChooseVictim = NULL;
 
 // so yeah the detours like to take the lead.
-DETOUR_DECL_MEMBER2(DTRHandler_CTerrorPlayer_OnVomitedUpon, void, CBasePlayer *, pAttacker, bool, bIsExplodedByBoomer)
-{
-	DETOUR_MEMBER_CALL(DTRHandler_CTerrorPlayer_OnVomitedUpon)(pAttacker, bIsExplodedByBoomer);
-
-	CTerrorPlayer *_this = reinterpret_cast<CTerrorPlayer *>(this);
-	_this->DTRCallBack_OnVomitedUpon(pAttacker, bIsExplodedByBoomer);
-}
-
 DETOUR_DECL_MEMBER3(DTRHandler_BossZombiePlayerBot_ChooseVictim, CTerrorPlayer *, CTerrorPlayer *, pLastVictim, int, targetScanFlags, CBasePlayer *, pIgnorePlayer)
 {
 	CTerrorPlayer *_this = reinterpret_cast<CTerrorPlayer *>(this);
@@ -180,8 +172,7 @@ bool CAnneHappy::SDK_OnLoad(char* error, size_t maxlen, bool late)
 	// Game config is never used by detour class to handle errors ourselves
 	CDetourManager::Init(smutils->GetScriptingEngine(), NULL);
 
-	CTerrorPlayer::DTR_OnVomitedUpon = DETOUR_CREATE_MEMBER(DTRHandler_CTerrorPlayer_OnVomitedUpon, CTerrorPlayer::pFnOnVomitedUpon);
-	if (!CTerrorPlayer::DTR_OnVomitedUpon)
+	if (!g_BoomerEventListner.CreateDetour(error, maxlen))
 	{
 		ke::SafeStrcpy(error, maxlen, "Extension failed to create detour: 'CTerrorPlayer::DTR_OnVomitedUpon'");
 		return false;

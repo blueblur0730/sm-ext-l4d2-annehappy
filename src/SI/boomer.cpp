@@ -21,6 +21,77 @@ ConVar z_boomer_spin_interval("z_boomer_spin_interval", "15", FCVAR_NOTIFY | FCV
 ConVar z_boomer_degree_force_bile("z_boomer_degree_force_bile", "10", FCVAR_NOTIFY | FCVAR_CHEAT, "Boomer will force to vomit to the survivors whoes pos with boomer's eye is on this degree, 0 = disable.", true, 0.0f, false, 0.0f);
 ConVar z_boomer_predict_pos("z_boomer_predict_pos", "1", FCVAR_NOTIFY | FCVAR_CHEAT, "Boomer will predict the frame of the next target's vision according to the target's angle.", true, 0.0f, true, 1.0f);
 
+DETOUR_DECL_MEMBER2(DTRHandler_CTerrorPlayer_OnVomitedUpon, void, CBasePlayer *, pAttacker, bool, bIsExplodedByBoomer)
+{
+	DETOUR_MEMBER_CALL(DTRHandler_CTerrorPlayer_OnVomitedUpon)(pAttacker, bIsExplodedByBoomer);
+
+    CTerrorPlayer *pBoomerVictim = reinterpret_cast<CTerrorPlayer *>(this);
+    if (!pBoomerVictim)
+        return;
+
+    int victimIndex = pBoomerVictim->entindex();
+    if (victimIndex <= 0 || victimIndex > gpGlobals->maxClients)
+        return;
+
+    g_MapBoomerVictimInfo[victimIndex].m_bBiled = true;
+
+    CTerrorPlayer *pPlayer = (CTerrorPlayer *)pAttacker;
+    if (!pPlayer || !pPlayer->IsBoomer())
+        return;
+
+    int boomerIndex = pPlayer->entindex();
+    if (boomerIndex <= 0 || boomerIndex > gpGlobals->maxClients)
+        return;
+
+    if (g_MapBoomerInfo[boomerIndex].m_aTargetInfo.size() > 1)
+        return;
+
+    Vector vecEyePos = pPlayer->GetEyeOrigin();
+    for (int i = 1; i <= gpGlobals->maxClients; i++)
+    {
+        CTerrorPlayer *pTerrorPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(i);
+        if (!pTerrorPlayer)
+            continue;
+
+        if (!g_MapBoomerVictimInfo.contains(i))
+        {
+            boomerVictimInfo_t victimInfo;
+            victimInfo.Init();
+            g_MapBoomerVictimInfo[i] = victimInfo;
+        }
+
+        if (!pTerrorPlayer->IsInGame() || !pTerrorPlayer->IsSurvivor() || pTerrorPlayer->IsDead() || g_MapBoomerVictimInfo[i].m_bBiled)
+            continue;
+
+        Vector vecTargetEyePos = pTerrorPlayer->GetEyeOrigin();
+        if (vecEyePos.DistTo(vecTargetEyePos) > g_pCVar->FindVar("z_vomit_range")->GetFloat())
+            continue;
+
+        Ray_t ray;
+        trace_t tr;
+        ray.Init(vecEyePos, vecTargetEyePos);
+        UTIL_TraceRay(ray, MASK_VISIBLE, NULL, COLLISION_GROUP_NONE, &tr, TR_VomitClientFilter, (void *)((intptr_t)boomerIndex));
+
+        if (!tr.DidHit() || (tr.m_pEnt && (tr.m_pEnt->entindex() == i)))
+        {
+            vec_t flAngle = GetSelfTargetAngle(pPlayer, pTerrorPlayer);
+            targetInfo_t targetInfo;
+            targetInfo.pPlayer = pTerrorPlayer;
+            targetInfo.flAngle = flAngle;
+            g_MapBoomerInfo[boomerIndex].m_aTargetInfo.push_back(targetInfo);
+        }
+    }
+
+    if (g_MapBoomerInfo[boomerIndex].m_aTargetInfo.size() > 1)
+    {
+        std::sort(g_MapBoomerInfo[boomerIndex].m_aTargetInfo.begin(), g_MapBoomerInfo[boomerIndex].m_aTargetInfo.end(),
+                  [](const targetInfo_t &a, const targetInfo_t &b)
+                  {
+                      return a.flAngle < b.flAngle;
+                  });
+    }
+}
+
 void CBoomerEventListner::FireGameEvent(IGameEvent *event)
 {
     const char *name = event->GetName();
@@ -257,6 +328,18 @@ void CBoomerTimerEvent::OnTimerEnd(ITimer *pTimer, void *pData)
     pTimer = nullptr;
 }
 
+bool CBoomerEventListner::CreateDetour(char *error, size_t maxlen)
+{
+	CTerrorPlayer::DTR_OnVomitedUpon = DETOUR_CREATE_MEMBER(DTRHandler_CTerrorPlayer_OnVomitedUpon, CTerrorPlayer::pFnOnVomitedUpon);
+	if (!CTerrorPlayer::DTR_OnVomitedUpon)
+	{
+		ke::SafeStrcpy(error, maxlen, "Extension failed to create detour: 'CTerrorPlayer::DTR_OnVomitedUpon'");
+        return false;
+	}
+
+    return true;
+}
+
 void CBoomerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
 {
     if (!pCmd)
@@ -324,9 +407,7 @@ void CBoomerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
                     angAim.x -= (flTargetDist / (PLAYER_HEIGHT * 1.5));
                 }
             }
-#ifdef _DEBUG
-            //rootconsole->ConsolePrint("### CBoomerEventListner::OnPlayerRunCmd, First Giving boomer a new angle: %.02f %.02f %.02f", angAim.x, angAim.y, angAim.z);
-#endif
+
             pPlayer->Teleport(NULL, &angAim, NULL);
 
             /* 判断第一个目标是否需要强行被喷，boomer 能力使用后过一个目标帧数延时再做一次检测，避免生还者立刻躲起来还是被喷到 */
@@ -425,11 +506,6 @@ void CBoomerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
                 {
                     if (g_MapBoomerVictimInfo[victimIndex].m_iSecondCheckFrame < targetFrame && !g_MapBoomerVictimInfo[victimIndex].m_bBiled)
                     {
-#ifdef _DEBUG
-                        rootconsole->ConsolePrint("### CBoomerEventListner::OnPlayerRunCmd, turnTarget: %d, secondCheck frame: %d, Biled: %d, secondCheck: %d",
-                                                  victimIndex, g_MapBoomerVictimInfo[victimIndex].m_iSecondCheckFrame, g_MapBoomerVictimInfo[victimIndex].m_bBiled,
-                                                  secondCheck(pPlayer, pVictim));
-#endif
                         g_MapBoomerVictimInfo[victimIndex].m_iSecondCheckFrame++;
                     }
                     else if (!g_MapBoomerVictimInfo[victimIndex].m_bBiled && secondCheck(pPlayer, pVictim))
@@ -595,89 +671,6 @@ CTerrorPlayer *BossZombiePlayerBot::OnBoomerChooseVictim(CTerrorPlayer *pAttacke
     }
 
     return NULL;
-}
-
-void CTerrorPlayer::DTRCallBack_OnVomitedUpon(CBasePlayer *pAttacker, bool bIsExplodedByBoomer)
-{
-    CTerrorPlayer *pBoomerVictim = (CTerrorPlayer *)this;
-    if (!pBoomerVictim)
-        return;
-
-    int victimIndex = pBoomerVictim->entindex();
-    if (victimIndex <= 0 || victimIndex > gpGlobals->maxClients)
-        return;
-
-    if (!g_MapBoomerVictimInfo.contains(victimIndex))
-    {
-        boomerVictimInfo_t victimInfo;
-        victimInfo.Init();
-        g_MapBoomerVictimInfo[victimIndex] = victimInfo;
-    }
-
-    g_MapBoomerVictimInfo[victimIndex].m_bBiled = true;
-
-    CTerrorPlayer *pPlayer = (CTerrorPlayer *)pAttacker;
-    if (!pPlayer || !pPlayer->IsBoomer())
-        return;
-
-    int boomerIndex = pPlayer->entindex();
-    if (boomerIndex <= 0 || boomerIndex > gpGlobals->maxClients)
-        return;
-
-    if (!g_MapBoomerInfo.contains(boomerIndex))
-    {
-        boomerInfo_t boomerInfo;
-        boomerInfo.Init();
-        g_MapBoomerInfo[boomerIndex] = boomerInfo;
-    }
-
-    if (g_MapBoomerInfo[boomerIndex].m_aTargetInfo.size() > 1)
-        return;
-
-    Vector vecEyePos = pPlayer->GetEyeOrigin();
-    for (int i = 1; i <= gpGlobals->maxClients; i++)
-    {
-        CTerrorPlayer *pTerrorPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(i);
-        if (!pTerrorPlayer)
-            continue;
-
-        if (!g_MapBoomerVictimInfo.contains(i))
-        {
-            boomerVictimInfo_t victimInfo;
-            victimInfo.Init();
-            g_MapBoomerVictimInfo[i] = victimInfo;
-        }
-
-        if (!pTerrorPlayer->IsInGame() || !pTerrorPlayer->IsSurvivor() || pTerrorPlayer->IsDead() || g_MapBoomerVictimInfo[i].m_bBiled)
-            continue;
-
-        Vector vecTargetEyePos = pTerrorPlayer->GetEyeOrigin();
-        if (vecEyePos.DistTo(vecTargetEyePos) > g_pCVar->FindVar("z_vomit_range")->GetFloat())
-            continue;
-
-        Ray_t ray;
-        trace_t tr;
-        ray.Init(vecEyePos, vecTargetEyePos);
-        UTIL_TraceRay(ray, MASK_VISIBLE, NULL, COLLISION_GROUP_NONE, &tr, TR_VomitClientFilter, (void *)((intptr_t)boomerIndex));
-
-        if (!tr.DidHit() || (tr.m_pEnt && (tr.m_pEnt->entindex() == i)))
-        {
-            vec_t flAngle = GetSelfTargetAngle(pPlayer, pTerrorPlayer);
-            targetInfo_t targetInfo;
-            targetInfo.pPlayer = pTerrorPlayer;
-            targetInfo.flAngle = flAngle;
-            g_MapBoomerInfo[boomerIndex].m_aTargetInfo.push_back(targetInfo);
-        }
-    }
-
-    if (g_MapBoomerInfo[boomerIndex].m_aTargetInfo.size() > 1)
-    {
-        std::sort(g_MapBoomerInfo[boomerIndex].m_aTargetInfo.begin(), g_MapBoomerInfo[boomerIndex].m_aTargetInfo.end(),
-                  [](const targetInfo_t &a, const targetInfo_t &b)
-                  {
-                      return a.flAngle < b.flAngle;
-                  });
-    }
 }
 
 static bool secondCheck(CBaseEntity *pPlayer, CBaseEntity *pTarget)
