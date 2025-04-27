@@ -114,11 +114,11 @@ void CSmokerTimerEvent::OnTimerEnd(ITimer *pTimer, void *pData)
 
 void CSmokerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
 {
-    CTerrorPlayer *pSmoker = reinterpret_cast<CTerrorPlayer *>(pEntity);
-    if (!pSmoker || !pSmoker->IsSmoker() || pSmoker->IsDead())
+    if (!pCmd)
         return;
 
-    if (!pCmd)
+    CTerrorPlayer *pSmoker = reinterpret_cast<CTerrorPlayer *>(pEntity);
+    if (!pSmoker || !pSmoker->IsInGame() || !pSmoker->IsSmoker() || pSmoker->IsDead())
         return;
 
     int smokerIndex = pSmoker->entindex();
@@ -135,63 +135,65 @@ void CSmokerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
     if (pSmoker->IsStaggering())
         return;
 
-    CTerrorPlayer *pTarget = (CTerrorPlayer *)UTIL_GetClientAimTarget(pSmoker, true);
-    if (!pTarget || !pTarget->IsInGame() || !pTarget->IsSurvivor() || pTarget->IsDead())
+    // aimming target is invalid, check if it is tonguing someone.
+    CTerrorPlayer *pVictim = pSmoker->GetTongueVictim();
+    if (pVictim && pVictim->IsInGame() && !pVictim->IsDead() && pVictim->IsSurvivor())   
     {
-        if (!g_MapSmokerVictimInfo.contains(smokerIndex) && pSmoker->IsSurvivor())
-        {
-            smokerVictimInfo_t info;
-            info.Init();
-            g_MapSmokerVictimInfo[smokerIndex] = info;
-        }
-
-        // aimming target is invalid, check if it is tonguing someone.
-        CTerrorPlayer *pVictim = pSmoker->GetTongueVictim();
-        if (pVictim && pVictim->IsInGame() && !pVictim->IsDead() && pVictim->IsSurvivor())   
-        {
-            g_MapSmokerInfo[smokerIndex].m_bCanTongue = false;
-            g_hTimerCoolDown = timersys->CreateTimer(&g_SmokerTimerEvent, g_pCVar->FindVar("tongue_hit_delay")->GetFloat(), (void *)(intptr_t)(pSmoker->entindex()), 0);
-        }
-
+        g_MapSmokerInfo[smokerIndex].m_bCanTongue = false;
+        g_hTimerCoolDown = timersys->CreateTimer(&g_SmokerTimerEvent, g_pCVar->FindVar("tongue_hit_delay")->GetFloat(), (void *)(intptr_t)(pSmoker->entindex()), 0);
         return;
+    }
+
+    // really have no idea on this trace. just get the closet one.
+    //CTerrorPlayer *pTarget = (CTerrorPlayer *)UTIL_GetClientAimTarget(pSmoker, true);
+    CTerrorPlayer *pTarget = SmokerTargetChoose(1, pSmoker);
+    if (!pTarget || !pTarget->IsInGame() || !pTarget->IsSurvivor() || pTarget->IsDead())
+        return;
+
+    int targetIndex = pTarget->entindex();
+    if (targetIndex <= 0 || targetIndex > gpGlobals->maxClients)
+        return;
+
+    if (!g_MapSmokerVictimInfo.contains(targetIndex) && pTarget->IsSurvivor())
+    {
+        smokerVictimInfo_t info;
+        info.Init();
+        g_MapSmokerVictimInfo[targetIndex] = info;
     }
 
     Vector vecSelfPos = pSmoker->GetAbsOrigin();
     Vector vecTargetPos = pTarget->GetAbsOrigin();
     vec_t flDistance = vecSelfPos.DistTo(vecTargetPos);
 
+    int flags = pSmoker->GetFlags();
+
     if (z_smoker_bhop.GetBool())
     {
         Vector vecVelocity = pSmoker->GetVelocity();
-
+    
         // vertical velocity is not considered?
-        vec_t flSpeed = (vec_t)FastSqrt(vecVelocity.x * vecVelocity.x + vecVelocity.y * vecVelocity.y);
-
-        if (g_pCVar->FindVar("tongue_range")->GetFloat() * z_smoker_instant_shoot_range_cofficient.GetFloat()
-            < flDistance < 2000.0f && flSpeed > 190.0f)
+        vec_t flSpeed = (vec_t)sqrt(vecVelocity.x * vecVelocity.x + vecVelocity.y * vecVelocity.y);
+         if (g_pCVar->FindVar("tongue_range")->GetFloat() * z_smoker_instant_shoot_range_cofficient.GetFloat()
+            < flDistance < 2000.0f && flSpeed > 190.0f && (flags & FL_ONGROUND))
         {
-            if (pSmoker->GetGroundEntity())
-            {
-                QAngle vecEyeAngle;
-                pSmoker->GetEyeAngles(&vecEyeAngle);
+            QAngle vecEyeAngle;
+            pSmoker->GetEyeAngles(&vecEyeAngle);
+    
+            Vector vecForward;
+            AngleVectors(vecEyeAngle, &vecForward, NULL, NULL);
+            VectorNormalize(vecForward);
+            VectorScale(vecForward, z_smoker_bhop_speed.GetFloat(), vecForward);
+    
+            pCmd->buttons |= IN_JUMP;
+            pCmd->buttons |= IN_DUCK;
 
-                Vector vecForward;
-                AngleVectors(vecEyeAngle, &vecForward);
-                VectorNormalize(vecForward);
-                VectorScale(vecForward, z_smoker_bhop_speed.GetFloat(), vecForward);
-
-                pCmd->buttons |= IN_JUMP;
-                pCmd->buttons |= IN_DUCK;
-
-                if ((pCmd->buttons & IN_FORWARD) || (pCmd->buttons & IN_BACK) || (pCmd->buttons & IN_MOVELEFT) || (pCmd->buttons & IN_MOVERIGHT))
-                {
-                    ClientPush(pSmoker, vecForward);
-                }
-            }
+            DoBhop(pSmoker, pCmd->buttons, vecForward);
         }
     }
 
-    if (pSmoker->HasVisibleThreats())
+    bool bHasVisibleThreats = pSmoker->HasVisibleThreats();
+
+    if (bHasVisibleThreats)
     {
         QAngle vecTargetAngle;
         UTIL_ComputeAimAngles(pSmoker, pTarget, &vecTargetAngle, AimChest);
@@ -199,13 +201,12 @@ void CSmokerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
         pSmoker->Teleport(NULL, &vecTargetAngle, NULL);
     }
 
-    if (pSmoker->HasVisibleThreats() && !pTarget->IsIncapped() && pTarget->GetSpecialInfectedDominatingMe())
+    if (bHasVisibleThreats && !pTarget->IsIncapped() && !pTarget->GetSpecialInfectedDominatingMe())
     {
         if (flDistance < SMOKER_MELEE_RANGE)
         {
             pCmd->buttons |= IN_ATTACK;
             pCmd->buttons |= IN_ATTACK2;
-            return;
         }
         else if (flDistance < g_pCVar->FindVar("tongue_range")->GetFloat() * z_smoker_instant_shoot_range_cofficient.GetFloat() && g_MapSmokerInfo[smokerIndex].m_bCanTongue)
         {
@@ -213,14 +214,13 @@ void CSmokerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
             pCmd->buttons |= IN_ATTACK2;
             g_MapSmokerInfo[smokerIndex].m_bCanTongue = false;
             g_hTimerCoolDown = timersys->CreateTimer(&g_SmokerTimerEvent, g_pCVar->FindVar("tongue_miss_delay")->GetFloat(), (void *)(intptr_t)(pSmoker->entindex()), 0);
-            return;
         }
     }
 }
 
 CTerrorPlayer* BossZombiePlayerBot::OnSmokerChooseVictim(CTerrorPlayer *pAttacker, CTerrorPlayer *pLastVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer)
 {
-    if (!pAttacker->IsSmoker() || pAttacker->IsDead())
+    if (!pAttacker || !pAttacker->IsInGame() || !pAttacker->IsSmoker() || pAttacker->IsDead())
         return NULL;
 
     if (pAttacker->GetTongueVictim())
@@ -263,7 +263,7 @@ CTerrorPlayer* BossZombiePlayerBot::OnSmokerChooseVictim(CTerrorPlayer *pAttacke
             if (pWeapon && pWeapon->edict())
             {
                 const char *szClassName = pWeapon->GetClassName();
-                if (!strcmp(szClassName, "weapon_melee") || !strcmp(szClassName, "weapon_chiansaw"))
+                if (szClassName && (!V_strcmp(szClassName, "weapon_melee") || !V_strcmp(szClassName, "weapon_chiansaw")))
                 {
                     CTerrorPlayer *pNewTarget = SmokerTargetChoose(z_smoker_target_rules.GetInt(), pAttacker, pLastVictim);
                     if (!pNewTarget || !pNewTarget->IsInGame() || !pNewTarget->IsSurvivor())
@@ -318,15 +318,18 @@ static bool TR_RayFilterBySmoker(IHandleEntity* pHandleEntity, int contentsMask,
         if (index == (int)(intptr_t)data)
             return false;
 
-        if (!((CTerrorPlayer *)pEntity)->IsInfected())
+        if (((CTerrorPlayer *)pEntity)->IsInfected())
             return false;
     }
 
     const char *szClassName = pEntity->GetClassName();
-    if (!strcmp(szClassName, "infected") || !strcmp(szClassName, "witch"))
+    if (!szClassName)
         return false;
 
-    if (!strcmp(szClassName, "env_physics_blocker") && ((CEnvPhysicsBlocker *)pEntity)->GetBlockType() == BlockType_Survivors)
+    if (!V_strcmp(szClassName, "infected") || !V_strcmp(szClassName, "witch"))
+        return false;
+
+    if (!V_strcmp(szClassName, "env_physics_blocker") && ((CEnvPhysicsBlocker *)pEntity)->GetBlockType() == BlockType_Survivors)
         return false;
 
     return true;
@@ -343,7 +346,7 @@ static CTerrorPlayer *SmokerTargetChoose(int method, CTerrorPlayer *pSmoker, CTe
 
         case 1:
         {
-            return (CTerrorPlayer *)UTIL_GetClosetSurvivor(pSmoker, NULL, true, true);
+            goto BYDEFAULT;
         }
 
         case 2:
@@ -364,8 +367,11 @@ static CTerrorPlayer *SmokerTargetChoose(int method, CTerrorPlayer *pSmoker, CTe
                 if (pWeapon && pWeapon->edict())
                 {
                     const char *szClassName = pWeapon->GetClassName();
-                    if (!strcmp(szClassName, "weapon_pumpshotgun") || !strcmp(szClassName, "weapon_shotgun_chrome") ||
-                        !strcmp(szClassName, "weapon_autoshotgun") || !strcmp(szClassName, "weapon_shotgun_spas"))
+                    if (!szClassName)
+                        continue;
+
+                    if (!V_strcmp(szClassName, "weapon_pumpshotgun") || !V_strcmp(szClassName, "weapon_shotgun_chrome") ||
+                        !V_strcmp(szClassName, "weapon_autoshotgun") || !V_strcmp(szClassName, "weapon_shotgun_spas"))
                     {
                         return pPlayer;
                     }
@@ -375,6 +381,9 @@ static CTerrorPlayer *SmokerTargetChoose(int method, CTerrorPlayer *pSmoker, CTe
 
         case 3:
         {
+            if (!pSmoker || !pSmoker->IsInGame() || !pSmoker->IsSmoker())
+                goto BYDEFAULT;
+
             for (int i = 1; i < gpGlobals->maxClients; i++)
             {
                 CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(i);
@@ -411,15 +420,19 @@ static CTerrorPlayer *SmokerTargetChoose(int method, CTerrorPlayer *pSmoker, CTe
 
                 CNavArea *pNav = pPlayer->GetLastKnownArea();
                 if (!pNav)
-                    return NULL;
-
+                    goto BYDEFAULT;
+                
                 float flPlayerDistance = pNav->GetFlow() / g_pNavMesh->GetMapMaxFlowDistance();
                 if (flPlayerDistance > 0.0f && flPlayerDistance < 1.0f && flTeamDistance != 1.0f)
                 {
                     if (flTeamDistance + z_smoker_left_behind_distance.GetFloat() < flPlayerDistance)
                     {
                         Vector vecTargetPos;
-                        g_pZombieManager->GetRandomPZSpawnPosition(ZC_SMOKER, 5, pSmoker, &vecTargetPos);
+                        bool bSuccess = g_pZombieManager->GetRandomPZSpawnPosition(ZC_SMOKER, 5, pSmoker, &vecTargetPos);
+
+                        if (!bSuccess)
+                            goto BYDEFAULT;
+
                         pSmoker->Teleport(&vecTargetPos, NULL, NULL);
                         return pPlayer;
                     }
@@ -457,6 +470,7 @@ static CTerrorPlayer *SmokerTargetChoose(int method, CTerrorPlayer *pSmoker, CTe
 
         default:
         {
+BYDEFAULT:
             return (CTerrorPlayer *)UTIL_GetClosetSurvivor(pSmoker, NULL, true, true);
         }
     }
@@ -479,7 +493,7 @@ static int TeamMeleeCheck()
         if (pWeapon && pWeapon->edict())
         {
             const char *szClassName = pWeapon->GetClassName();
-            if (!strcmp(szClassName, "weapon_melee") || !strcmp(szClassName, "weapon_chiansaw"))
+            if (!V_strcmp(szClassName, "weapon_melee") || !V_strcmp(szClassName, "weapon_chiansaw"))
             {
                 iTeamMeleeCount += 1;
             }

@@ -1,6 +1,7 @@
 #include "utils.h"
 #include "extension.h"
 #include "in_buttons.h"
+#include "IEngineTrace.h"
 
 CBasePlayer* UTIL_PlayerByIndexExt(int playerIndex)
 {
@@ -256,9 +257,7 @@ bool ClientPush(CBasePlayer *pPlayer, Vector vec)
 {
     Vector vecVelocity = pPlayer->GetVelocity();
     vecVelocity += vec;
-#ifdef _UTILS_DEBUG
-    rootconsole->ConsolePrint("### CBoomerEventListner::OnPlayerRunCmd, vecVelocity: %.02f, %.02f, %.02f, length: %.02f.", vecVelocity.x, vecVelocity.y, vecVelocity.z, vecVelocity.Length());
-#endif
+
     if (WillHitWallOrFall(pPlayer, vecVelocity))
     {
         if (vecVelocity.Length() <= 250.0f)
@@ -266,9 +265,7 @@ bool ClientPush(CBasePlayer *pPlayer, Vector vec)
             VectorNormalize(vecVelocity);
             VectorScale(vecVelocity, 251.0f, vecVelocity);
         }
-#ifdef _UTILS_DEBUG
-        rootconsole->ConsolePrint("### CBoomerEventListner::OnPlayerRunCmd, Normalized and scaled vecVelocity: %.02f, %.02f, %.02f.", vecVelocity.x, vecVelocity.y, vecVelocity.z);
-#endif
+
         pPlayer->Teleport(NULL, NULL, &vecVelocity);
         return true;
     }
@@ -285,12 +282,38 @@ Vector UTIL_CaculateVel(const Vector& vecSelfPos, const Vector& vecTargetPos, ve
 }
 
 // from sourcemod.
+class CTraceFilterSimple2 : public CTraceFilterEntitiesOnly
+{
+public:
+	CTraceFilterSimple2(const IHandleEntity *passentity): m_pPassEnt(passentity)
+	{
+	}
+	virtual bool ShouldHitEntity(IHandleEntity *pServerEntity, int contentsMask)
+	{
+		if (pServerEntity == m_pPassEnt)
+		{
+			return false;
+		}
+		return true;
+	}
+private:
+	const IHandleEntity *m_pPassEnt;
+};
+
 CBaseEntity *UTIL_GetClientAimTarget(CBaseEntity *pEntity, bool only_players)
 {
 	if (!pEntity)
 		return NULL;
 
-    edict_t *pEdict = pEntity->edict();
+    int entIndex = pEntity->entindex();
+    if (entIndex <= 0 || entIndex > gpGlobals->maxClients)
+        return NULL;
+
+    IGamePlayer *pGamePlayer = playerhelpers->GetGamePlayer(entIndex);
+    if (!pGamePlayer || !pGamePlayer->IsInGame())
+        return NULL;
+
+    edict_t *pEdict = pGamePlayer->GetEdict();
     if (!pEdict)
         return NULL;
 
@@ -311,13 +334,13 @@ CBaseEntity *UTIL_GetClientAimTarget(CBaseEntity *pEntity, bool only_players)
 	ray.Init(eye_position, vec_end);
 
 	trace_t tr;
-    UTIL_TraceRay(ray, MASK_SOLID | CONTENTS_DEBRIS | CONTENTS_HITBOX, pEdict->GetIServerEntity(), COLLISION_GROUP_NONE, &tr, NULL, NULL);
-
+    CTraceFilterSimple2 filter(pEdict->GetIServerEntity());
+    enginetrace->TraceRay(ray, MASK_SOLID | CONTENTS_DEBRIS | CONTENTS_HITBOX, &filter, &tr);
+    //UTIL_TraceRay(ray, MASK_SOLID | CONTENTS_DEBRIS | CONTENTS_HITBOX, pEdict->GetIServerEntity(), COLLISION_GROUP_NONE, &tr, NULL, NULL);
     if (tr.fraction == 1.0f || tr.m_pEnt == NULL)
         return NULL;
 
-    int index = ((CBaseEntity *)tr.m_pEnt)->entindex();
-
+    int index = tr.m_pEnt->entindex();
 	IGamePlayer *pTargetPlayer = playerhelpers->GetGamePlayer(index);
 	if (pTargetPlayer != NULL && !pTargetPlayer->IsInGame())
 	{
@@ -328,7 +351,7 @@ CBaseEntity *UTIL_GetClientAimTarget(CBaseEntity *pEntity, bool only_players)
 		return NULL;
 	}
 
-	return gameents->EdictToBaseEntity(tr.m_pEnt->edict());
+	return tr.m_pEnt;
 }
 
 bool UTIL_IsLeftBehind(CTerrorPlayer *pPlayer)

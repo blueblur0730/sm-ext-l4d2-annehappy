@@ -384,17 +384,6 @@ public:
 	bool GetRandomPZSpawnPosition(ZombieClassType type, int attampts, CTerrorPlayer *pPlayer, Vector *pOutPos);
 };
 
-/*
-class CTerrorEntityListner : public ISMEntityListener {
-public:
-	virtual void OnEntityCreated(CBaseEntity *pEntity, const char *classname);
-	virtual void OnEntityDestroyed(CBaseEntity *pEntity);
-	
-protected:
-	void OnPostThink();
-};
-*/
-
 class BossZombiePlayerBot /*: public CTerrorPlayer*/ {
 public:
 	static void *pFnChooseVictim;
