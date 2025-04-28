@@ -66,7 +66,10 @@ void CBaseEntity::GetEyeAngles(QAngle *pRetAngle)
         CBaseEntity *pThis;
     } stake {this};
 
-    pCallGetEyeAngle->Execute(&stake, pRetAngle);
+    QAngle *pRet = NULL;
+    pCallGetEyeAngle->Execute(&stake, &pRet);
+    
+    *pRetAngle = *pRet;
 }
 
 IPlayerInfo *CTerrorPlayer::GetPlayerInfo()

@@ -144,9 +144,7 @@ void CSmokerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
         return;
     }
 
-    // really have no idea on this trace. just get the closet one.
-    //CTerrorPlayer *pTarget = (CTerrorPlayer *)UTIL_GetClientAimTarget(pSmoker, true);
-    CTerrorPlayer *pTarget = SmokerTargetChoose(1, pSmoker);
+    CTerrorPlayer *pTarget = (CTerrorPlayer *)UTIL_GetClientAimTarget(pSmoker, true);
     if (!pTarget || !pTarget->IsInGame() || !pTarget->IsSurvivor() || pTarget->IsDead())
         return;
 
