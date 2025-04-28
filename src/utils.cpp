@@ -337,6 +337,7 @@ CBaseEntity *UTIL_GetClientAimTarget(CBaseEntity *pEntity, bool only_players)
     CTraceFilterSimple2 filter(pEdict->GetIServerEntity());
     enginetrace->TraceRay(ray, MASK_SOLID | CONTENTS_DEBRIS | CONTENTS_HITBOX, &filter, &tr);
     //UTIL_TraceRay(ray, MASK_SOLID | CONTENTS_DEBRIS | CONTENTS_HITBOX, pEdict->GetIServerEntity(), COLLISION_GROUP_NONE, &tr, NULL, NULL);
+
     if (tr.fraction == 1.0f || tr.m_pEnt == NULL)
         return NULL;
 
