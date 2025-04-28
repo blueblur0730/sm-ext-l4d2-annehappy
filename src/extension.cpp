@@ -33,6 +33,7 @@
 #include "compat_wrappers.h"
 #include "SI/boomer.h"
 #include "SI/smoker.h"
+#include "SI/charger.h"
 #include "sourcehook.h"
 #include <vector>
 #include "dt_send.h"
@@ -66,6 +67,7 @@ BossZombiePlayerBot g_BossZombiePlayerBot;
 
 CBoomerEventListner g_BoomerEventListner;
 CSmokerEventListner g_SmokerEventListner;
+CChargerEventListner g_ChargerEventListner;
 
 int g_iOff_PlayerRunCmd = 0;
 int CBaseEntity::vtblindex_CBaseEntity_Teleport = 0;
@@ -461,7 +463,13 @@ bool CAnneHappy::AddEventListner()
 
 	if (!gameevents->AddListener(&g_SmokerEventListner, "round_start", true))
 	{
-		smutils->LogError(myself, "Extension failed to add event listner: '%s' for smoker.", "round_start");
+		smutils->LogError(myself, "Extension failed to add event listner: 'round_start' for smoker.");
+		return false;
+	}
+
+	if (!gameevents->AddListener(&g_ChargerEventListner, "player_spawn", true))
+	{
+		smutils->LogError(myself, "Extension failed to add event listner: 'player_spawn' for charger.");
 		return false;
 	}
 
@@ -472,6 +480,7 @@ void CAnneHappy::RemoveEventListner()
 {
 	gameevents->RemoveListener(&g_BoomerEventListner);
 	gameevents->RemoveListener(&g_SmokerEventListner);
+	gameevents->RemoveListener(&g_ChargerEventListner);
 }
 
 bool CAnneHappy::FindSendProps(IGameConfig *pGameData, char* error, size_t maxlen)
@@ -482,6 +491,7 @@ bool CAnneHappy::FindSendProps(IGameConfig *pGameData, char* error, size_t maxle
 		int& pOffset;
 	} s_props[] = {
 		{"m_isSpraying", "CVomit", CVomit::m_iOff_m_isSpraying},
+		{"m_isCharging", "CCharge", CCharge::m_iOff_m_isCharging},
 		{"m_nBlockType", "CEnvPhysicsBlocker", CEnvPhysicsBlocker::m_iOff_m_nBlockType},
 		{"m_bInReload", "CBaseCombatWeapon", CBaseCombatWeapon::m_iOff_m_bInReload},
 		{"m_fFlags", "CBasePlayer", CBasePlayer::m_iOff_m_fFlags},
@@ -491,7 +501,9 @@ bool CAnneHappy::FindSendProps(IGameConfig *pGameData, char* error, size_t maxle
 		{"m_isIncapacitated", "CTerrorPlayer", CTerrorPlayer::m_iOff_m_isIncapacitated},
 		{"m_tongueVictim", "CTerrorPlayer", CTerrorPlayer::m_iOff_m_tongueVictim},
 		{"m_hGroundEntity", "CTerrorPlayer", CTerrorPlayer::m_iOff_m_hGroundEntity},
-		{"m_hActiveWeapon", "CTerrorPlayer", CTerrorPlayer::m_iOff_m_hActiveWeapon}
+		{"m_hActiveWeapon", "CTerrorPlayer", CTerrorPlayer::m_iOff_m_hActiveWeapon},
+		{"m_pummelVictim", "CTerrorPlayer", CTerrorPlayer::m_iOff_m_pummelVictim},
+		{"m_carryVictim", "CTerrorPlayer", CTerrorPlayer::m_iOff_m_carryVictim}
 	};
 
 	sm_sendprop_info_t info;

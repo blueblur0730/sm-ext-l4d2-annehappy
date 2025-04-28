@@ -234,6 +234,8 @@ public:
 	static int m_iOff_m_tongueVictim;
 	static int m_iOff_m_hGroundEntity;
 	static int m_iOff_m_hActiveWeapon;
+	static int m_iOff_m_pummelVictim;
+	static int m_iOff_m_carryVictim;
 
 	static void *pFnOnVomitedUpon;
 	static ICallWrapper *pCallOnVomitedUpon;
@@ -330,13 +332,35 @@ public:
 		return *(bool*)((byte*)(this) + m_iOff_m_hasVisibleThreats);
 	}
 
-	CBaseAbility *GetAbility();
+	inline CBaseAbility *GetAbility()
+	{
+		return (CBaseAbility *)OffsetEHandleToEntity(m_iOff_m_customAbility);
+	}
 
-	CBaseEntity *GetGroundEntity();
+	inline CBaseEntity *GetGroundEntity()
+	{
+		return OffsetEHandleToEntity(m_iOff_m_hGroundEntity);
+	}
 
-	CBaseCombatWeapon *GetActiveWeapon();
+	inline CBaseCombatWeapon *GetActiveWeapon()
+	{
+		return (CBaseCombatWeapon *)OffsetEHandleToEntity(m_iOff_m_hActiveWeapon);
+	}
 	
-	CTerrorPlayer *GetTongueVictim();
+	inline CTerrorPlayer *GetTongueVictim()
+	{
+		return (CTerrorPlayer *)OffsetEHandleToEntity(m_iOff_m_tongueVictim);
+	}
+
+	inline CTerrorPlayer *GetPummelVictim()
+	{
+		return (CTerrorPlayer *)OffsetEHandleToEntity(m_iOff_m_pummelVictim);
+	}
+
+	inline CTerrorPlayer *GetCarryVictim()
+	{
+		return (CTerrorPlayer *)OffsetEHandleToEntity(m_iOff_m_carryVictim);
+	}
 
 	inline ZombieClassType GetClass()
 	{
@@ -353,6 +377,11 @@ public:
 		return (GetClass() == ZC_SMOKER);
 	}
 	
+	inline bool IsCharger()
+	{
+		return (GetClass() == ZC_CHARGER);
+	}
+
 	CBaseEntity *OffsetEHandleToEntity(int iOff);
 
 	void OnVomitedUpon(CBasePlayer *pAttacker, bool bIsExplodedByBoomer);

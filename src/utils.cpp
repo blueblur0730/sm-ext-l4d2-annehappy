@@ -87,6 +87,27 @@ CBasePlayer* UTIL_GetClosetSurvivor(CBasePlayer* pPlayer, CBasePlayer* pIgnorePl
     return UTIL_PlayerByIndexExt(closetIndex);
 }
 
+vec_t UTIL_GetClosetSurvivorDistance(CBasePlayer* pPlayer, CBasePlayer* pIgnorePlayer, bool bCheckIncapp, bool bCheckDominated)
+{
+    IPlayerInfo *playerinfo = ((CTerrorPlayer *)pPlayer)->GetPlayerInfo();
+    if (!playerinfo)
+        return -1.0f;
+    
+    Vector vecOrigin = playerinfo->GetAbsOrigin();
+    CBasePlayer *pPlayer = UTIL_GetClosetSurvivor(pPlayer, pIgnorePlayer, bCheckIncapp, bCheckDominated);
+    if (pPlayer)
+    {
+        IPlayerInfo *targetInfo = ((CTerrorPlayer *)pPlayer)->GetPlayerInfo();
+        if (!targetInfo)
+            return -1.0f;
+
+        Vector vecTargetOrigin = targetInfo->GetAbsOrigin();
+        return vecOrigin.DistTo(vecTargetOrigin);
+    }
+
+    return -1.0f;
+}
+
 Vector UTIL_MakeVectorFromPoints(Vector src1, Vector src2)
 {
     Vector output;
@@ -337,6 +358,7 @@ CBaseEntity *UTIL_GetClientAimTarget(CBaseEntity *pEntity, bool only_players)
     CTraceFilterSimple2 filter(pEdict->GetIServerEntity());
     enginetrace->TraceRay(ray, MASK_SOLID | CONTENTS_DEBRIS | CONTENTS_HITBOX, &filter, &tr);
     //UTIL_TraceRay(ray, MASK_SOLID | CONTENTS_DEBRIS | CONTENTS_HITBOX, pEdict->GetIServerEntity(), COLLISION_GROUP_NONE, &tr, NULL, NULL);
+
     if (tr.fraction == 1.0f || tr.m_pEnt == NULL)
         return NULL;
 

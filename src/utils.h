@@ -37,6 +37,8 @@ CBasePlayer* UTIL_PlayerByUserIdExt(int userID);
 
 CBasePlayer* UTIL_GetClosetSurvivor(CBasePlayer* pPlayer, CBasePlayer* pIgnorePlayer = NULL, bool bCheckIncapp = false, bool bCheckDominated = false);
 
+vec_t UTIL_GetClosetSurvivorDistance(CBasePlayer *pPlayer, CBasePlayer *pIgnorePlayer = NULL, bool bCheckIncapp = false, bool bCheckDominated = false);
+
 Vector UTIL_MakeVectorFromPoints(Vector src1, Vector src2);
 
 void UTIL_ComputeAimAngles(CBasePlayer* pPlayer, CBasePlayer* pTarget, QAngle *angles, AimType type = AimEye);

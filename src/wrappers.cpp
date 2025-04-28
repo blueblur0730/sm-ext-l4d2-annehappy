@@ -100,26 +100,6 @@ L4D2Teams CTerrorPlayer::GetTeam()
     return (L4D2Teams)pPlayerInfo->GetTeamIndex();
 }
 
-CBaseAbility *CTerrorPlayer::GetAbility()
-{
-    return (CBaseAbility *)OffsetEHandleToEntity(m_iOff_m_customAbility);
-}
-
-CBaseCombatWeapon *CTerrorPlayer::GetActiveWeapon()
-{
-    return (CBaseCombatWeapon *)OffsetEHandleToEntity(m_iOff_m_hActiveWeapon);
-}
-
-CTerrorPlayer *CTerrorPlayer::GetTongueVictim()
-{
-    return (CTerrorPlayer *)OffsetEHandleToEntity(m_iOff_m_tongueVictim);
-}
-
-CBaseEntity *CTerrorPlayer::GetGroundEntity()
-{
-    return OffsetEHandleToEntity(m_iOff_m_hGroundEntity);
-}
-
 CBaseEntity *CTerrorPlayer::OffsetEHandleToEntity(int iOff) {
     edict_t* pEdict = gamehelpers->GetHandleEntity(*(CBaseHandle*)((byte*)(this) + iOff));
     if (!pEdict) 
