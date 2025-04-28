@@ -461,8 +461,30 @@ bool PassServerEntityFilter( const IHandleEntity *pTouch, const IHandleEntity *p
 
 bool DoBhop(CBasePlayer *pPlayer, int buttons, Vector vec)
 {
-    if (buttons & IN_FORWARD || buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT)
+    if (buttons & IN_FORWARD || buttons & IN_BACK || buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT)
         return ClientPush(pPlayer, vec);
+
+    return false;
+}
+
+bool UTIL_IsInGetUpAnimation(CBasePlayer *pPlayer)
+{
+    if (!pPlayer)
+        return false;
+
+    int character = pPlayer->GetGender();
+    if (character < L4D2Gender_Nanvet || character > L4D2Gender_Mechanic)
+        return false;
+
+    int sequence = pPlayer->GetSequence();
+    if (sequence < 0)
+        return false;
+
+    for (int i = 0; i < 4; i++)
+    {
+        if (sequence == g_iGetUpAnimationsSequence[character - 3][i])
+            return true;
+    }
 
     return false;
 }

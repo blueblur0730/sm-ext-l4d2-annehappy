@@ -396,6 +396,8 @@ bool CAnneHappy::LoadGameData(IGameConfig *pGameData, char* error, size_t maxlen
 		{"m_fMapMaxFlowDistance", TerrorNavMesh::m_iOff_m_fMapMaxFlowDistance, GAMEDATA_FILE},
 		{"CTerrorPlayer::GetLastKnownArea", CTerrorPlayer::vtblindex_CTerrorPlayer_GetLastKnownArea, GAMEDATA_FILE},
 		{"m_flow", CNavArea::m_iOff_m_flow, GAMEDATA_FILE},
+		{"m_PlayerAnimState", CTerrorPlayer::m_iOff_m_PlayerAnimState, GAMEDATA_FILE},
+		{"m_eCurrentMainSequenceActivity", CMultiPlayerAnimState::m_iOff_m_eCurrentMainSequenceActivity, GAMEDATA_FILE}
 	};
 
 	for (auto &offset : s_offsets)
@@ -492,9 +494,12 @@ bool CAnneHappy::FindSendProps(IGameConfig *pGameData, char* error, size_t maxle
 	} s_props[] = {
 		{"m_isSpraying", "CVomit", CVomit::m_iOff_m_isSpraying},
 		{"m_isCharging", "CCharge", CCharge::m_iOff_m_isCharging},
+		{"m_nextActivationTimer", "CBaseAbility", CBaseAbility::m_iOff_m_nextActivationTimer},
 		{"m_nBlockType", "CEnvPhysicsBlocker", CEnvPhysicsBlocker::m_iOff_m_nBlockType},
 		{"m_bInReload", "CBaseCombatWeapon", CBaseCombatWeapon::m_iOff_m_bInReload},
+		{"m_Gender", "CBaseEntity", CBaseEntity::m_iOff_m_Gender},
 		{"m_fFlags", "CBasePlayer", CBasePlayer::m_iOff_m_fFlags},
+		{"m_nSequence", "CBasePlayer", CBasePlayer::m_iOff_m_nSequence},
 		{"m_zombieClass", "CTerrorPlayer", CTerrorPlayer::m_iOff_m_zombieClass},
 		{"m_customAbility", "CTerrorPlayer", CTerrorPlayer::m_iOff_m_customAbility},
 		{"m_hasVisibleThreats", "CTerrorPlayer", CTerrorPlayer::m_iOff_m_hasVisibleThreats},
@@ -503,7 +508,7 @@ bool CAnneHappy::FindSendProps(IGameConfig *pGameData, char* error, size_t maxle
 		{"m_hGroundEntity", "CTerrorPlayer", CTerrorPlayer::m_iOff_m_hGroundEntity},
 		{"m_hActiveWeapon", "CTerrorPlayer", CTerrorPlayer::m_iOff_m_hActiveWeapon},
 		{"m_pummelVictim", "CTerrorPlayer", CTerrorPlayer::m_iOff_m_pummelVictim},
-		{"m_carryVictim", "CTerrorPlayer", CTerrorPlayer::m_iOff_m_carryVictim}
+		{"m_carryVictim", "CTerrorPlayer", CTerrorPlayer::m_iOff_m_carryVictim},
 	};
 
 	sm_sendprop_info_t info;
@@ -609,6 +614,12 @@ void CAnneHappy::PlayerRunCmd(CUserCmd *ucmd, IMoveHelper *moveHelper)
 		case ZC_SMOKER:
 		{
 			g_SmokerEventListner.OnPlayerRunCmd(pPlayer, ucmd);
+			break;
+		}
+
+		case ZC_CHARGER:
+		{
+			g_ChargerEventListner.OnPlayerRunCmd(pPlayer, ucmd);
 			break;
 		}
 	}

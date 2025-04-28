@@ -53,6 +53,19 @@
 				// From "CTerrorPlayer::GetFlowDistance"
 			}
 
+			// from left4dhooks by Silvers and Forgetest.
+			"m_PlayerAnimState"
+			{
+				"linux"		"10512"
+				"windows"	"10524"
+			}
+
+			"m_eCurrentMainSequenceActivity"
+			{
+				"linux"		"276"
+				"windows"	"276"
+			}
+
 			/*
 			* CTerrorPlayer::GetLastKnownArea() const
 			*/

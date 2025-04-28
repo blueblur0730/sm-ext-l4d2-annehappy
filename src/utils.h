@@ -31,6 +31,47 @@ struct utils_t {
     int index;
 };
 
+enum L4D2Gender
+{
+	L4D2Gender_Neutral			= 0,
+	L4D2Gender_Male				= 1,
+	L4D2Gender_Female			= 2,
+	L4D2Gender_Nanvet			= 3, //Bill
+	L4D2Gender_TeenGirl			= 4, //Zoey
+	L4D2Gender_Biker			= 5, //Francis
+	L4D2Gender_Manager			= 6, //Louis
+	L4D2Gender_Gambler			= 7, //Nick
+	L4D2Gender_Producer			= 8, //Rochelle
+	L4D2Gender_Coach			= 9, //Coach
+	L4D2Gender_Mechanic			= 10, //Ellis
+	L4D2Gender_Ceda				= 11,
+	L4D2Gender_Crawler			= 12, //Mudman
+	L4D2Gender_Undistractable	= 13, //Workman
+	L4D2Gender_Fallen			= 14,
+	L4D2Gender_Riot_Control		= 15, //RiotCop
+	L4D2Gender_Clown			= 16,
+	L4D2Gender_Jimmy			= 17, //JimmyGibbs
+	L4D2Gender_Hospital_Patient	= 18,
+	L4D2Gender_Witch_Bride		= 19,
+	L4D2Gender_Police			= 20, //l4d1 RiotCop (was removed from the game)
+	L4D2Gender_Male_L4D1		= 21,
+	L4D2Gender_Female_L4D1		= 22,
+	
+	L4D2Gender_MaxSize //23 size
+};
+
+const int g_iGetUpAnimationsSequence[8][4] =
+{
+	{528, 759, 763, 764},	// 比尔
+	{537, 819, 823, 824},	// 佐伊
+	{528, 759, 763, 764},	// 路易斯
+	{531, 762, 766, 767},	// 弗朗西斯
+	{620, 667, 671, 672},	// 西装
+	{629, 674, 678, 679},	// 女人
+	{621, 656, 660, 661},	// 黑胖
+	{625, 671, 675, 676},	// 帽子
+};
+
 CBasePlayer* UTIL_PlayerByIndexExt(int playerIndex);
 
 CBasePlayer* UTIL_PlayerByUserIdExt(int userID);
@@ -62,11 +103,12 @@ CBaseEntity *UTIL_GetClientAimTarget(CBaseEntity *pEntity, bool only_players);
 bool UTIL_IsLeftBehind(CTerrorPlayer *pPlayer);
 
 float CalculateTeamDistance(CTerrorPlayer *pIgnorePlayer = NULL);
-/*
-inline const CBaseEntity *EntityFromEntityHandle(const IHandleEntity *pConstHandleEntity);
 
-inline CBaseEntity *EntityFromEntityHandle(IHandleEntity *pHandleEntity);
-*/
+bool PassServerEntityFilter(const IHandleEntity *pTouch, const IHandleEntity *pPass);
+
+bool DoBhop(CBasePlayer *pPlayer, int buttons, Vector vec);
+
+bool UTIL_IsInGetUpAnimation(CBasePlayer *pPlayer);
 
 inline const CBaseEntity *EntityFromEntityHandle( const IHandleEntity *pConstHandleEntity )
 {
@@ -97,10 +139,6 @@ inline CBaseEntity *EntityFromEntityHandle( IHandleEntity *pHandleEntity )
 	return pUnk->GetBaseEntity();
 #endif
 }
-
-bool PassServerEntityFilter(const IHandleEntity *pTouch, const IHandleEntity *pPass);
-
-bool DoBhop(CBasePlayer *pPlayer, int buttons, Vector vec);
 
 inline float FloatAbs(float f)
 {

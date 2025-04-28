@@ -60,5 +60,8 @@ struct chargerInfo_t {
     }
 };
 
+static bool IsInChargeDuration(CTerrorPlayer *pCharger);
+static void SetChargeTimer(CCharge *pAbility, float flDuration = 0.0f);
+static bool CheckMelee(CTerrorPlayer *pCharger);
 
 #endif // _CHARGER_H_INCLUDED_

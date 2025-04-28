@@ -20,6 +20,7 @@
 #include "ihandleentity.h"
 #include "mathlib.h"
 #include "usercmd.h"
+#include "util_shared.h"
 
 #define NAV_MESH_HEIGHT 20.0
 #define PLAYER_HEIGHT 72.0
@@ -96,6 +97,8 @@ public:
 	static int dataprop_m_lifeState;
 	static int dataprop_m_iHealth;
 
+	static int m_iOff_m_Gender;	// well only in l4d2.
+
 public:
 	inline int GetDataOffset(const char *name)
 	{
@@ -120,6 +123,11 @@ public:
 	inline const char *GetClassName()
 	{
 		return edict()->GetClassName();
+	}
+
+	inline L4D2Gender GetGender()
+	{
+		return *(L4D2Gender*)((byte*)(this) + m_iOff_m_Gender);
 	}
 
 	//void GetVelocity(Vector *velocity, AngularImpulse *vAngVelocity);
@@ -196,6 +204,14 @@ public:
 };
 
 class CBaseAbility : public CBaseEntity {
+public:
+	static int m_iOff_m_nextActivationTimer;
+
+public:
+    inline CountdownTimer GetNextActivationTimer()
+    {
+        return *(CountdownTimer *)((byte*)(this) + m_iOff_m_nextActivationTimer);
+    }
 };
 
 class CBaseCombatWeapon : public CBaseEntity {
@@ -212,6 +228,7 @@ public:
 class CBasePlayer : public CBaseEntity {
 public:
 	static int m_iOff_m_fFlags;
+	static int m_iOff_m_nSequence;
 
 public:
 	inline int GetFlags()
@@ -222,6 +239,11 @@ public:
 	inline bool IsBot()
 	{
 		return (GetFlags() & FL_FAKECLIENT) != 0;
+	}
+
+	inline int GetSequence()
+	{
+		return *(int*)((byte*)(this) + m_iOff_m_nSequence);
 	}
 };
 
@@ -236,6 +258,7 @@ public:
 	static int m_iOff_m_hActiveWeapon;
 	static int m_iOff_m_pummelVictim;
 	static int m_iOff_m_carryVictim;
+	static int m_iOff_m_PlayerAnimState;
 
 	static void *pFnOnVomitedUpon;
 	static ICallWrapper *pCallOnVomitedUpon;
@@ -362,6 +385,11 @@ public:
 		return (CTerrorPlayer *)OffsetEHandleToEntity(m_iOff_m_carryVictim);
 	}
 
+	inline CMultiPlayerAnimState *GetPlayerAnimState()
+	{
+		return (CMultiPlayerAnimState *)((uint8_t *)this + m_iOff_m_PlayerAnimState);
+	}
+
 	inline ZombieClassType GetClass()
 	{
 		return *(ZombieClassType *)((uint8_t *)this + m_iOff_m_zombieClass);
@@ -391,6 +419,17 @@ public:
 	bool IsStaggering();
 
 	CNavArea *GetLastKnownArea();
+};
+
+class CMultiPlayerAnimState {
+public:
+	static int m_iOff_m_eCurrentMainSequenceActivity;
+
+public:
+	inline int GetCurrentMainSequenceActivity()
+	{
+		return *(int *)((byte *)(this) + m_iOff_m_eCurrentMainSequenceActivity);
+	}
 };
 
 class TerrorNavMesh {
