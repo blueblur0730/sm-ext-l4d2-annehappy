@@ -11,6 +11,8 @@ static ITimer *g_hResetBiledStateTimer = NULL;
 std::unordered_map<int, boomerInfo_t> g_MapBoomerInfo;
 std::unordered_map<int, boomerVictimInfo_t> g_MapBoomerVictimInfo;
 
+int CVomit::m_iOff_m_isSpraying = 0;
+
 ConVar z_boomer_bhop("z_boomer_bhop", "1", FCVAR_NOTIFY | FCVAR_CHEAT, "Enable boomer bhop.", true, 0.0f, true, 1.0f);
 ConVar z_boomer_bhop_speed("z_boomer_bhop_speed", "150.0", FCVAR_NOTIFY | FCVAR_CHEAT, "Boomer bhop speed.", true, 0.0f, false, 0.0f);
 ConVar z_boomer_vision_up_on_vomit("z_boomer_vision_up_on_vomit", "1", FCVAR_NOTIFY | FCVAR_CHEAT, "Boomer vision will turn up when vomitting.", true, 0.0f, true, 1.0f);

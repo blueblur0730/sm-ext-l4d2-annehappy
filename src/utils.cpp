@@ -94,8 +94,8 @@ vec_t UTIL_GetClosetSurvivorDistance(CBasePlayer* pPlayer, CBasePlayer* pIgnoreP
         return -1.0f;
     
     Vector vecOrigin = playerinfo->GetAbsOrigin();
-    CBasePlayer *pPlayer = UTIL_GetClosetSurvivor(pPlayer, pIgnorePlayer, bCheckIncapp, bCheckDominated);
-    if (pPlayer)
+    CBasePlayer *pClosetPlayer = UTIL_GetClosetSurvivor(pPlayer, pIgnorePlayer, bCheckIncapp, bCheckDominated);
+    if (pClosetPlayer)
     {
         IPlayerInfo *targetInfo = ((CTerrorPlayer *)pPlayer)->GetPlayerInfo();
         if (!targetInfo)
@@ -487,4 +487,54 @@ bool UTIL_IsInGetUpAnimation(CBasePlayer *pPlayer)
     }
 
     return false;
+}
+
+int UTIL_GetValidSurvivorNumber(bool bCheckIncapp, bool bCheckDominated)
+{
+    int iValidSurvivor = 0;
+    for (int i = 1; i < gpGlobals->maxClients; i++)
+    {
+        CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(i);
+        if (!pPlayer)
+            continue;
+
+        if (!pPlayer->IsInGame() || !pPlayer->IsSurvivor() || pPlayer->IsDead())
+            continue;
+
+        if (bCheckIncapp && pPlayer->IsIncapped())
+            continue;
+
+        if (bCheckDominated && pPlayer->GetSpecialInfectedDominatingMe())
+            continue;
+
+        iValidSurvivor += 1;
+    }
+
+    return iValidSurvivor;
+}
+
+int UTIL_GetTeamMeleeNumber()
+{
+    int iTeamMeleeCount = 0;
+    for (int i = 1; i < gpGlobals->maxClients; i++)
+    {
+        CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(i);
+        if (!pPlayer)
+            continue;
+
+        if (!pPlayer->IsInGame() || !pPlayer->IsSurvivor() || pPlayer->IsDead() || pPlayer->IsIncapped() || pPlayer->GetSpecialInfectedDominatingMe())
+            continue;
+
+        CBaseCombatWeapon *pWeapon = pPlayer->GetActiveWeapon();
+        if (pWeapon && pWeapon->edict())
+        {
+            const char *szClassName = pWeapon->GetClassName();
+            if (!V_strcmp(szClassName, "weapon_melee") || !V_strcmp(szClassName, "weapon_chiansaw"))
+            {
+                iTeamMeleeCount += 1;
+            }
+        }
+    }
+
+    return iTeamMeleeCount;
 }

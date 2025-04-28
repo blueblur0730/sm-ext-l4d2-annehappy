@@ -20,7 +20,7 @@
 #include "ihandleentity.h"
 #include "mathlib.h"
 #include "usercmd.h"
-#include "util_shared.h"
+//#include "util_shared.h"
 
 #define NAV_MESH_HEIGHT 20.0
 #define PLAYER_HEIGHT 72.0
@@ -54,6 +54,96 @@ enum ZombieClassType {
 	ZC_JOCKEY = 5,
 	ZC_CHARGER = 6,
 	ZC_TANK = 8,
+};
+
+enum L4D2Gender {
+	L4D2Gender_Neutral			= 0,
+	L4D2Gender_Male				= 1,
+	L4D2Gender_Female			= 2,
+	L4D2Gender_Nanvet			= 3, //Bill
+	L4D2Gender_TeenGirl			= 4, //Zoey
+	L4D2Gender_Biker			= 5, //Francis
+	L4D2Gender_Manager			= 6, //Louis
+	L4D2Gender_Gambler			= 7, //Nick
+	L4D2Gender_Producer			= 8, //Rochelle
+	L4D2Gender_Coach			= 9, //Coach
+	L4D2Gender_Mechanic			= 10, //Ellis
+	L4D2Gender_Ceda				= 11,
+	L4D2Gender_Crawler			= 12, //Mudman
+	L4D2Gender_Undistractable	= 13, //Workman
+	L4D2Gender_Fallen			= 14,
+	L4D2Gender_Riot_Control		= 15, //RiotCop
+	L4D2Gender_Clown			= 16,
+	L4D2Gender_Jimmy			= 17, //JimmyGibbs
+	L4D2Gender_Hospital_Patient	= 18,
+	L4D2Gender_Witch_Bride		= 19,
+	L4D2Gender_Police			= 20, //l4d1 RiotCop (was removed from the game)
+	L4D2Gender_Male_L4D1		= 21,
+	L4D2Gender_Female_L4D1		= 22,
+	
+	L4D2Gender_MaxSize //23 size
+};
+
+//--------------------------------------------------------------------------------------------------------------
+/**
+ * Simple class for counting down a short interval of time.
+ * Upon creation, the timer is invalidated.  Invalidated countdown timers are considered to have elapsed.
+ */
+class CountdownTimer
+{
+public:
+	CountdownTimer( void )
+	{
+		m_timestamp = -1.0f;
+		m_duration = 0.0f;
+	}
+
+	void Reset( void )
+	{
+		m_timestamp = Now() + m_duration;
+	}		
+
+	void Start( float duration )
+	{
+		m_timestamp = Now() + duration;
+		m_duration = duration;
+	}
+
+	void Invalidate( void )
+	{
+		m_timestamp = -1.0f;
+	}		
+
+	bool HasStarted( void ) const
+	{
+		return (m_timestamp > 0.0f);
+	}
+
+	bool IsElapsed( void ) const
+	{
+		return (Now() > m_timestamp);
+	}
+
+	float GetElapsedTime( void ) const
+	{
+		return Now() - m_timestamp + m_duration;
+	}
+
+	float GetRemainingTime( void ) const
+	{
+		return (m_timestamp - Now());
+	}
+
+	/// return original countdown time
+	float GetCountdownDuration( void ) const
+	{
+		return (m_timestamp > 0.0f) ? m_duration : 0.0f;
+	}
+
+private:
+	float m_duration;
+	float m_timestamp;
+	virtual float Now( void ) const;		// work-around since client header doesn't like inlined gpGlobals->curtime
 };
 
 typedef bool (*ShouldHitFunc_t)(IHandleEntity* pHandleEntity, int contentsMask, void* data);
@@ -130,8 +220,6 @@ public:
 		return *(L4D2Gender*)((byte*)(this) + m_iOff_m_Gender);
 	}
 
-	//void GetVelocity(Vector *velocity, AngularImpulse *vAngVelocity);
-
 	inline Vector GetVelocity()
 	{
 		if (dataprop_m_vecAbsVelocity == -1)
@@ -142,7 +230,6 @@ public:
 
 	inline Vector GetAbsOrigin()
 	{
-		
 		if (dataprop_m_vecAbsOrigin == -1)
 			dataprop_m_vecAbsOrigin = GetDataOffset("m_vecAbsOrigin");
 
@@ -247,17 +334,31 @@ public:
 	}
 };
 
+class CMultiPlayerAnimState {
+	public:
+		static int m_iOff_m_eCurrentMainSequenceActivity;
+	
+	public:
+		inline int GetCurrentMainSequenceActivity()
+		{
+			return *(int *)((byte *)(this) + m_iOff_m_eCurrentMainSequenceActivity);
+		}
+	};
+
 class CTerrorPlayer : public CBasePlayer {
 public:
     static int m_iOff_m_zombieClass;
 	static int m_iOff_m_customAbility;
 	static int m_iOff_m_hasVisibleThreats;
 	static int m_iOff_m_isIncapacitated;
-	static int m_iOff_m_tongueVictim;
 	static int m_iOff_m_hGroundEntity;
 	static int m_iOff_m_hActiveWeapon;
+	static int m_iOff_m_tongueVictim;
 	static int m_iOff_m_pummelVictim;
 	static int m_iOff_m_carryVictim;
+	static int m_iOff_m_pounceAttacker;
+	static int m_iOff_m_tongueOwner;
+	static int m_iOff_m_jockeyAttacker;
 	static int m_iOff_m_PlayerAnimState;
 
 	static void *pFnOnVomitedUpon;
@@ -385,6 +486,21 @@ public:
 		return (CTerrorPlayer *)OffsetEHandleToEntity(m_iOff_m_carryVictim);
 	}
 
+	inline CTerrorPlayer *GetPounceAttacker()
+	{
+		return (CTerrorPlayer *)OffsetEHandleToEntity(m_iOff_m_pounceAttacker);
+	}
+
+	inline CTerrorPlayer *GetTongueOwner()
+	{
+		return (CTerrorPlayer *)OffsetEHandleToEntity(m_iOff_m_tongueOwner);
+	}
+
+	inline CTerrorPlayer *GetJockeyAttacker()
+	{
+		return (CTerrorPlayer *)OffsetEHandleToEntity(m_iOff_m_jockeyAttacker);
+	}
+
 	inline CMultiPlayerAnimState *GetPlayerAnimState()
 	{
 		return (CMultiPlayerAnimState *)((uint8_t *)this + m_iOff_m_PlayerAnimState);
@@ -419,17 +535,6 @@ public:
 	bool IsStaggering();
 
 	CNavArea *GetLastKnownArea();
-};
-
-class CMultiPlayerAnimState {
-public:
-	static int m_iOff_m_eCurrentMainSequenceActivity;
-
-public:
-	inline int GetCurrentMainSequenceActivity()
-	{
-		return *(int *)((byte *)(this) + m_iOff_m_eCurrentMainSequenceActivity);
-	}
 };
 
 class TerrorNavMesh {

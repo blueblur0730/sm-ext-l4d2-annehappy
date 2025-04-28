@@ -20,6 +20,7 @@ ConVar z_charger_target_rules("z_charger_target_rules", "1", FCVAR_NOTIFY | FCVA
 
 
 std::unordered_map<int, chargerInfo_t> g_ChargerInfoMap;
+int CCharge::m_iOff_m_isCharging = 0;
 
 void CChargerEventListner::FireGameEvent(IGameEvent *event)
 {
@@ -127,11 +128,7 @@ void CChargerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
         pCmd->upmove = pCmd->sidemove = pCmd->forwardmove = 0;
     }
 
-    Vector vecSelfPos = pCharger->GetAbsOrigin();
-    vec_t flClosetDistance = UTIL_GetClosetSurvivorDistance(pCharger, NULL, true, true);
     CTerrorPlayer *pTarget = (CTerrorPlayer *)UTIL_GetClientAimTarget(pCharger, true);
-    bool bHasVisibleThreats = pCharger->HasVisibleThreats();
-    
     if (!pTarget || !pTarget->IsInGame() || pTarget->IsDead())
         return;
 
@@ -139,6 +136,9 @@ void CChargerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
     if (targetIndex <= 0 || targetIndex > gpGlobals->maxClients)
         return;
 
+    Vector vecSelfPos = pCharger->GetAbsOrigin();
+    vec_t flClosetDistance = UTIL_GetClosetSurvivorDistance(pCharger, NULL, true, true);
+    bool bHasVisibleThreats = pCharger->HasVisibleThreats();
     int flags = pCharger->GetFlags();
 
     // 建立在距离小于冲锋限制距离，有视野且生还者有效的情况下
@@ -166,7 +166,7 @@ void CChargerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
                         && bIsCharging
                         && (flags & FL_ONGROUND))
                     {
-                        SetChargeTimer(pCharge, gpGlobals->curtime - 0.5);
+                        SetChargeTimer(pCharge, -0.5f);
                         Vector vecRangedClientPos = pRangedPlayer->GetAbsOrigin();
                         vecRangedClientPos = UTIL_MakeVectorFromPoints(vecSelfPos, vecRangedClientPos);
 
@@ -189,7 +189,7 @@ void CChargerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
                 && !bIsCharging
                 && (flags & FL_ONGROUND))
             {
-                SetChargeTimer(pCharge, gpGlobals->curtime - 0.5);
+                SetChargeTimer(pCharge, -0.5f);
                 pCmd->buttons |= IN_ATTACK2;
                 pCmd->buttons |= IN_ATTACK;
                 return;
@@ -280,6 +280,104 @@ void CChargerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
     }
 }
 
+CTerrorPlayer *BossZombiePlayerBot::OnChargerChooseVictim(CTerrorPlayer *pAttacker, CTerrorPlayer *pLastVictim, int targetScanFlags, CBasePlayer *pIgnorePlayer)
+{
+    if (!pAttacker || !pAttacker->IsInGame() || !pAttacker->IsCharger())
+        return NULL;
+
+    if (!pLastVictim || !pLastVictim->IsInGame() || !pLastVictim->IsSurvivor() || pLastVictim->IsDead())
+        return NULL;
+
+    int attackerIndex = pAttacker->entindex();
+    if (attackerIndex <= 0 || attackerIndex > gpGlobals->maxClients)
+        return NULL;
+
+    if (pAttacker->GetPummelVictim() || pAttacker->GetCarryVictim())
+        return NULL;
+
+    CCharge *pCharge = (CCharge *)pAttacker->GetAbility();
+    if (!pCharge)
+        return NULL;
+
+    Vector vecSelfPos = pAttacker->GetEyeOrigin();
+    FindRangedClients(pAttacker, z_charger_extra_target_range_min.GetFloat(), z_charger_extra_target_range_max.GetFloat());
+
+    int health = pAttacker->GetHealth();
+    Vector vecTargetPos = pLastVictim->GetEyeOrigin();
+
+    // 1. 范围内有人被控且自身血量大于限制血量，则先去对被控的人挥拳
+    for (int i = 0; i < g_ChargerInfoMap[attackerIndex].m_iRangedIndex; i++)
+    {
+        if (health > z_charger_avoid_melee_target_hp.GetInt() && !IsInChargeDuration(pAttacker))
+        {
+            CTerrorPlayer *pRangedPlayer = (CTerrorPlayer *)UTIL_PlayerByIndex(g_ChargerInfoMap[attackerIndex].m_iRangedClientIndex[i]);
+            if (pRangedPlayer &&
+                pRangedPlayer->GetPounceAttacker() &&
+                pRangedPlayer->GetTongueOwner() &&
+                pRangedPlayer->GetJockeyAttacker()
+            )
+            {
+                g_ChargerInfoMap[attackerIndex].m_bCanAttackPinnedTarget = true;
+                SetChargeTimer(pCharge, g_pCVar->FindVar("z_charge_interval")->GetFloat());
+                return pRangedPlayer;
+            }
+
+            g_ChargerInfoMap[attackerIndex].m_bCanAttackPinnedTarget = false;
+        }
+    }
+
+    vec_t flDist = vecSelfPos.DistTo(vecTargetPos);
+    if (!pLastVictim->GetSpecialInfectedDominatingMe() && !pLastVictim->IsIncapped())
+    {
+        if (z_charger_melee_avoid.GetBool() && CheckMelee(pLastVictim) && health >= z_charger_avoid_melee_target_hp.GetInt())
+        {
+            // 允许近战回避且目标正拿着近战武器且血量高于冲锋限制血量，随机获取一个没有拿着近战武器且可视的目标，转移目标
+            if (flDist >= z_charger_min_charge_distance.GetFloat())
+            {
+                CTerrorPlayer *pRandomPlayer = FindRandomNoneMeleeTarget();
+                if (pRandomPlayer)
+                {
+                    bool bUnknown;
+                    Vector vecTargetEyePos = pRandomPlayer->GetEyeOrigin();
+                    if (IsVisiableToPlayer(vecTargetEyePos, (CBasePlayer *)pAttacker, L4D2Teams_Survivor, L4D2Teams_Infected, 0.0, NULL, NULL, &bUnknown))
+                    {
+                        return pRandomPlayer;
+                    }
+                }
+            }
+            else if (!IsInChargeDuration(pAttacker) && flDist < z_charger_min_charge_distance.GetFloat())
+            {
+                SetChargeTimer(pCharge, g_pCVar->FindVar("z_charge_interval")->GetFloat());
+            }
+        }
+
+        switch (z_charger_target_rules.GetInt())
+        {
+            case 2:
+            {
+                return (CTerrorPlayer *)UTIL_GetClosetSurvivor(pAttacker, NULL, true, true);
+            }
+
+            case 3:
+            {
+                return GetTargetThatCanCrumbleTo();
+            }
+
+            default:
+            {
+                return NULL;
+            }
+        }
+    }
+    
+    if (g_ChargerInfoMap[attackerIndex].m_bCanAttackPinnedTarget && (pLastVictim->IsIncapped() || pLastVictim->GetSpecialInfectedDominatingMe()))
+    {
+        return (CTerrorPlayer *)UTIL_GetClosetSurvivor(pAttacker, NULL, true, true);
+    }
+
+    return NULL;
+}
+
 // false means we can charge.
 static bool IsInChargeDuration(CTerrorPlayer *pCharger)
 {
@@ -325,4 +423,124 @@ static bool CheckMelee(CTerrorPlayer *pPlayer)
         return true;
     
     return false;
+}
+
+static int FindRangedClients(CTerrorPlayer *pCharger, float flMin, float flMax)
+{
+    int index = 0;
+    if (!pCharger || !pCharger->IsInGame() || !pCharger->IsCharger())
+        return -1;
+
+    int chargerIndex = pCharger->entindex();
+    if (chargerIndex <= 0 || chargerIndex > gpGlobals->maxClients)
+        return -1;
+
+    edict_t *pChargerEdict = pCharger->edict();
+    if (!pChargerEdict)
+        return -1;
+
+    for (int i = 1; i < gpGlobals->maxClients; i++)
+    {
+        CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndex(i);
+        if (!pPlayer || !pPlayer->IsInGame() || !pPlayer->IsSurvivor() || pPlayer->IsDead() || pPlayer->IsIncapped())
+            continue;
+
+        Vector vecSelfEyePos = pCharger->GetEyeOrigin();
+        Vector vecTargetEyePos = pPlayer->GetEyeOrigin();
+        vec_t flDist = vecSelfEyePos.DistTo(vecTargetEyePos);
+        if (flDist >= flMin && flDist <= flMax)
+        {
+            Ray_t ray;
+            trace_t tr;
+
+            ray.Init(vecSelfEyePos, vecTargetEyePos);
+            UTIL_TraceRay(ray, MASK_VISIBLE, pChargerEdict->GetIServerEntity(), COLLISION_GROUP_NONE, &tr, NULL, NULL);
+
+            if (!tr.DidHit() || (tr.m_pEnt && (tr.m_pEnt->entindex() == i)))
+            {
+                g_ChargerInfoMap[chargerIndex].m_iRangedClientIndex[index] = i;
+                index += 1;
+            }
+        }
+    }
+
+    g_ChargerInfoMap[chargerIndex].m_iRangedIndex = index;
+    return index;
+}
+
+static CTerrorPlayer *FindRandomNoneMeleeTarget()
+{
+    std::vector<CTerrorPlayer *> aSurvivors;
+    for (int i = 1; i < gpGlobals->maxClients; i++)
+    {
+        CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(i);
+        if (!pPlayer || !pPlayer->IsInGame() || !pPlayer->IsSurvivor() || pPlayer->IsDead() || pPlayer->IsIncapped() || pPlayer->GetSpecialInfectedDominatingMe())
+            continue;
+
+        if (!CheckMelee(pPlayer))
+            aSurvivors.push_back(pPlayer);
+    }
+
+    if (aSurvivors.empty())
+        return NULL;
+    
+    int iRandomIndex = RandomInt(0, aSurvivors.size() - 1);
+    CTerrorPlayer *pRandomPlayer = aSurvivors[iRandomIndex];
+    aSurvivors.clear();
+    return pRandomPlayer;
+}
+
+static CTerrorPlayer *GetTargetThatCanCrumbleTo()
+{
+    bool bSecondCheck = false;
+    std::vector<CTerrorPlayer *> aSurvivors;
+    std::vector<vec_t> aDistance;
+    for (int i = 1; i < gpGlobals->maxClients; i++)
+    {
+        CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(i);
+        if (!pPlayer || !pPlayer->IsInGame() || !pPlayer->IsSurvivor() || pPlayer->IsDead() || pPlayer->IsIncapped() || pPlayer->GetSpecialInfectedDominatingMe())
+            continue;
+
+        if (bSecondCheck && aSurvivors.size() >= 1)
+        {
+            Vector vecSelfPos = pPlayer->GetAbsOrigin();
+            for (int j = 0; j < aSurvivors.size(); j++)
+            {
+                Vector vecTargetPos = aSurvivors[j]->GetAbsOrigin();
+                aDistance[j] += vecSelfPos.DistTo(vecTargetPos);
+            }
+
+            continue;
+        }
+
+        aSurvivors.push_back(pPlayer);
+
+        if (i == gpGlobals->maxClients && aSurvivors.size() >= 1 && !bSecondCheck)
+        {
+            i == 1;
+            bSecondCheck = true;
+            continue;
+        }
+    }
+
+    if (aSurvivors.empty())
+        return NULL;
+
+    int index = 0;
+    for (int i = 0; i < aSurvivors.size(); i++)
+    {
+        if (aDistance[aSurvivors[index]->entindex()] > aDistance[aSurvivors[i]->entindex()])
+        {
+            if (aDistance[aSurvivors[i]->entindex()] != -1.0f)
+            {
+                index = i;
+            }
+        }
+    }
+
+    CTerrorPlayer *pTarget = aSurvivors[index];
+    aSurvivors.clear();
+    aDistance.clear();
+
+    return pTarget;
 }

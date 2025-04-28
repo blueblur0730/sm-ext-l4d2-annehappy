@@ -44,7 +44,6 @@ struct smokerInfo_t {
     }
 };
 
-
 struct smokerVictimInfo_t {
     bool m_bLeftBehind;
 
@@ -55,6 +54,5 @@ struct smokerVictimInfo_t {
 
 static CTerrorPlayer *SmokerTargetChoose(int method, CTerrorPlayer *pSmoker, CTerrorPlayer *pSpecificTarget = NULL);
 static bool TR_RayFilterBySmoker(IHandleEntity *pHandleEntity, int contentsMask, void *data);
-static int TeamMeleeCheck();
 
 #endif // _SMOKER_H_INCLUDED_

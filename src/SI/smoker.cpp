@@ -4,7 +4,6 @@
 
 CSmokerTimerEvent g_SmokerTimerEvent;
 static ITimer *g_hTimerCoolDown = NULL;
-static int g_iValidSurvivor = 0;
 
 std::unordered_map<int, smokerInfo_t> g_MapSmokerInfo;
 std::unordered_map<int, smokerVictimInfo_t> g_MapSmokerVictimInfo;
@@ -241,18 +240,14 @@ CTerrorPlayer* BossZombiePlayerBot::OnSmokerChooseVictim(CTerrorPlayer *pAttacke
 
     if (z_smoker_melee_avoid.GetBool())
     {
-        if (g_iValidSurvivor == TeamMeleeCheck())
+        int iValidSurvivor = UTIL_GetValidSurvivorNumber(true, true);
+        if (iValidSurvivor == UTIL_GetTeamMeleeNumber())
         {
-            g_iValidSurvivor = 0;
             CTerrorPlayer *pNewTarget = SmokerTargetChoose(z_smoker_target_rules.GetInt(), pAttacker);
             if (pNewTarget && pNewTarget->IsInGame() && pNewTarget->IsSurvivor())
             {
                 return pNewTarget;
             }
-        }
-        else
-        {
-            g_iValidSurvivor = 0;
         }
 
         if (pLastVictim->IsSurvivor())
@@ -472,31 +467,4 @@ BYDEFAULT:
             return (CTerrorPlayer *)UTIL_GetClosetSurvivor(pSmoker, NULL, true, true);
         }
     }
-}
-
-static int TeamMeleeCheck()
-{
-    int iTeamMeleeCount = 0;
-    for (int i = 1; i < gpGlobals->maxClients; i++)
-    {
-        CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(i);
-        if (!pPlayer)
-            continue;
-
-        if (!pPlayer->IsInGame() || !pPlayer->IsSurvivor() || pPlayer->IsDead() || pPlayer->IsIncapped() || pPlayer->GetSpecialInfectedDominatingMe())
-            continue;
-
-        g_iValidSurvivor += 1;
-        CBaseCombatWeapon *pWeapon = pPlayer->GetActiveWeapon();
-        if (pWeapon && pWeapon->edict())
-        {
-            const char *szClassName = pWeapon->GetClassName();
-            if (!V_strcmp(szClassName, "weapon_melee") || !V_strcmp(szClassName, "weapon_chiansaw"))
-            {
-                iTeamMeleeCount += 1;
-            }
-        }
-    }
-
-    return iTeamMeleeCount;
 }

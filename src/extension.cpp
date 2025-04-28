@@ -54,7 +54,6 @@ ICvar* icvar = NULL;
 IServerGameEnts *gameents= NULL;
 IGameEventManager2 *gameevents= NULL;
 CGlobalVars *gpGlobals= NULL;
-//ISDKHooks *sdkhooks= NULL;
 IServerGameClients *serverClients= NULL;
 IBinTools *bintools= NULL;
 IEngineTrace *enginetrace= NULL;
@@ -70,44 +69,8 @@ CSmokerEventListner g_SmokerEventListner;
 CChargerEventListner g_ChargerEventListner;
 
 int g_iOff_PlayerRunCmd = 0;
-int CBaseEntity::vtblindex_CBaseEntity_Teleport = 0;
-int CBaseEntity::vtblindex_CBaseEntity_GetEyeAngle = 0;
-int CTerrorPlayer::vtblindex_CTerrorPlayer_GetLastKnownArea = 0;
 
-//ICallWrapper *CTraceFilterSimpleExt::pCallCTraceFilterSimple = NULL;
-ICallWrapper *CBaseEntity::pCallTeleport = NULL;
-ICallWrapper *CBaseEntity::pCallGetEyeAngle = NULL;
-ICallWrapper *CTerrorPlayer::pCallOnVomitedUpon = NULL;
-ICallWrapper *CTerrorPlayer::pCallGetSpecialInfectedDominatingMe = NULL;
-ICallWrapper *CTerrorPlayer::pCallIsStaggering = NULL;
-ICallWrapper *CTerrorPlayer::pCallGetLastKnownArea = NULL;
-ICallWrapper *ZombieManager::pCallGetRandomPZSpawnPosition = NULL;
-
-int CVomit::m_iOff_m_isSpraying = 0;
-int CBasePlayer::m_iOff_m_fFlags = 0;
-int CBaseCombatWeapon::m_iOff_m_bInReload = 0;
-int CEnvPhysicsBlocker::m_iOff_m_nBlockType = 0;
-int CTerrorPlayer::m_iOff_m_zombieClass = 0;
-int CTerrorPlayer::m_iOff_m_customAbility = 0;
-int CTerrorPlayer::m_iOff_m_hasVisibleThreats = 0;
-int CTerrorPlayer::m_iOff_m_isIncapacitated = 0;
-int CTerrorPlayer::m_iOff_m_tongueVictim = 0;
-int CTerrorPlayer::m_iOff_m_hGroundEntity = 0;
-int CTerrorPlayer::m_iOff_m_hActiveWeapon = 0;
-
-int TerrorNavMesh::m_iOff_m_fMapMaxFlowDistance = 0;
-int CNavArea::m_iOff_m_flow = 0;
-
-//void *CTraceFilterSimpleExt::pFnCTraceFilterSimple = NULL;
-void *CTerrorPlayer::pFnOnVomitedUpon = NULL;
-void *CTerrorPlayer::pFnGetSpecialInfectedDominatingMe = NULL;
-void *CTerrorPlayer::pFnIsStaggering = NULL;
-void *BossZombiePlayerBot::pFnChooseVictim = NULL;
-void *ZombieManager::pFnGetRandomPZSpawnPosition = NULL;
 Fn_IsVisibleToPlayer pFnIsVisibleToPlayer;
-
-CDetour *CTerrorPlayer::DTR_OnVomitedUpon = NULL;
-CDetour *BossZombiePlayerBot::DTR_ChooseVictim = NULL;
 
 // so yeah the detours like to take the lead.
 DETOUR_DECL_MEMBER3(DTRHandler_BossZombiePlayerBot_ChooseVictim, CTerrorPlayer *, CTerrorPlayer *, pLastVictim, int, targetScanFlags, CBasePlayer *, pIgnorePlayer)
@@ -126,6 +89,12 @@ DETOUR_DECL_MEMBER3(DTRHandler_BossZombiePlayerBot_ChooseVictim, CTerrorPlayer *
 		case ZC_SMOKER:
 		{
 			pPlayer = g_BossZombiePlayerBot.OnSmokerChooseVictim(_this, pLastVictim, targetScanFlags, pIgnorePlayer);
+			break;
+		}
+
+		case ZC_CHARGER:
+		{
+			pPlayer = g_BossZombiePlayerBot.OnChargerChooseVictim(_this, pLastVictim, targetScanFlags, pIgnorePlayer);
 			break;
 		}
 	}
@@ -312,10 +281,8 @@ void CAnneHappy::SDK_OnUnload()
 	}
 
 	g_hookList.clear();
-
 	RemoveEventListner();
 
-	//DestroyCalls(CTraceFilterSimpleExt::pCallCTraceFilterSimple);
 	DestroyCalls(CBaseEntity::pCallTeleport);
 	DestroyCalls(CBaseEntity::pCallGetEyeAngle);
 	DestroyCalls(CTerrorPlayer::pCallGetSpecialInfectedDominatingMe);
@@ -328,6 +295,7 @@ void CAnneHappy::SDK_OnUnload()
 	{
 		g_BoomerEventListner.OnClientDisconnecting(i);
 		g_SmokerEventListner.OnClientDisconnecting(i);
+		g_ChargerEventListner.OnClientDisconnecting(i);
 	}
 
 	playerhelpers->RemoveClientListener(this);
@@ -509,6 +477,9 @@ bool CAnneHappy::FindSendProps(IGameConfig *pGameData, char* error, size_t maxle
 		{"m_hActiveWeapon", "CTerrorPlayer", CTerrorPlayer::m_iOff_m_hActiveWeapon},
 		{"m_pummelVictim", "CTerrorPlayer", CTerrorPlayer::m_iOff_m_pummelVictim},
 		{"m_carryVictim", "CTerrorPlayer", CTerrorPlayer::m_iOff_m_carryVictim},
+		{"m_pounceAttacker", "CTerrorPlayer", CTerrorPlayer::m_iOff_m_pounceAttacker},
+		{"m_tongueOwner", "CTerrorPlayer", CTerrorPlayer::m_iOff_m_tongueOwner},
+		{"m_jockeyAttacker", "CTerrorPlayer", CTerrorPlayer::m_iOff_m_jockeyAttacker}
 	};
 
 	sm_sendprop_info_t info;

@@ -5,6 +5,8 @@
 
 #include "convar.h"
 #include "wrappers.h"
+//#include "shareddefs.h"
+#define MAX_PLAYERS				33  // Absolute max players supported
 
 extern ConVar z_charger_bhop;
 extern ConVar z_charger_bhop_speed;
@@ -63,5 +65,8 @@ struct chargerInfo_t {
 static bool IsInChargeDuration(CTerrorPlayer *pCharger);
 static void SetChargeTimer(CCharge *pAbility, float flDuration = 0.0f);
 static bool CheckMelee(CTerrorPlayer *pCharger);
+static int FindRangedClients(CTerrorPlayer *pCharger, float flMin, float flMax);
+static CTerrorPlayer *FindRandomNoneMeleeTarget();
+static CTerrorPlayer *GetTargetThatCanCrumbleTo();
 
 #endif // _CHARGER_H_INCLUDED_
