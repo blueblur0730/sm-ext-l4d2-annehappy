@@ -11,7 +11,8 @@ project.sources += [
   'src/utils.cpp',
   'src/extension.cpp',
   'src/SI/boomer.cpp',
-  'src/SI/smoker.cpp'
+  'src/SI/smoker.cpp',
+  'src/SI/charger.cpp',
 ]
 
 for sdk_name in Extension.sdks:

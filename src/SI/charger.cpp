@@ -2,6 +2,8 @@
 #include "utils.h"
 #include "in_buttons.h"
 
+#include "random.h"
+
 ConVar z_charger_bhop("z_charger_bhop", "1", FCVAR_NOTIFY | FCVAR_CHEAT, "Enable bhop for charger.", true, 0.0f, true, 1.0f);
 ConVar z_charger_bhop_speed("z_charger_bhop_speed", "90.0", FCVAR_NOTIFY | FCVAR_CHEAT, "Bhop speed for charger.", true, 0.0f, false, 0.0f);
 ConVar z_charger_min_charge_distance("z_charger_min_charge_distance", "250.0", FCVAR_NOTIFY | FCVAR_CHEAT, "Minimum distance to target to charge.", true, 0.0f, false, 0.0f);
@@ -157,7 +159,7 @@ void CChargerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
 
                 for (int i = 0; i < g_ChargerInfoMap[chargerIndex].m_iRangedIndex; i++)
                 {
-                    CTerrorPlayer *pRangedPlayer = (CTerrorPlayer *)UTIL_PlayerByIndex(g_ChargerInfoMap[chargerIndex].m_iRangedClientIndex[i]);
+                    CTerrorPlayer *pRangedPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(g_ChargerInfoMap[chargerIndex].m_iRangedClientIndex[i]);
                     if (g_ChargerInfoMap[chargerIndex].m_iRangedClientIndex[i] == targetIndex 
                         && !pRangedPlayer->GetSpecialInfectedDominatingMe()
                         && UTIL_IsInAimOffset(pCharger, pRangedPlayer, z_charger_target_aim_offset.GetInt())
@@ -211,7 +213,7 @@ void CChargerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
                 for (int i = 0; i < g_ChargerInfoMap[chargerIndex].m_iRangedIndex; i++)
                 {
                     // 循环时，由于 ranged_index 增加时，数组中一定为有效生还者，故无需判断是否是有效生还者
-                    CTerrorPlayer *pRangedPlayer = (CTerrorPlayer *)UTIL_PlayerByIndex(g_ChargerInfoMap[chargerIndex].m_iRangedClientIndex[i]);
+                    CTerrorPlayer *pRangedPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(g_ChargerInfoMap[chargerIndex].m_iRangedClientIndex[i]);
                     if (!pRangedPlayer->GetSpecialInfectedDominatingMe()
                         && UTIL_IsInAimOffset(pCharger, pRangedPlayer, z_charger_target_aim_offset.GetInt())
                         && !UTIL_IsInGetUpAnimation(pRangedPlayer)
@@ -254,8 +256,8 @@ void CChargerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
     Vector vecVelocity = pCharger->GetVelocity();
     vec_t flSpeed = sqrt(vecVelocity.x * vecVelocity.x + vecVelocity.y * vecVelocity.y);
     
-    if (bHasVisibleThreats && z_charger_bhop.GetBool() && iBhopMinDist < flClosetDistance < 10000
-        && flSpeed > 175.0f)
+    bool bDistCheck = (iBhopMinDist < (int)flClosetDistance && iBhopMinDist < 10000 && flClosetDistance < 10000.0f);
+    if (bHasVisibleThreats && z_charger_bhop.GetBool() && bDistCheck && flSpeed > 175.0f)
     {
         if (flags & FL_ONGROUND)
         {
@@ -310,7 +312,7 @@ CTerrorPlayer *BossZombiePlayerBot::OnChargerChooseVictim(CTerrorPlayer *pAttack
     {
         if (health > z_charger_avoid_melee_target_hp.GetInt() && !IsInChargeDuration(pAttacker))
         {
-            CTerrorPlayer *pRangedPlayer = (CTerrorPlayer *)UTIL_PlayerByIndex(g_ChargerInfoMap[attackerIndex].m_iRangedClientIndex[i]);
+            CTerrorPlayer *pRangedPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(g_ChargerInfoMap[attackerIndex].m_iRangedClientIndex[i]);
             if (pRangedPlayer &&
                 pRangedPlayer->GetPounceAttacker() &&
                 pRangedPlayer->GetTongueOwner() &&
@@ -441,7 +443,7 @@ static int FindRangedClients(CTerrorPlayer *pCharger, float flMin, float flMax)
 
     for (int i = 1; i < gpGlobals->maxClients; i++)
     {
-        CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndex(i);
+        CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(i);
         if (!pPlayer || !pPlayer->IsInGame() || !pPlayer->IsSurvivor() || pPlayer->IsDead() || pPlayer->IsIncapped())
             continue;
 
