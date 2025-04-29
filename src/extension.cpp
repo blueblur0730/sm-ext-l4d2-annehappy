@@ -505,6 +505,7 @@ void CAnneHappy::OnClientPutInServer(int client)
 
 	g_BoomerEventListner.OnClientPutInServer(client);
 	g_SmokerEventListner.OnClientPutInServer(client);
+	g_ChargerEventListner.OnClientPutInServer(client);
 
 	PlayerRunCmdHook(client);
 }
@@ -517,6 +518,7 @@ void CAnneHappy::OnClientDisconnecting(int client)
 
 	g_BoomerEventListner.OnClientDisconnecting(client);
 	g_SmokerEventListner.OnClientDisconnecting(client);
+	g_ChargerEventListner.OnClientDisconnecting(client);
 }
 
 void CAnneHappy::PlayerRunCmdHook(int client)

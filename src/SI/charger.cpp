@@ -143,6 +143,43 @@ void CChargerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
     bool bHasVisibleThreats = pCharger->HasVisibleThreats();
     int flags = pCharger->GetFlags();
 
+    // 连跳，并阻止冲锋，可以攻击被控的人的时，将最小距离置 0，连跳追上被控的人
+    int iBhopMinDist = g_ChargerInfoMap[chargerIndex].m_bCanAttackPinnedTarget ? 60 : z_charger_min_charge_distance.GetInt();
+    Vector vecVelocity = pCharger->GetVelocity();
+    vec_t flSpeed = sqrt(vecVelocity.x * vecVelocity.x + vecVelocity.y * vecVelocity.y);
+    
+    bool bDistCheck = (iBhopMinDist < (int)flClosetDistance && flClosetDistance < 10000.0f);
+    if (bHasVisibleThreats && z_charger_bhop.GetBool() && bDistCheck && flSpeed > 175.0f && !bIsCharging)
+    {
+        if (flags & FL_ONGROUND)
+        {
+            Vector vecTargetOrigin = pTarget->GetAbsOrigin();
+            Vector vecBuffer = UTIL_CaculateVel(vecSelfPos, vecTargetOrigin, z_charger_bhop_speed.GetFloat());
+    
+            if (pCharger->GetMoveType() & MOVETYPE_LADDER)
+            {
+                pCmd->buttons &= ~IN_JUMP;
+                pCmd->buttons &= ~IN_DUCK;
+            }
+            else
+            {
+                pCmd->buttons |= IN_JUMP;
+                pCmd->buttons |= IN_DUCK;
+    
+                DoBhop(pCharger, pCmd->buttons, vecBuffer);
+            }
+        }
+    }
+
+    /**
+     * @blueblur0730
+     * 
+     * FIXME:
+     * UTIL_IsInAimOffset only checks the aim direction, 
+     * which means charger will still charge if the follwing logic is true, while their z axis is not aligned.
+     * It causes the case that you are aimming a downstair charger, the charger will still charge you.
+     */
+
     // 建立在距离小于冲锋限制距离，有视野且生还者有效的情况下
     if (flClosetDistance < z_charger_min_charge_distance.GetFloat() && !IsInChargeDuration(pCharger))
     {
@@ -157,6 +194,7 @@ void CChargerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
                 pCmd->buttons &= ~IN_ATTACK;
                 SetChargeTimer(pCharge, g_pCVar->FindVar("z_charge_interval")->GetFloat());
 
+                // 查找冲锋范围内是否有其他正在看着自身的玩家
                 for (int i = 0; i < g_ChargerInfoMap[chargerIndex].m_iRangedIndex; i++)
                 {
                     if (g_ChargerInfoMap[chargerIndex].m_iRangedClientIndex[i] == targetIndex)
@@ -174,7 +212,9 @@ void CChargerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
 
                     if (!bIsCharging && (flags & FL_ONGROUND))
                     {
-                        SetChargeTimer(pCharge, -0.5f);
+#ifdef _DEBUG
+                        rootconsole->ConsolePrint("### CChargerEventListner::OnPlayerRunCmd: Charge Now to ranged player.");
+#endif
                         Vector vecRangedClientPos = pRangedPlayer->GetAbsOrigin();
                         vecRangedClientPos = UTIL_MakeVectorFromPoints(vecSelfPos, vecRangedClientPos);
 
@@ -182,6 +222,7 @@ void CChargerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
                         AngleVectors(angVec, &vecRangedClientPos);
 
                         pCharger->Teleport(NULL, &angVec, NULL);
+                        SetChargeTimer(pCharge, -0.5f);
 
                         pCmd->buttons |= IN_ATTACK2;
                         pCmd->buttons |= IN_ATTACK;
@@ -194,17 +235,17 @@ void CChargerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
             {
                 if (!bIsCharging && (flags & FL_ONGROUND))
                 {
-                    if (!CheckMelee(pTarget))
+                    if (!CheckMelee(pTarget) && !UTIL_IsInGetUpAnimation(pTarget))
                     {
-                        if (!UTIL_IsInGetUpAnimation(pTarget) && !pTarget->IsIncapped())
-                        {
-                            SetChargeTimer(pCharge, -0.5f);
-                            pCmd->buttons |= IN_ATTACK2;
-                            pCmd->buttons |= IN_ATTACK;
-                            return;
-                        }
+#ifdef _DEBUG
+                        rootconsole->ConsolePrint("### CChargerEventListner::OnPlayerRunCmd: Charge Now to a none melee target.");
+#endif
+                        SetChargeTimer(pCharge, -0.5f);
+                        pCmd->buttons |= IN_ATTACK2;
+                        pCmd->buttons |= IN_ATTACK;
+                        return;
                     }
-                    else
+                    else if (UTIL_IsInGetUpAnimation(pTarget))
                     {
                         pCmd->buttons &= ~IN_ATTACK;
                         SetChargeTimer(pCharge, g_pCVar->FindVar("z_charge_interval")->GetFloat());
@@ -216,41 +257,42 @@ void CChargerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
         // 自身血量大于冲锋限制血量，且目标是被控的人时，检测冲锋范围内是否有其他人（可能拿着近战），有则对其冲锋，自身血量小于冲锋限制血量，对着被控的人冲锋
         else if (pTarget->GetSpecialInfectedDominatingMe())
         {
-            if (pCharger->GetHealth() > z_charger_avoid_melee_target_hp.GetInt())
+            pCmd->buttons &= ~IN_ATTACK;
+            SetChargeTimer(pCharge, g_pCVar->FindVar("z_chaarge_interval")->GetFloat());
+            for (int i = 0; i < g_ChargerInfoMap[chargerIndex].m_iRangedIndex; i++)
             {
-                pCmd->buttons &= ~IN_ATTACK;
-                SetChargeTimer(pCharge, g_pCVar->FindVar("z_chaarge_interval")->GetFloat());
-                for (int i = 0; i < g_ChargerInfoMap[chargerIndex].m_iRangedIndex; i++)
+                CTerrorPlayer *pRangedPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(g_ChargerInfoMap[chargerIndex].m_iRangedClientIndex[i]);
+                if (!pRangedPlayer || !pRangedPlayer->IsInGame() || pRangedPlayer->IsDead())
+                    continue;
+
+                if (pRangedPlayer->GetSpecialInfectedDominatingMe() || pRangedPlayer->IsIncapped())
+                    continue;
+
+                if (!UTIL_IsInAimOffset(pCharger, pRangedPlayer, z_charger_target_aim_offset.GetInt()) || UTIL_IsInGetUpAnimation(pRangedPlayer))
+                       continue;
+
+                if (!bIsCharging && (flags & FL_ONGROUND) && pCharger->GetHealth() >= z_charger_avoid_melee_target_hp.GetInt())
                 {
-                    CTerrorPlayer *pRangedPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(g_ChargerInfoMap[chargerIndex].m_iRangedClientIndex[i]);
-                    if (!pRangedPlayer || !pRangedPlayer->IsInGame() || pRangedPlayer->IsDead())
-                        continue;
+#ifdef _DEBUG
+                    rootconsole->ConsolePrint("### CChargerEventListner::OnPlayerRunCmd: Charge Now to the alternator player.");
+#endif
+                        
+                    Vector vecRangedClientPos = pRangedPlayer->GetAbsOrigin();
+                    vecRangedClientPos = UTIL_MakeVectorFromPoints(vecSelfPos, vecRangedClientPos);
 
-                    if (pRangedPlayer->GetSpecialInfectedDominatingMe() || pRangedPlayer->IsIncapped())
-                        continue;
+                    QAngle angVec;
+                    AngleVectors(angVec, &vecRangedClientPos);
+                    pCharger->Teleport(NULL, &angVec, NULL);
 
-                    if (!UTIL_IsInAimOffset(pCharger, pRangedPlayer, z_charger_target_aim_offset.GetInt()) || UTIL_IsInGetUpAnimation(pRangedPlayer))
-                        continue;
-
-                    if (!bIsCharging && (flags & FL_ONGROUND))
-                    {
-                        SetChargeTimer(pCharge, -0.5);
-                        Vector vecRangedClientPos = pRangedPlayer->GetAbsOrigin();
-                        vecRangedClientPos = UTIL_MakeVectorFromPoints(vecSelfPos, vecRangedClientPos);
-
-                        QAngle angVec;
-                        AngleVectors(angVec, &vecRangedClientPos);
-
-                        pCharger->Teleport(NULL, &angVec, NULL);
-
-                        pCmd->buttons |= IN_ATTACK2;
-                        pCmd->buttons |= IN_ATTACK;
-                        return;
-                    }   
+                    SetChargeTimer(pCharge, -0.5);
+                    pCmd->buttons |= IN_ATTACK2;
+                    pCmd->buttons |= IN_ATTACK;
+                    return;
                 }
             }
+            // @blueblur0730 not found, check the original.
             // 被控的人在起身或者倒地状态，阻止冲锋
-            else if (UTIL_IsInGetUpAnimation(pTarget) && pTarget->IsIncapped())
+            if (UTIL_IsInGetUpAnimation(pTarget) && pTarget->IsIncapped())
             {
                 pCmd->buttons &= ~IN_ATTACK;
                 SetChargeTimer(pCharge, g_pCVar->FindVar("z_charge_interval")->GetFloat());
@@ -258,41 +300,12 @@ void CChargerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
             }
         }
     }
+    // @blueblur0730 not yet, keep punching them.
     else if (!bIsCharging && !IsInChargeDuration(pCharger))
     {
         pCmd->buttons &= ~IN_ATTACK;
         SetChargeTimer(pCharge, g_pCVar->FindVar("z_charge_interval")->GetFloat());
         pCmd->buttons |= IN_ATTACK2;
-    }
-
-    // 连跳，并阻止冲锋，可以攻击被控的人的时，将最小距离置 0，连跳追上被控的人
-    int iBhopMinDist = g_ChargerInfoMap[chargerIndex].m_bCanAttackPinnedTarget ? 60 : z_charger_min_charge_distance.GetInt();
-    Vector vecVelocity = pCharger->GetVelocity();
-    vec_t flSpeed = sqrt(vecVelocity.x * vecVelocity.x + vecVelocity.y * vecVelocity.y);
-    
-    bool bDistCheck = (iBhopMinDist < (int)flClosetDistance && flClosetDistance < 10000.0f);
-    if (bHasVisibleThreats && z_charger_bhop.GetBool() && bDistCheck && flSpeed > 175.0f)
-    {
-        if (flags & FL_ONGROUND)
-        {
-            Vector vecTargetOrigin = pTarget->GetAbsOrigin();
-            Vector vecBuffer = UTIL_CaculateVel(vecSelfPos, vecTargetOrigin, z_charger_bhop_speed.GetFloat());
-    
-            pCmd->buttons |= IN_JUMP;
-            pCmd->buttons |= IN_DUCK;
-    
-            if (DoBhop(pCharger, pCmd->buttons, vecBuffer))
-            {
-                return;
-            }
-        }
-    }
-
-    // 梯子上，阻止连跳
-    if (pCharger->GetMoveType() & MOVETYPE_LADDER)
-    {
-        pCmd->buttons &= ~IN_JUMP;
-        pCmd->buttons &= ~IN_DUCK;
     }
 }
 
@@ -399,16 +412,16 @@ CTerrorPlayer *BossZombiePlayerBot::OnChargerChooseVictim(CTerrorPlayer *pAttack
 static bool IsInChargeDuration(CTerrorPlayer *pCharger)
 {
     if (!pCharger || !pCharger->IsInGame() || !pCharger->IsCharger())
-        return false;
+        return true;
 
     int chargerIndex = pCharger->entindex();
     if (chargerIndex <= 0 || chargerIndex > gpGlobals->maxClients)
-        return false;
+        return true;
 
     if (!g_ChargerInfoMap.contains(chargerIndex))
-        return false;
+        return true;
 
-    return (gpGlobals->curtime - (g_ChargerInfoMap[chargerIndex].m_flChargeInterval) + g_pCVar->FindVar("z_charge_interval")->GetFloat()) < 0.0f;
+    return (gpGlobals->curtime - (g_ChargerInfoMap[chargerIndex].m_flChargeInterval + g_pCVar->FindVar("z_charge_interval")->GetFloat())) < 0.0f;
 }
 
 static void SetChargeTimer(CCharge *pAbility, float flDuration)
