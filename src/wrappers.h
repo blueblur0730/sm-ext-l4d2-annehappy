@@ -335,15 +335,15 @@ public:
 };
 
 class CMultiPlayerAnimState {
-	public:
-		static int m_iOff_m_eCurrentMainSequenceActivity;
+public:
+	static int m_iOff_m_eCurrentMainSequenceActivity;
 	
-	public:
-		inline int GetCurrentMainSequenceActivity()
-		{
-			return *(int *)((byte *)(this) + m_iOff_m_eCurrentMainSequenceActivity);
-		}
-	};
+public:
+	inline int GetCurrentMainSequenceActivity()
+	{
+		return *(int *)((byte *)(this) + m_iOff_m_eCurrentMainSequenceActivity);
+	}
+};
 
 class CTerrorPlayer : public CBasePlayer {
 public:

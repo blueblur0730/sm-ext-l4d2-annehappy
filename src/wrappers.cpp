@@ -23,6 +23,7 @@ ICallWrapper *ZombieManager::pCallGetRandomPZSpawnPosition = NULL;
 int CBaseEntity::m_iOff_m_Gender = 0;
 int CBasePlayer::m_iOff_m_fFlags = 0;
 int CBaseAbility::m_iOff_m_nextActivationTimer = 0;
+int CBasePlayer::m_iOff_m_nSequence = 0;
 int CBaseCombatWeapon::m_iOff_m_bInReload = 0;
 int CEnvPhysicsBlocker::m_iOff_m_nBlockType = 0;
 int CTerrorPlayer::m_iOff_m_zombieClass = 0;
@@ -40,6 +41,7 @@ int CTerrorPlayer::m_iOff_m_jockeyAttacker = 0;
 int CTerrorPlayer::m_iOff_m_PlayerAnimState = 0;
 int TerrorNavMesh::m_iOff_m_fMapMaxFlowDistance = 0;
 int CNavArea::m_iOff_m_flow = 0;
+int CMultiPlayerAnimState::m_iOff_m_eCurrentMainSequenceActivity = 0;
 
 void *CTerrorPlayer::pFnOnVomitedUpon = NULL;
 void *CTerrorPlayer::pFnGetSpecialInfectedDominatingMe = NULL;
@@ -89,6 +91,11 @@ bool CTraceFilterSimpleExt::ShouldHitEntity(IHandleEntity *pHandleEntity, int co
 		return false;
 
 	return true;
+}
+
+float CountdownTimer::Now() const
+{
+    return gpGlobals->curtime;
 }
 
 void CBaseEntity::Teleport(const Vector *newPosition, const QAngle *newAngles, const Vector *newVelocity)
