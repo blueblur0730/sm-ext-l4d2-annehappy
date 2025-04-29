@@ -159,14 +159,20 @@ void CChargerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
 
                 for (int i = 0; i < g_ChargerInfoMap[chargerIndex].m_iRangedIndex; i++)
                 {
+                    if (g_ChargerInfoMap[chargerIndex].m_iRangedClientIndex[i] == targetIndex)
+                        continue;
+                        
                     CTerrorPlayer *pRangedPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(g_ChargerInfoMap[chargerIndex].m_iRangedClientIndex[i]);
-                    if (g_ChargerInfoMap[chargerIndex].m_iRangedClientIndex[i] == targetIndex 
-                        && !pRangedPlayer->GetSpecialInfectedDominatingMe()
-                        && UTIL_IsInAimOffset(pCharger, pRangedPlayer, z_charger_target_aim_offset.GetInt())
-                        && !UTIL_IsInGetUpAnimation(pRangedPlayer)
-                        && !pRangedPlayer->IsIncapped()
-                        && bIsCharging
-                        && (flags & FL_ONGROUND))
+                    if (!pRangedPlayer || !pRangedPlayer->IsInGame() || pRangedPlayer->IsDead())
+                        continue;
+
+                    if (pRangedPlayer->GetSpecialInfectedDominatingMe() || pRangedPlayer->IsIncapped())
+                        continue;
+
+                    if (!UTIL_IsInAimOffset(pCharger, pRangedPlayer, z_charger_target_aim_offset.GetInt()) || UTIL_IsInGetUpAnimation(pRangedPlayer))
+                        continue;
+
+                    if (!bIsCharging && (flags & FL_ONGROUND))
                     {
                         SetChargeTimer(pCharge, -0.5f);
                         Vector vecRangedClientPos = pRangedPlayer->GetAbsOrigin();
@@ -184,23 +190,27 @@ void CChargerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
                 }
             }
             // 目标正在看着自身，自身可以冲锋，目标没有拿着近战，且不在倒地或起身状态时则直接冲锋，目标拿着近战，则转到 OnChooseVictim 处理，转移新目标或继续挥拳
-            else if (UTIL_IsInAimOffset(pCharger, pTarget, z_charger_target_aim_offset.GetInt())
-                && !CheckMelee(pTarget)
-                && !UTIL_IsInGetUpAnimation(pTarget)
-                && !pTarget->IsIncapped()
-                && !bIsCharging
-                && (flags & FL_ONGROUND))
+            else if (UTIL_IsInAimOffset(pCharger, pTarget, z_charger_target_aim_offset.GetInt()))
             {
-                SetChargeTimer(pCharge, -0.5f);
-                pCmd->buttons |= IN_ATTACK2;
-                pCmd->buttons |= IN_ATTACK;
-                return;
-            }
-            else if (UTIL_IsInGetUpAnimation(pTarget) && pTarget->IsIncapped())
-            {
-                pCmd->buttons &= ~IN_ATTACK;
-                SetChargeTimer(pCharge, g_pCVar->FindVar("z_charge_interval")->GetFloat());
-                pCmd->buttons |= IN_ATTACK2;
+                if (!bIsCharging && (flags & FL_ONGROUND))
+                {
+                    if (!CheckMelee(pTarget))
+                    {
+                        if (!UTIL_IsInGetUpAnimation(pTarget) && !pTarget->IsIncapped())
+                        {
+                            SetChargeTimer(pCharge, -0.5f);
+                            pCmd->buttons |= IN_ATTACK2;
+                            pCmd->buttons |= IN_ATTACK;
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        pCmd->buttons &= ~IN_ATTACK;
+                        SetChargeTimer(pCharge, g_pCVar->FindVar("z_charge_interval")->GetFloat());
+                        pCmd->buttons |= IN_ATTACK2;
+                    }
+                }
             }
         }
         // 自身血量大于冲锋限制血量，且目标是被控的人时，检测冲锋范围内是否有其他人（可能拿着近战），有则对其冲锋，自身血量小于冲锋限制血量，对着被控的人冲锋
@@ -212,16 +222,19 @@ void CChargerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
                 SetChargeTimer(pCharge, g_pCVar->FindVar("z_chaarge_interval")->GetFloat());
                 for (int i = 0; i < g_ChargerInfoMap[chargerIndex].m_iRangedIndex; i++)
                 {
-                    // 循环时，由于 ranged_index 增加时，数组中一定为有效生还者，故无需判断是否是有效生还者
                     CTerrorPlayer *pRangedPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(g_ChargerInfoMap[chargerIndex].m_iRangedClientIndex[i]);
-                    if (!pRangedPlayer->GetSpecialInfectedDominatingMe()
-                        && UTIL_IsInAimOffset(pCharger, pRangedPlayer, z_charger_target_aim_offset.GetInt())
-                        && !UTIL_IsInGetUpAnimation(pRangedPlayer)
-                        && !pRangedPlayer->IsIncapped()
-                        && bIsCharging
-                        && (flags & FL_ONGROUND))
+                    if (!pRangedPlayer || !pRangedPlayer->IsInGame() || pRangedPlayer->IsDead())
+                        continue;
+
+                    if (pRangedPlayer->GetSpecialInfectedDominatingMe() || pRangedPlayer->IsIncapped())
+                        continue;
+
+                    if (!UTIL_IsInAimOffset(pCharger, pRangedPlayer, z_charger_target_aim_offset.GetInt()) || UTIL_IsInGetUpAnimation(pRangedPlayer))
+                        continue;
+
+                    if (!bIsCharging && (flags & FL_ONGROUND))
                     {
-                        SetChargeTimer(pCharge, gpGlobals->curtime - 0.5);
+                        SetChargeTimer(pCharge, -0.5);
                         Vector vecRangedClientPos = pRangedPlayer->GetAbsOrigin();
                         vecRangedClientPos = UTIL_MakeVectorFromPoints(vecSelfPos, vecRangedClientPos);
 
@@ -236,6 +249,7 @@ void CChargerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
                     }   
                 }
             }
+            // 被控的人在起身或者倒地状态，阻止冲锋
             else if (UTIL_IsInGetUpAnimation(pTarget) && pTarget->IsIncapped())
             {
                 pCmd->buttons &= ~IN_ATTACK;
@@ -256,7 +270,7 @@ void CChargerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
     Vector vecVelocity = pCharger->GetVelocity();
     vec_t flSpeed = sqrt(vecVelocity.x * vecVelocity.x + vecVelocity.y * vecVelocity.y);
     
-    bool bDistCheck = (iBhopMinDist < (int)flClosetDistance && iBhopMinDist < 10000 && flClosetDistance < 10000.0f);
+    bool bDistCheck = (iBhopMinDist < (int)flClosetDistance && flClosetDistance < 10000.0f);
     if (bHasVisibleThreats && z_charger_bhop.GetBool() && bDistCheck && flSpeed > 175.0f)
     {
         if (flags & FL_ONGROUND)
@@ -307,16 +321,16 @@ CTerrorPlayer *BossZombiePlayerBot::OnChargerChooseVictim(CTerrorPlayer *pAttack
     int health = pAttacker->GetHealth();
     Vector vecTargetPos = pLastVictim->GetEyeOrigin();
 
-    // 1. 范围内有人被控且自身血量大于限制血量，则先去对被控的人挥拳
+    // 范围内有人被控且自身血量大于限制血量，则先去对被控的人挥拳
     for (int i = 0; i < g_ChargerInfoMap[attackerIndex].m_iRangedIndex; i++)
     {
         if (health > z_charger_avoid_melee_target_hp.GetInt() && !IsInChargeDuration(pAttacker))
         {
             CTerrorPlayer *pRangedPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(g_ChargerInfoMap[attackerIndex].m_iRangedClientIndex[i]);
             if (pRangedPlayer &&
-                pRangedPlayer->GetPounceAttacker() &&
-                pRangedPlayer->GetTongueOwner() &&
-                pRangedPlayer->GetJockeyAttacker()
+                (pRangedPlayer->GetPounceAttacker() ||
+                pRangedPlayer->GetTongueOwner() ||
+                pRangedPlayer->GetJockeyAttacker())
             )
             {
                 g_ChargerInfoMap[attackerIndex].m_bCanAttackPinnedTarget = true;
@@ -347,6 +361,7 @@ CTerrorPlayer *BossZombiePlayerBot::OnChargerChooseVictim(CTerrorPlayer *pAttack
                     }
                 }
             }
+            // 不满足近战回避距离限制或血量要求的牛，阻止其冲锋，令其对手持近战的目标挥拳
             else if (!IsInChargeDuration(pAttacker) && flDist < z_charger_min_charge_distance.GetFloat())
             {
                 SetChargeTimer(pCharge, g_pCVar->FindVar("z_charge_interval")->GetFloat());
@@ -403,8 +418,8 @@ static void SetChargeTimer(CCharge *pAbility, float flDuration)
 
     if (!pAbility->IsCharging())
     {
-        CountdownTimer pTimer = pAbility->GetNextActivationTimer();
-        pTimer.Start(flDuration);
+        CountdownTimer &pTimer = pAbility->GetNextActivationTimer();
+        pTimer.SetTimeStamp(flDuration);    // we do not need to change the duration.
     }
 }
 

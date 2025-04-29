@@ -98,6 +98,26 @@ public:
 		m_duration = 0.0f;
 	}
 
+	void SetTimeStamp( float duration )
+	{
+		m_timestamp = duration;
+	}
+
+	float GetTimeStamp( void ) const
+	{
+		return m_timestamp;
+	}
+
+	float GetDuration( void ) const
+	{
+		return m_duration;
+	}
+
+	void SetDuration( float duration )
+	{
+		m_duration = duration;
+	}
+
 	void Reset( void )
 	{
 		m_timestamp = Now() + m_duration;
@@ -295,7 +315,7 @@ public:
 	static int m_iOff_m_nextActivationTimer;
 
 public:
-    inline CountdownTimer GetNextActivationTimer()
+    inline CountdownTimer &GetNextActivationTimer()
     {
         return *(CountdownTimer *)((byte*)(this) + m_iOff_m_nextActivationTimer);
     }
