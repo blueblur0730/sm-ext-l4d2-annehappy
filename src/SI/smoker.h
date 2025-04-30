@@ -36,20 +36,8 @@ public:
     virtual void OnTimerEnd(ITimer *pTimer, void *pData);
 };
 
-struct smokerInfo_t {
-    bool m_bCanTongue;
-
-    void Init() {
-        m_bCanTongue = false;
-    }
-};
-
 struct smokerVictimInfo_t {
-    bool m_bLeftBehind;
-
-    void Init() {
-        m_bLeftBehind = false;
-    }
+    bool m_bLeftBehind = false;
 };
 
 static CTerrorPlayer *SmokerTargetChoose(int method, CTerrorPlayer *pSmoker, CTerrorPlayer *pSpecificTarget = NULL);

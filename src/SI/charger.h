@@ -43,11 +43,11 @@ public:
 };
 
 struct chargerInfo_t {
-    float m_flChargeInterval;
-    bool m_bIsCharging;
-    bool m_bCanAttackPinnedTarget;
+    float m_flChargeInterval = 0.0;
+    bool m_bIsCharging = false;
+    bool m_bCanAttackPinnedTarget = false;
     int m_iRangedClientIndex[MAX_PLAYERS];
-    int m_iRangedIndex;
+    int m_iRangedIndex = -1;
 
     void Init() {
         m_flChargeInterval = 0.0f;

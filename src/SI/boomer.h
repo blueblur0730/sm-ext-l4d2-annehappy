@@ -45,11 +45,11 @@ struct targetInfo_t {
 };
 
 struct boomerInfo_t {
-    bool m_bCanBile;
-    bool m_bIsInCoolDown;
-    bool m_bBiling;
+    bool m_bCanBile = false;
+    bool m_bIsInCoolDown = false;
+    bool m_bBiling = false;
     std::vector<targetInfo_t> m_aTargetInfo;
-    int m_nBileFrame[2];
+    int m_nBileFrame[2] = {0, 0};
 
     void Init() {
         m_bCanBile = false;
@@ -60,8 +60,8 @@ struct boomerInfo_t {
 };
 
 struct boomerVictimInfo_t {
-    bool m_bBiled;
-    int m_iSecondCheckFrame;
+    bool m_bBiled = false;
+    int m_iSecondCheckFrame = 0;
 
     void Init() {
         m_bBiled = false;

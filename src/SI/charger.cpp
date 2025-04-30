@@ -93,13 +93,6 @@ void CChargerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
     if (chargerIndex <= 0 || chargerIndex > gpGlobals->maxClients)
         return;
 
-    if (!g_ChargerInfoMap.contains(chargerIndex) && pCharger->IsCharger())
-    {
-        chargerInfo_t info;
-        info.Init();
-        g_ChargerInfoMap[chargerIndex] = info;
-    }
-
     if (pCharger->GetPummelVictim() || pCharger->GetCarryVictim())
         return;
 

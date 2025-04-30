@@ -111,13 +111,6 @@ void CBoomerEventListner::FireGameEvent(IGameEvent *event)
         if (!pPlayer->IsBoomer())
             return;
 
-        if (!g_MapBoomerInfo.contains(index))
-        {
-            boomerInfo_t boomerInfo;
-            boomerInfo.Init();
-            g_MapBoomerInfo[index] = boomerInfo;
-        }
-
         g_MapBoomerInfo[index].m_bCanBile = true;
 
 #ifdef _BOOMER_DEBUG
@@ -135,12 +128,6 @@ void CBoomerEventListner::FireGameEvent(IGameEvent *event)
         if (!pPlayer->IsBoomer())
             return;
 
-        if (!g_MapBoomerInfo.contains(index))
-        {
-            boomerInfo_t boomerInfo;
-            boomerInfo.Init();
-            g_MapBoomerInfo[index] = boomerInfo;
-        }
 #ifdef _BOOMER_DEBUG
         rootconsole->ConsolePrint("### CBoomerEventListner::FireGameEvent, player_shoved");
 #endif
@@ -160,13 +147,6 @@ void CBoomerEventListner::FireGameEvent(IGameEvent *event)
         int index = pVictim->entindex();
         if (index <= 0 || index > gpGlobals->maxClients)
             return;
-
-        if (!g_MapBoomerVictimInfo.contains(index))
-        {
-            boomerVictimInfo_t victimInfo;
-            victimInfo.Init();
-            g_MapBoomerVictimInfo[index] = victimInfo;
-        }
 
 #ifdef _BOOMER_DEBUG
         rootconsole->ConsolePrint("### CBoomerEventListner::FireGameEvent, player_now_it");
@@ -190,13 +170,6 @@ void CBoomerEventListner::FireGameEvent(IGameEvent *event)
             CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(i);
             if (!pPlayer || !pPlayer->IsInGame() || !pPlayer->IsSurvivor())
                 continue;
-
-            if (!g_MapBoomerVictimInfo.contains(i))
-            {
-                boomerVictimInfo_t victimInfo;
-                victimInfo.Init();
-                g_MapBoomerVictimInfo[i] = victimInfo;
-            }
 
             g_MapBoomerVictimInfo[i].m_iSecondCheckFrame = 0;
         }
@@ -358,16 +331,6 @@ void CBoomerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
     if (playerIndex <= 0 || playerIndex > gpGlobals->maxClients)
         return;
 
-    if (!g_MapBoomerInfo.contains(playerIndex) && pPlayer->IsBoomer())
-    {
-#ifdef _BOOMER_DEBUG
-        rootconsole->ConsolePrint("### CBoomerEventListner::OnPlayerRunCmd, Creating new boomerInfo for player: %d", playerIndex);
-#endif 
-        boomerInfo_t boomerInfo;
-        boomerInfo.Init();
-        g_MapBoomerInfo[playerIndex] = boomerInfo;
-    }
-
     CTerrorPlayer *pTarget = (CTerrorPlayer *)UTIL_GetClosetSurvivor(pPlayer);
     if (!pTarget)
         return;
@@ -375,16 +338,6 @@ void CBoomerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
     int targetIndex = pTarget->entindex();
     if (targetIndex <= 0 || targetIndex > gpGlobals->maxClients)
         return;
-
-    if (!g_MapBoomerVictimInfo.contains(targetIndex) && pTarget->IsSurvivor())
-    {
-#ifdef _BOOMER_DEBUG
-        rootconsole->ConsolePrint("### CBoomerEventListner::OnPlayerRunCmd, Creating new boomerInfo for player: %d", targetIndex);
-#endif 
-        boomerVictimInfo_t victimInfo;
-        victimInfo.Init();
-        g_MapBoomerVictimInfo[targetIndex] = victimInfo;
-    }
 
     bool bHasVisibleThreats = pPlayer->HasVisibleThreats();
 
@@ -456,13 +409,6 @@ void CBoomerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
 #endif
             if (victimIndex <= 0 || victimIndex > gpGlobals->maxClients)
                 return;
-
-            if (!g_MapBoomerVictimInfo.contains(victimIndex))
-            {
-                boomerVictimInfo_t victimInfo;
-                victimInfo.Init();
-                g_MapBoomerVictimInfo[victimIndex] = victimInfo;
-            }
 
             vec_t flSpinAngle = targetInfo.flAngle;
 
@@ -627,18 +573,18 @@ void CBoomerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
         Vector vecBuffer = UTIL_CaculateVel(vecSelfPos, vecTargetPos, z_boomer_bhop_speed.GetFloat());
         pCmd->buttons |= IN_JUMP;
         pCmd->buttons |= IN_DUCK;
-
-        if (DoBhop(pPlayer, pCmd->buttons, vecBuffer))
-            return;
-    }
-
-    /* 爬梯子时，禁止连跳，蹲下与喷吐 */
-    if (pPlayer->GetMoveType() & MOVETYPE_LADDER)
-    {
-        pCmd->buttons &= ~IN_ATTACK;
-        pCmd->buttons &= ~IN_ATTACK2;
-        pCmd->buttons &= ~IN_JUMP;
-        pCmd->buttons &= ~IN_DUCK;
+        /* 爬梯子时，禁止连跳，蹲下与喷吐 */
+        if (pPlayer->GetMoveType() & MOVETYPE_LADDER)
+        {
+            pCmd->buttons &= ~IN_ATTACK;
+            pCmd->buttons &= ~IN_ATTACK2;
+            pCmd->buttons &= ~IN_JUMP;
+            pCmd->buttons &= ~IN_DUCK;
+        }
+        else
+        {
+            DoBhop(pPlayer, pCmd->buttons, vecBuffer);
+        }
     }
 }
 
@@ -692,13 +638,6 @@ static bool secondCheck(CBaseEntity *pPlayer, CBaseEntity *pTarget)
     Vector vecSelfEyePos, vecTargetEyePos;
     serverClients->ClientEarPosition(pGamePlayer->GetEdict(), &vecSelfEyePos);
     serverClients->ClientEarPosition(pGameTarget->GetEdict(), &vecTargetEyePos);
-
-    if (!g_MapBoomerVictimInfo.contains(index))
-    {
-        boomerVictimInfo_t victimInfo;
-        victimInfo.Init();
-        g_MapBoomerVictimInfo[index] = victimInfo;
-    }
 
     vec_t flDistance = vecSelfEyePos.DistTo(vecTargetEyePos);
     if (flDistance <= g_pCVar->FindVar("z_vomit_range")->GetFloat() ||
