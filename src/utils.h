@@ -1,8 +1,6 @@
 #ifndef _UTILS_H_INCLUDED_
 #define _UTILS_H_INCLUDED_
 
-#pragma once
-
 #include "extension.h"
 #include "iplayerinfo.h"
 #include "engine/IStaticPropMgr.h"
@@ -31,11 +29,25 @@ struct utils_t {
     int index;
 };
 
+const int g_iGetUpAnimationsSequence[8][4] =
+{
+	{528, 759, 763, 764},	// 比尔
+	{537, 819, 823, 824},	// 佐伊
+	{528, 759, 763, 764},	// 路易斯
+	{531, 762, 766, 767},	// 弗朗西斯
+	{620, 667, 671, 672},	// 西装
+	{629, 674, 678, 679},	// 女人
+	{621, 656, 660, 661},	// 黑胖
+	{625, 671, 675, 676},	// 帽子
+};
+
 CBasePlayer* UTIL_PlayerByIndexExt(int playerIndex);
 
 CBasePlayer* UTIL_PlayerByUserIdExt(int userID);
 
 CBasePlayer* UTIL_GetClosetSurvivor(CBasePlayer* pPlayer, CBasePlayer* pIgnorePlayer = NULL, bool bCheckIncapp = false, bool bCheckDominated = false);
+
+vec_t UTIL_GetClosetSurvivorDistance(CBasePlayer *pPlayer, CBasePlayer *pIgnorePlayer = NULL, bool bCheckIncapp = false, bool bCheckDominated = false);
 
 Vector UTIL_MakeVectorFromPoints(Vector src1, Vector src2);
 
@@ -60,11 +72,16 @@ CBaseEntity *UTIL_GetClientAimTarget(CBaseEntity *pEntity, bool only_players);
 bool UTIL_IsLeftBehind(CTerrorPlayer *pPlayer);
 
 float CalculateTeamDistance(CTerrorPlayer *pIgnorePlayer = NULL);
-/*
-inline const CBaseEntity *EntityFromEntityHandle(const IHandleEntity *pConstHandleEntity);
 
-inline CBaseEntity *EntityFromEntityHandle(IHandleEntity *pHandleEntity);
-*/
+bool PassServerEntityFilter(const IHandleEntity *pTouch, const IHandleEntity *pPass);
+
+bool DoBhop(CBasePlayer *pPlayer, int buttons, Vector vec);
+
+bool UTIL_IsInGetUpAnimation(CBasePlayer *pPlayer);
+
+int UTIL_GetValidSurvivorNumber(bool bCheckIncapp = false, bool bCheckDominated = false);
+
+int UTIL_GetTeamMeleeNumber();
 
 inline const CBaseEntity *EntityFromEntityHandle( const IHandleEntity *pConstHandleEntity )
 {
@@ -95,10 +112,6 @@ inline CBaseEntity *EntityFromEntityHandle( IHandleEntity *pHandleEntity )
 	return pUnk->GetBaseEntity();
 #endif
 }
-
-bool PassServerEntityFilter(const IHandleEntity *pTouch, const IHandleEntity *pPass);
-
-bool DoBhop(CBasePlayer *pPlayer, int buttons, Vector vec);
 
 inline float FloatAbs(float f)
 {

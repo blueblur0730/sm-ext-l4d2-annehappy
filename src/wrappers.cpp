@@ -8,6 +8,51 @@ int CBaseEntity::dataprop_m_MoveType = -1;
 int CBaseEntity::dataprop_m_lifeState = -1;
 int CBaseEntity::dataprop_m_iHealth = -1;
 
+int CBaseEntity::vtblindex_CBaseEntity_Teleport = 0;
+int CBaseEntity::vtblindex_CBaseEntity_GetEyeAngle = 0;
+int CTerrorPlayer::vtblindex_CTerrorPlayer_GetLastKnownArea = 0;
+
+ICallWrapper *CBaseEntity::pCallTeleport = NULL;
+ICallWrapper *CBaseEntity::pCallGetEyeAngle = NULL;
+ICallWrapper *CTerrorPlayer::pCallOnVomitedUpon = NULL;
+ICallWrapper *CTerrorPlayer::pCallGetSpecialInfectedDominatingMe = NULL;
+ICallWrapper *CTerrorPlayer::pCallIsStaggering = NULL;
+ICallWrapper *CTerrorPlayer::pCallGetLastKnownArea = NULL;
+ICallWrapper *ZombieManager::pCallGetRandomPZSpawnPosition = NULL;
+
+int CBaseEntity::m_iOff_m_Gender = 0;
+int CBasePlayer::m_iOff_m_fFlags = 0;
+int CBaseAbility::m_iOff_m_nextActivationTimer = 0;
+int CBasePlayer::m_iOff_m_nSequence = 0;
+int CBaseCombatWeapon::m_iOff_m_bInReload = 0;
+int CEnvPhysicsBlocker::m_iOff_m_nBlockType = 0;
+int CTerrorPlayer::m_iOff_m_zombieClass = 0;
+int CTerrorPlayer::m_iOff_m_customAbility = 0;
+int CTerrorPlayer::m_iOff_m_hasVisibleThreats = 0;
+int CTerrorPlayer::m_iOff_m_isIncapacitated = 0;
+int CTerrorPlayer::m_iOff_m_tongueVictim = 0;
+int CTerrorPlayer::m_iOff_m_hGroundEntity = 0;
+int CTerrorPlayer::m_iOff_m_hActiveWeapon = 0;
+int CTerrorPlayer::m_iOff_m_pummelVictim = 0;
+int CTerrorPlayer::m_iOff_m_carryVictim = 0;
+int CTerrorPlayer::m_iOff_m_pounceAttacker = 0;
+int CTerrorPlayer::m_iOff_m_tongueOwner = 0;
+int CTerrorPlayer::m_iOff_m_jockeyAttacker = 0;
+int CTerrorPlayer::m_iOff_m_PlayerAnimState = 0;
+int TerrorNavMesh::m_iOff_m_fMapMaxFlowDistance = 0;
+int CNavArea::m_iOff_m_flow = 0;
+int CMultiPlayerAnimState::m_iOff_m_eCurrentMainSequenceActivity = 0;
+
+void *CTerrorPlayer::pFnOnVomitedUpon = NULL;
+void *CTerrorPlayer::pFnGetSpecialInfectedDominatingMe = NULL;
+void *CTerrorPlayer::pFnIsStaggering = NULL;
+void *BossZombiePlayerBot::pFnChooseVictim = NULL;
+void *ZombieManager::pFnGetRandomPZSpawnPosition = NULL;
+
+CDetour *CTerrorPlayer::DTR_OnVomitedUpon = NULL;
+CDetour *BossZombiePlayerBot::DTR_ChooseVictim = NULL;
+
+
 CTraceFilterSimpleExt::CTraceFilterSimpleExt(const IHandleEntity* passedict, Collision_Group_t collisionGroup, ShouldHitFunc_t pExtraShouldHitFunc, void* data)
 {
     m_pPassEnt = passedict;
@@ -46,6 +91,11 @@ bool CTraceFilterSimpleExt::ShouldHitEntity(IHandleEntity *pHandleEntity, int co
 		return false;
 
 	return true;
+}
+
+float CountdownTimer::Now() const
+{
+    return gpGlobals->curtime;
 }
 
 void CBaseEntity::Teleport(const Vector *newPosition, const QAngle *newAngles, const Vector *newVelocity)
@@ -101,26 +151,6 @@ L4D2Teams CTerrorPlayer::GetTeam()
         return L4D2Teams_Unasigned;
 
     return (L4D2Teams)pPlayerInfo->GetTeamIndex();
-}
-
-CBaseAbility *CTerrorPlayer::GetAbility()
-{
-    return (CBaseAbility *)OffsetEHandleToEntity(m_iOff_m_customAbility);
-}
-
-CBaseCombatWeapon *CTerrorPlayer::GetActiveWeapon()
-{
-    return (CBaseCombatWeapon *)OffsetEHandleToEntity(m_iOff_m_hActiveWeapon);
-}
-
-CTerrorPlayer *CTerrorPlayer::GetTongueVictim()
-{
-    return (CTerrorPlayer *)OffsetEHandleToEntity(m_iOff_m_tongueVictim);
-}
-
-CBaseEntity *CTerrorPlayer::GetGroundEntity()
-{
-    return OffsetEHandleToEntity(m_iOff_m_hGroundEntity);
 }
 
 CBaseEntity *CTerrorPlayer::OffsetEHandleToEntity(int iOff) {

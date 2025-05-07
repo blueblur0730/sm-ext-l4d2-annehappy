@@ -87,6 +87,27 @@ CBasePlayer* UTIL_GetClosetSurvivor(CBasePlayer* pPlayer, CBasePlayer* pIgnorePl
     return UTIL_PlayerByIndexExt(closetIndex);
 }
 
+vec_t UTIL_GetClosetSurvivorDistance(CBasePlayer* pPlayer, CBasePlayer* pIgnorePlayer, bool bCheckIncapp, bool bCheckDominated)
+{
+    IPlayerInfo *playerinfo = ((CTerrorPlayer *)pPlayer)->GetPlayerInfo();
+    if (!playerinfo)
+        return -1.0f;
+    
+    Vector vecOrigin = playerinfo->GetAbsOrigin();
+    CBasePlayer *pClosetPlayer = UTIL_GetClosetSurvivor(pPlayer, pIgnorePlayer, bCheckIncapp, bCheckDominated);
+    if (pClosetPlayer)
+    {
+        IPlayerInfo *targetInfo = ((CTerrorPlayer *)pPlayer)->GetPlayerInfo();
+        if (!targetInfo)
+            return -1.0f;
+
+        Vector vecTargetOrigin = targetInfo->GetAbsOrigin();
+        return vecOrigin.DistTo(vecTargetOrigin);
+    }
+
+    return -1.0f;
+}
+
 Vector UTIL_MakeVectorFromPoints(Vector src1, Vector src2)
 {
     Vector output;
@@ -440,8 +461,80 @@ bool PassServerEntityFilter( const IHandleEntity *pTouch, const IHandleEntity *p
 
 bool DoBhop(CBasePlayer *pPlayer, int buttons, Vector vec)
 {
-    if (buttons & IN_FORWARD || buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT)
+    if (buttons & IN_FORWARD || buttons & IN_BACK || buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT)
         return ClientPush(pPlayer, vec);
 
     return false;
+}
+
+bool UTIL_IsInGetUpAnimation(CBasePlayer *pPlayer)
+{
+    if (!pPlayer)
+        return false;
+
+    int character = pPlayer->GetGender();
+    if (character < L4D2Gender_Nanvet || character > L4D2Gender_Mechanic)
+        return false;
+
+    int sequence = pPlayer->GetSequence();
+    if (sequence < 0)
+        return false;
+
+    for (int i = 0; i < 4; i++)
+    {
+        if (sequence == g_iGetUpAnimationsSequence[character - 3][i])
+            return true;
+    }
+
+    return false;
+}
+
+int UTIL_GetValidSurvivorNumber(bool bCheckIncapp, bool bCheckDominated)
+{
+    int iValidSurvivor = 0;
+    for (int i = 1; i < gpGlobals->maxClients; i++)
+    {
+        CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(i);
+        if (!pPlayer)
+            continue;
+
+        if (!pPlayer->IsInGame() || !pPlayer->IsSurvivor() || pPlayer->IsDead())
+            continue;
+
+        if (bCheckIncapp && pPlayer->IsIncapped())
+            continue;
+
+        if (bCheckDominated && pPlayer->GetSpecialInfectedDominatingMe())
+            continue;
+
+        iValidSurvivor += 1;
+    }
+
+    return iValidSurvivor;
+}
+
+int UTIL_GetTeamMeleeNumber()
+{
+    int iTeamMeleeCount = 0;
+    for (int i = 1; i < gpGlobals->maxClients; i++)
+    {
+        CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(i);
+        if (!pPlayer)
+            continue;
+
+        if (!pPlayer->IsInGame() || !pPlayer->IsSurvivor() || pPlayer->IsDead() || pPlayer->IsIncapped() || pPlayer->GetSpecialInfectedDominatingMe())
+            continue;
+
+        CBaseCombatWeapon *pWeapon = pPlayer->GetActiveWeapon();
+        if (pWeapon && pWeapon->edict())
+        {
+            const char *szClassName = pWeapon->GetClassName();
+            if (!V_strcmp(szClassName, "weapon_melee") || !V_strcmp(szClassName, "weapon_chiansaw"))
+            {
+                iTeamMeleeCount += 1;
+            }
+        }
+    }
+
+    return iTeamMeleeCount;
 }

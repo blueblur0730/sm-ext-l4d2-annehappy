@@ -4,10 +4,9 @@
 
 CSmokerTimerEvent g_SmokerTimerEvent;
 static ITimer *g_hTimerCoolDown = NULL;
-static int g_iValidSurvivor = 0;
 
-std::unordered_map<int, smokerInfo_t> g_MapSmokerInfo;
-std::unordered_map<int, smokerVictimInfo_t> g_MapSmokerVictimInfo;
+std::unordered_map<int, bool> g_MapSmokerCanTongue;
+std::unordered_map<int, bool> g_MapSmokerVictimLeftBehind;
 
 ConVar z_smoker_bhop("z_smoker_bhop", "1", FCVAR_NOTIFY | FCVAR_CHEAT, "Enable bhop for smoker", true, 0.0f, true, 1.0f);
 ConVar z_smoker_bhop_speed("z_smoker_bhop_speed", "90.0", FCVAR_NOTIFY | FCVAR_CHEAT, "Bhop speed for smoker", true, 0.0f, false, 0.0f);
@@ -35,13 +34,13 @@ void CSmokerEventListner::FireGameEvent(IGameEvent *event)
             if (!pPlayer || !pPlayer->IsInGame())
                 continue;
 
-            if (pPlayer->IsSurvivor() && g_MapSmokerVictimInfo.contains(i))
+            if (pPlayer->IsSurvivor() && g_MapSmokerVictimLeftBehind.contains(i))
             {
-                g_MapSmokerVictimInfo[i].m_bLeftBehind = false;
+                g_MapSmokerVictimLeftBehind[i] = false;
             }
-            else if (pPlayer->IsSmoker() && g_MapSmokerInfo.contains(i))
+            else if (pPlayer->IsSmoker() && g_MapSmokerCanTongue.contains(i))
             {
-                g_MapSmokerInfo[i].m_bCanTongue = true;
+                g_MapSmokerCanTongue[i] = true;
             }
         }
     }
@@ -61,14 +60,11 @@ void CSmokerEventListner::OnClientPutInServer(int client)
     if (pPlayer->IsSurvivor())
     {
         smokerVictimInfo_t info;
-        info.Init();
-        g_MapSmokerVictimInfo[client] = info;
+        g_MapSmokerVictimLeftBehind[client] = false;
     }
     else if (pPlayer->IsSmoker())
     {
-        smokerInfo_t info;
-        info.Init();
-        g_MapSmokerInfo[client] = info;
+        g_MapSmokerCanTongue[client] = false;
     }
 }
 
@@ -80,18 +76,16 @@ void CSmokerEventListner::OnClientDisconnecting(int client)
 
     if (pPlayer->IsSurvivor())
     {
-        if (g_MapSmokerVictimInfo.contains(client))
+        if (g_MapSmokerVictimLeftBehind.contains(client))
         {
-            g_MapSmokerVictimInfo[client].Init();
-            g_MapSmokerVictimInfo.erase(client);
+            g_MapSmokerVictimLeftBehind.erase(client);
         }
     }
     else if (pPlayer->IsSmoker())
     {
-        if (g_MapSmokerInfo.contains(client))
+        if (g_MapSmokerCanTongue.contains(client))
         {
-            g_MapSmokerInfo[client].Init();
-            g_MapSmokerInfo.erase(client);
+            g_MapSmokerCanTongue.erase(client);
         }
     }
 }
@@ -103,7 +97,7 @@ SourceMod::ResultType CSmokerTimerEvent::OnTimer(ITimer *pTimer, void *pData)
     if (!pSmoker || !pSmoker->IsInGame() || !pSmoker->IsSmoker())
         return Pl_Stop;
 
-    g_MapSmokerInfo[client].m_bCanTongue = true;
+    g_MapSmokerCanTongue[client] = true;
     return Pl_Continue;
 }
 
@@ -125,13 +119,6 @@ void CSmokerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
     if (smokerIndex <= 0 || smokerIndex > gpGlobals->maxClients)
         return;
 
-    if (!g_MapSmokerInfo.contains(smokerIndex) && pSmoker->IsSmoker())
-    {
-        smokerInfo_t info;
-        info.Init();
-        g_MapSmokerInfo[smokerIndex] = info;
-    }
-
     if (pSmoker->IsStaggering())
         return;
 
@@ -139,7 +126,7 @@ void CSmokerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
     CTerrorPlayer *pVictim = pSmoker->GetTongueVictim();
     if (pVictim && pVictim->IsInGame() && !pVictim->IsDead() && pVictim->IsSurvivor())   
     {
-        g_MapSmokerInfo[smokerIndex].m_bCanTongue = false;
+        g_MapSmokerCanTongue[smokerIndex] = false;
         g_hTimerCoolDown = timersys->CreateTimer(&g_SmokerTimerEvent, g_pCVar->FindVar("tongue_hit_delay")->GetFloat(), (void *)(intptr_t)(pSmoker->entindex()), 0);
         return;
     }
@@ -151,13 +138,6 @@ void CSmokerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
     int targetIndex = pTarget->entindex();
     if (targetIndex <= 0 || targetIndex > gpGlobals->maxClients)
         return;
-
-    if (!g_MapSmokerVictimInfo.contains(targetIndex) && pTarget->IsSurvivor())
-    {
-        smokerVictimInfo_t info;
-        info.Init();
-        g_MapSmokerVictimInfo[targetIndex] = info;
-    }
 
     Vector vecSelfPos = pSmoker->GetAbsOrigin();
     Vector vecTargetPos = pTarget->GetAbsOrigin();
@@ -206,11 +186,11 @@ void CSmokerEventListner::OnPlayerRunCmd(CBaseEntity *pEntity, CUserCmd *pCmd)
             pCmd->buttons |= IN_ATTACK;
             pCmd->buttons |= IN_ATTACK2;
         }
-        else if (flDistance < g_pCVar->FindVar("tongue_range")->GetFloat() * z_smoker_instant_shoot_range_cofficient.GetFloat() && g_MapSmokerInfo[smokerIndex].m_bCanTongue)
+        else if (flDistance < g_pCVar->FindVar("tongue_range")->GetFloat() * z_smoker_instant_shoot_range_cofficient.GetFloat() && g_MapSmokerCanTongue[smokerIndex])
         {
             pCmd->buttons |= IN_ATTACK;
             pCmd->buttons |= IN_ATTACK2;
-            g_MapSmokerInfo[smokerIndex].m_bCanTongue = false;
+            g_MapSmokerCanTongue[smokerIndex] = false;
             g_hTimerCoolDown = timersys->CreateTimer(&g_SmokerTimerEvent, g_pCVar->FindVar("tongue_miss_delay")->GetFloat(), (void *)(intptr_t)(pSmoker->entindex()), 0);
         }
     }
@@ -241,18 +221,14 @@ CTerrorPlayer* BossZombiePlayerBot::OnSmokerChooseVictim(CTerrorPlayer *pAttacke
 
     if (z_smoker_melee_avoid.GetBool())
     {
-        if (g_iValidSurvivor == TeamMeleeCheck())
+        int iValidSurvivor = UTIL_GetValidSurvivorNumber(true, true);
+        if (iValidSurvivor == UTIL_GetTeamMeleeNumber())
         {
-            g_iValidSurvivor = 0;
             CTerrorPlayer *pNewTarget = SmokerTargetChoose(z_smoker_target_rules.GetInt(), pAttacker);
             if (pNewTarget && pNewTarget->IsInGame() && pNewTarget->IsSurvivor())
             {
                 return pNewTarget;
             }
-        }
-        else
-        {
-            g_iValidSurvivor = 0;
         }
 
         if (pLastVictim->IsSurvivor())
@@ -394,24 +370,17 @@ static CTerrorPlayer *SmokerTargetChoose(int method, CTerrorPlayer *pSmoker, CTe
                 if (pSpecificTarget && pPlayer == pSpecificTarget)
                     continue;
 
-                if (!g_MapSmokerVictimInfo.contains(i))
-                {
-                    smokerVictimInfo_t victimInfo;
-                    victimInfo.Init();
-                    g_MapSmokerVictimInfo[i] = victimInfo;
-                }
-
                 if (UTIL_IsLeftBehind(pPlayer))
                 {
                     Vector vecTargetPos;
                     g_pZombieManager->GetRandomPZSpawnPosition(ZC_SMOKER, 5, pSmoker, &vecTargetPos);
                     pSmoker->Teleport(&vecTargetPos, NULL, NULL);
-                    g_MapSmokerVictimInfo[i].m_bLeftBehind = true;
+                    g_MapSmokerVictimLeftBehind[i] = true;
                     return pPlayer;
                 }
                 else
                 {
-                    g_MapSmokerVictimInfo[i].m_bLeftBehind = false;
+                    g_MapSmokerVictimLeftBehind[i] = false;
                 }
 
                 float flTeamDistance = CalculateTeamDistance(pPlayer);
@@ -436,11 +405,11 @@ static CTerrorPlayer *SmokerTargetChoose(int method, CTerrorPlayer *pSmoker, CTe
                     }
                     else
                     {
-                        g_MapSmokerVictimInfo[i].m_bLeftBehind = false;
+                        g_MapSmokerVictimLeftBehind[i] = false;
                     }
                 }
 
-                g_MapSmokerVictimInfo[i].m_bLeftBehind = false;
+                g_MapSmokerVictimLeftBehind[i] = false;
             }
         }
 
@@ -472,31 +441,4 @@ BYDEFAULT:
             return (CTerrorPlayer *)UTIL_GetClosetSurvivor(pSmoker, NULL, true, true);
         }
     }
-}
-
-static int TeamMeleeCheck()
-{
-    int iTeamMeleeCount = 0;
-    for (int i = 1; i < gpGlobals->maxClients; i++)
-    {
-        CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndexExt(i);
-        if (!pPlayer)
-            continue;
-
-        if (!pPlayer->IsInGame() || !pPlayer->IsSurvivor() || pPlayer->IsDead() || pPlayer->IsIncapped() || pPlayer->GetSpecialInfectedDominatingMe())
-            continue;
-
-        g_iValidSurvivor += 1;
-        CBaseCombatWeapon *pWeapon = pPlayer->GetActiveWeapon();
-        if (pWeapon && pWeapon->edict())
-        {
-            const char *szClassName = pWeapon->GetClassName();
-            if (!V_strcmp(szClassName, "weapon_melee") || !V_strcmp(szClassName, "weapon_chiansaw"))
-            {
-                iTeamMeleeCount += 1;
-            }
-        }
-    }
-
-    return iTeamMeleeCount;
 }
